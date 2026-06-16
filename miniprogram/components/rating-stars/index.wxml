@@ -1,0 +1,9 @@
+<view class="stars">
+  <text
+    wx:for="{{stars}}"
+    wx:key="*this"
+    class="star {{item <= value ? 'filled' : ''}} {{readonly ? 'readonly' : ''}}"
+    bindtap="onStar"
+    data-v="{{item}}"
+  >★</text>
+</view>

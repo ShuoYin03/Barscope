@@ -1,0 +1,6 @@
+{
+  "renderer": "skyline",
+  "usingComponents": {
+    "bottom-nav": "/components/bottom-nav/index"
+  }
+}

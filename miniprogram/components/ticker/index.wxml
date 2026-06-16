@@ -1,0 +1,15 @@
+<view class="ticker">
+  <view class="ticker-label">NOW</view>
+  <view class="ticker-track">
+    <view class="ticker-inner">
+      <block wx:for="{{songs}}" wx:key="index">
+        <text class="ticker-item">{{item}}</text>
+        <view class="ticker-dot" />
+      </block>
+      <block wx:for="{{songs}}" wx:key="index">
+        <text class="ticker-item">{{item}}</text>
+        <view class="ticker-dot" />
+      </block>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,101 @@
+.review-item {
+  padding: 28rpx 32rpx;
+  border-bottom: 2rpx solid var(--gray-light);
+  background: var(--white);
+}
+
+.review-item.is-critic {
+  border-left: 6rpx solid var(--accent);
+  background: #fafaf0;
+}
+
+.review-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.review-avatar {
+  width: 60rpx;
+  height: 60rpx;
+  background: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.review-avatar.is-critic { background: #1a1a1a; }
+
+.review-meta { flex: 1; }
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.review-user {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.critic-badge {
+  font-size: 18rpx;
+  font-weight: 700;
+  color: var(--black);
+  background: var(--accent);
+  padding: 2rpx 10rpx;
+}
+
+.review-time {
+  font-size: 20rpx;
+  color: var(--gray-mid);
+  margin-top: 2rpx;
+  display: block;
+}
+
+.album-badge {
+  font-size: 18rpx;
+  font-weight: 700;
+  color: var(--black);
+  background: var(--accent);
+  padding: 4rpx 14rpx;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.review-score {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--black);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.review-text {
+  font-size: 24rpx;
+  color: #333;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.review-footer {
+  margin-top: 16rpx;
+  font-size: 20rpx;
+  color: var(--gray-mid);
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.like-btn { display: flex; }
+.sep { color: #ccc; }

@@ -1,0 +1,25 @@
+<view class="page" style="padding-top: {{statusBarHeight}}px">
+  <view class="logo-area">
+    <text class="logo-zh">韵镜</text>
+    <text class="logo-en">Barscope</text>
+    <text class="tagline">华语说唱最大评分社区</text>
+  </view>
+
+  <view class="nick-section">
+    <text class="nick-label">你的昵称</text>
+    <input
+      type="nickname"
+      class="nick-input"
+      placeholder="输入昵称或使用微信昵称"
+      placeholder-class="nick-ph"
+      bindinput="onNickInput"
+      value="{{nickName}}"
+    />
+  </view>
+
+  <view class="login-btn {{loading ? 'loading' : ''}}" bindtap="onLogin">
+    <text>{{loading ? '登录中...' : '微信一键登录'}}</text>
+  </view>
+
+  <text class="hint">登录后可评分、收藏、发表评论</text>
+</view>

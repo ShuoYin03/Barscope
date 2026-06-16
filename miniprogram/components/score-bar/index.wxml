@@ -1,0 +1,3 @@
+<view class="bar-track">
+  <view class="bar-fill" style="width: {{fillWidth}}" />
+</view>

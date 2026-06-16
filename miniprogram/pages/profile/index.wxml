@@ -1,0 +1,93 @@
+<view class="page">
+  <!-- TOPBAR -->
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="topbar-title">我的</text>
+    <text class="topbar-sub">PROFILE</text>
+  </view>
+
+  <!-- LOGGED-OUT STATE -->
+  <view wx:if="{{!isLoggedIn}}" class="gate-content">
+    <view class="avatar-placeholder">
+      <text class="avatar-ph-icon">○</text>
+    </view>
+    <text class="gate-title">登录查看个人主页</text>
+    <text class="gate-sub">追踪你的评分记录，加入韵镜社区</text>
+    <view class="gate-btn" bindtap="onLogin"><text>立即登录</text></view>
+  </view>
+
+  <!-- LOGGED-IN STATE -->
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+
+    <!-- USER CARD -->
+    <view class="user-card">
+      <view class="user-avatar">
+        <text class="avatar-initial">{{userInfo.nickName[0]}}</text>
+      </view>
+      <view class="user-info-col">
+        <view class="user-name-row">
+          <text class="user-name">{{userInfo.nickName}}</text>
+          <text wx:if="{{isCritic}}" class="critic-badge">乐评人</text>
+        </view>
+        <text wx:if="{{userInfo.bio}}" class="user-bio">{{userInfo.bio}}</text>
+        <view class="user-stats">
+          <view class="stat-item">
+            <text class="stat-num">{{reviews.length}}</text>
+            <text class="stat-lbl">评论</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ADMIN ENTRY（仅管理员可见） -->
+    <view wx:if="{{isAdmin}}" class="admin-entry" bindtap="onAdminTap">
+      <view class="admin-entry-left">
+        <view class="admin-icon-wrap">
+          <text class="admin-icon">⚙</text>
+        </view>
+        <view class="admin-entry-text">
+          <text class="admin-entry-title">艺人候选审核</text>
+          <text class="admin-entry-sub">管理 BFS 发现的新艺人</text>
+        </view>
+      </view>
+      <view class="admin-entry-right">
+        <view wx:if="{{pendingCount > 0}}" class="pending-badge">
+          <text class="pending-num">{{pendingCount}}</text>
+        </view>
+        <text class="admin-arrow">→</text>
+      </view>
+    </view>
+
+    <!-- SECTION DIVIDER -->
+    <view class="section-head">
+      <text class="section-label">我的评论</text>
+    </view>
+
+    <!-- REVIEW HISTORY -->
+    <view class="review-history">
+      <view
+        wx:for="{{reviews}}"
+        wx:key="id"
+        class="history-item"
+        bindtap="onReviewTap"
+        data-id="{{item.id}}"
+      >
+        <view class="history-album-row">
+          <view class="history-cover" />
+          <view class="history-meta">
+            <text class="history-album-title">{{item.albumTitle}}</text>
+            <text class="history-artist">{{item.artist}}</text>
+          </view>
+          <text class="history-stars">{{item.ratingText}}</text>
+        </view>
+        <text class="history-content">{{item.content}}</text>
+        <view class="history-footer">
+          <text class="history-time">{{item.timeAgo}}</text>
+          <text class="history-likes">❤ {{item.likes}}</text>
+        </view>
+      </view>
+    </view>
+
+  </scroll-view>
+
+  <bottom-nav selected="{{4}}" />
+</view>

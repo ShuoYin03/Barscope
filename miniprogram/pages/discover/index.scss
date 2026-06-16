@@ -1,0 +1,126 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--off-white);
+}
+
+.topbar {
+  background: var(--black);
+  display: flex;
+  align-items: flex-end;
+  gap: 12rpx;
+  padding-left: 32rpx;
+  padding-bottom: 16rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.topbar-title { font-size: 34rpx; font-weight: 700; color: var(--white); letter-spacing: 4rpx; }
+.topbar-sub { font-size: 20rpx; color: var(--accent); letter-spacing: 6rpx; font-weight: 600; }
+
+/* SEARCH */
+.search-wrap {
+  background: var(--black);
+  padding: 16rpx 32rpx 24rpx;
+  flex-shrink: 0;
+}
+.search-inner {
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid #333;
+}
+.search-icon { font-size: 22rpx; font-weight: 700; color: #555; letter-spacing: 1rpx; }
+.search-input { flex: 1; font-size: 28rpx; color: var(--white); background: transparent; }
+.search-ph { color: #555; }
+
+.content { flex: 1; min-height: 0; }
+
+.section-label {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: var(--gray-mid);
+  letter-spacing: 4rpx;
+  padding: 32rpx 32rpx 16rpx;
+  display: block;
+}
+
+/* GENRE GRID */
+.genre-section { background: var(--off-white); }
+.genre-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 0 32rpx 32rpx;
+}
+.genre-cell {
+  width: calc((100% - 36rpx) / 4);
+  box-sizing: border-box;
+  background: var(--white);
+  padding: 20rpx 8rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  border: 2rpx solid transparent;
+}
+.genre-cell.active {
+  border-color: var(--accent);
+  background: #fffde6;
+}
+.genre-name { font-size: 22rpx; font-weight: 700; color: var(--black); text-align: center; }
+.genre-count { font-size: 18rpx; color: var(--gray-mid); }
+
+/* ALBUM LIST */
+.album-section {}
+.empty-state { padding: 80rpx 32rpx; text-align: center; }
+.empty-text { font-size: 28rpx; color: var(--gray-mid); }
+
+.album-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 22rpx 32rpx;
+  background: var(--white);
+  border-bottom: 2rpx solid var(--gray-light);
+}
+.album-row:last-child { border-bottom: none; }
+
+.album-cover {
+  width: 92rpx;
+  height: 92rpx;
+  background: var(--gray-light);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.cover-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.album-info { flex: 1; min-width: 0; }
+.album-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--black);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.album-artist { font-size: 22rpx; color: var(--gray-mid); display: block; margin-top: 4rpx; }
+.album-genres { display: flex; gap: 8rpx; margin-top: 8rpx; flex-wrap: wrap; }
+.genre-tag { font-size: 18rpx; background: var(--gray-light); color: var(--black); padding: 2rpx 10rpx; }
+
+.album-score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; flex-shrink: 0; }
+.album-score { font-size: 36rpx; font-weight: 700; color: var(--black); line-height: 1; }
+.score-bar-mini { width: 64rpx; height: 4rpx; background: var(--gray-light); }
+.score-bar-fill { height: 4rpx; background: var(--black); }

@@ -1,0 +1,13 @@
+<view class="bottom-nav">
+  <view
+    wx:for="{{tabs}}"
+    wx:key="path"
+    class="nav-item {{selected === index ? 'active' : ''}}"
+    bindtap="onTap"
+    data-path="{{item.path}}"
+    data-index="{{index}}"
+  >
+    <text class="nav-icon">{{item.icon}}</text>
+    <text class="nav-label">{{item.text}}</text>
+  </view>
+</view>

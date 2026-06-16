@@ -1,0 +1,36 @@
+.section-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 20rpx;
+  border-bottom: 4rpx solid var(--black);
+  background: var(--off-white);
+}
+
+.section-hd-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.section-num {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--black);
+  padding: 4rpx 14rpx;
+  letter-spacing: 2rpx;
+}
+
+.section-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--black);
+  letter-spacing: 2rpx;
+}
+
+.section-more {
+  font-size: 20rpx;
+  color: var(--gray-mid);
+  letter-spacing: 1rpx;
+}

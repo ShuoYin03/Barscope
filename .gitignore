@@ -1,0 +1,10 @@
+node_modules/
+miniprogram_npm/
+.DS_Store
+__pycache__/
+*.pyc
+crawler/config.json
+crawler/albums_raw.json
+.idea/
+*.log
+project.private.config.json

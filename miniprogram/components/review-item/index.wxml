@@ -1,0 +1,24 @@
+<view class="review-item {{review.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onTap">
+  <view class="review-header">
+    <view class="review-avatar {{review.userType === 'critic' ? 'is-critic' : ''}}">
+      <text>{{review.initial}}</text>
+    </view>
+    <view class="review-meta">
+      <view class="name-row">
+        <text class="review-user">{{review.userName}}</text>
+        <text wx:if="{{review.userType === 'critic'}}" class="critic-badge">乐评人</text>
+      </view>
+      <text class="review-time">{{review.timeAgo}}</text>
+    </view>
+    <text wx:if="{{showAlbum}}" class="album-badge">{{review.albumTitle}}</text>
+    <text class="review-score">{{review.score}}</text>
+  </view>
+  <text class="review-text">{{review.content}}</text>
+  <view class="review-footer">
+    <view class="like-btn" catchtap="onLike">
+      <text>❤ {{review.likes}}</text>
+    </view>
+    <text class="sep"> | </text>
+    <text class="reply-count">💬 {{review.replyCount}}条</text>
+  </view>
+</view>

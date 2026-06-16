@@ -1,0 +1,51 @@
+<view class="page">
+  <!-- TOPBAR -->
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="back-btn" bindtap="onBack">
+      <text class="back-arrow">←</text>
+      <text class="back-text">取消</text>
+    </view>
+    <text class="topbar-center">写评论</text>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+
+    <!-- ALBUM LABEL -->
+    <view class="album-label">
+      <view class="album-cover-sm" />
+      <view class="album-label-info">
+        <text class="album-label-title">{{albumTitle || '专辑'}}</text>
+        <text class="album-label-hint">正在评论</text>
+      </view>
+    </view>
+
+    <!-- RATING -->
+    <view class="rating-section">
+      <text class="rating-title">你的评分</text>
+      <rating-stars value="{{rating}}" bind:change="onRatingChange" />
+      <text class="rating-hint">{{rating === 0 ? '点击星星评分' : rating + ' 星'}}</text>
+    </view>
+
+    <!-- CONTENT INPUT -->
+    <view class="input-section">
+      <text class="input-label">评论内容</text>
+      <textarea
+        class="content-input"
+        placeholder="写下你对这张专辑的感受..."
+        placeholder-class="content-ph"
+        bindinput="onContentInput"
+        maxlength="500"
+        auto-height
+      />
+      <text class="char-count">{{content.length}}/500</text>
+    </view>
+
+  </scroll-view>
+
+  <!-- SUBMIT BAR -->
+  <view class="submit-bar">
+    <view class="submit-btn {{submitting ? 'disabled' : ''}}" bindtap="onSubmit">
+      <text>{{submitting ? '发布中...' : '发布评论'}}</text>
+    </view>
+  </view>
+</view>

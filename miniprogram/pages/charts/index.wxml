@@ -1,0 +1,73 @@
+<view class="page">
+  <!-- TOPBAR -->
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="topbar-title">韵镜</text>
+    <text class="topbar-sub">Barscope</text>
+  </view>
+
+  <!-- PERIOD PICKER -->
+  <view class="period-bar">
+    <view
+      wx:for="{{periods}}"
+      wx:key="key"
+      class="period-item {{period === item.key ? 'active' : ''}}"
+      bindtap="onPeriod"
+      data-p="{{item.key}}"
+    >
+      <text>{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- CHART LIST -->
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <!-- skeleton -->
+    <view wx:if="{{loading}}" class="chart-list">
+      <view wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}" wx:key="*this" class="skel-row">
+        <view class="sk" style="width:40rpx;height:40rpx;flex-shrink:0;" />
+        <view class="sk" style="width:92rpx;height:92rpx;flex-shrink:0;" />
+        <view class="skel-info">
+          <view class="sk" style="width:65%;height:26rpx;" />
+          <view class="sk" style="width:50%;height:20rpx;" />
+        </view>
+        <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
+      </view>
+    </view>
+    <!-- real -->
+    <view wx:else class="chart-list">
+      <view
+        wx:for="{{list}}"
+        wx:key="rank"
+        class="chart-item"
+        bindtap="onAlbumTap"
+        data-id="{{item.albumId}}"
+      >
+        <text class="chart-rank {{item.rank <= 3 ? 'top3' : ''}}">{{item.rank}}</text>
+        <view class="chart-cover">
+          <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="cover-pat">
+            <view /><view /><view />
+            <view /><view /><view />
+            <view /><view /><view />
+          </view>
+        </view>
+        <view class="chart-info">
+          <text class="chart-title">{{item.title}}</text>
+          <view class="chart-meta">
+            <text>{{item.artist}}</text>
+            <view class="meta-dot" />
+            <text>{{item.year}}</text>
+          </view>
+        </view>
+        <view class="chart-score-col">
+          <text class="chart-score">{{item.score}}</text>
+          <view class="mini-bar">
+            <view class="mini-bar-fill" style="width: {{item.scoreFill}}" />
+          </view>
+          <text class="chart-trend {{item.trend}}">{{item.trendText}}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <bottom-nav selected="{{1}}" />
+</view>

@@ -1,0 +1,9 @@
+{
+  "renderer": "skyline",
+  "usingComponents": {
+    "ticker": "/components/ticker/index",
+    "section-header": "/components/section-header/index",
+    "score-bar": "/components/score-bar/index",
+    "bottom-nav": "/components/bottom-nav/index"
+  }
+}

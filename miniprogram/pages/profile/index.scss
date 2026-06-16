@@ -1,0 +1,172 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--off-white);
+}
+
+.topbar {
+  background: var(--black);
+  display: flex;
+  align-items: flex-end;
+  gap: 12rpx;
+  padding-left: 32rpx;
+  padding-bottom: 16rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.topbar-title { font-size: 34rpx; font-weight: 700; color: var(--white); letter-spacing: 4rpx; }
+.topbar-sub { font-size: 20rpx; color: var(--accent); letter-spacing: 6rpx; font-weight: 600; }
+
+/* GATE */
+.gate-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  padding: 64rpx 80rpx;
+}
+.avatar-placeholder {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 999rpx;
+  background: var(--gray-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-ph-icon { font-size: 60rpx; color: var(--gray-mid); }
+.gate-title { font-size: 32rpx; font-weight: 700; color: var(--black); }
+.gate-sub { font-size: 24rpx; color: var(--gray-mid); text-align: center; line-height: 1.6; }
+.gate-btn {
+  margin-top: 16rpx;
+  background: var(--black);
+  color: var(--accent);
+  font-size: 28rpx;
+  font-weight: 700;
+  padding: 24rpx 80rpx;
+  letter-spacing: 4rpx;
+}
+
+/* CONTENT */
+.content { flex: 1; min-height: 0; }
+
+/* USER CARD */
+.user-card {
+  background: var(--black);
+  padding: 40rpx 32rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 32rpx;
+}
+.user-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 999rpx;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.avatar-initial { font-size: 48rpx; font-weight: 700; color: var(--black); }
+.user-info-col { flex: 1; min-width: 0; }
+.user-name-row { display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; margin-bottom: 8rpx; }
+.user-name { font-size: 34rpx; font-weight: 700; color: var(--white); }
+.critic-badge {
+  font-size: 18rpx;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--black);
+  padding: 4rpx 12rpx;
+  letter-spacing: 2rpx;
+}
+.user-bio { font-size: 24rpx; color: #999; display: block; line-height: 1.5; margin-bottom: 16rpx; }
+.user-stats { display: flex; gap: 32rpx; }
+.stat-item { display: flex; flex-direction: column; align-items: center; gap: 4rpx; }
+.stat-num { font-size: 36rpx; font-weight: 700; color: var(--accent); }
+.stat-lbl { font-size: 20rpx; color: #666; }
+
+/* ADMIN ENTRY */
+.admin-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--black);
+  padding: 28rpx 32rpx;
+  margin-top: 2rpx;
+  border-top: 2rpx solid #1a1a1a;
+}
+.admin-entry-left {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+.admin-icon-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  background: #1a1a1a;
+  border-radius: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.admin-icon { font-size: 36rpx; }
+.admin-entry-text { display: flex; flex-direction: column; gap: 6rpx; }
+.admin-entry-title { font-size: 28rpx; font-weight: 700; color: var(--white); }
+.admin-entry-sub   { font-size: 20rpx; color: #666; }
+.admin-entry-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.pending-badge {
+  background: var(--accent);
+  border-radius: 999rpx;
+  min-width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10rpx;
+}
+.pending-num { font-size: 20rpx; font-weight: 700; color: var(--black); }
+.admin-arrow { font-size: 28rpx; color: #444; }
+
+/* SECTION HEAD */
+.section-head { padding: 28rpx 32rpx 12rpx; background: var(--off-white); }
+.section-label { font-size: 22rpx; font-weight: 700; color: var(--gray-mid); letter-spacing: 4rpx; }
+
+/* REVIEW HISTORY */
+.review-history {}
+.history-item {
+  background: var(--white);
+  padding: 28rpx 32rpx;
+  border-bottom: 2rpx solid var(--gray-light);
+}
+.history-item:last-child { border-bottom: none; }
+.history-album-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+}
+.history-cover { width: 64rpx; height: 64rpx; background: var(--gray-light); flex-shrink: 0; }
+.history-meta { flex: 1; min-width: 0; }
+.history-album-title { font-size: 28rpx; font-weight: 600; color: var(--black); display: block; }
+.history-artist { font-size: 22rpx; color: var(--gray-mid); display: block; }
+.history-stars { font-size: 26rpx; color: var(--accent); flex-shrink: 0; }
+.history-content {
+  font-size: 26rpx;
+  color: var(--black);
+  line-height: 1.6;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.history-footer { display: flex; justify-content: space-between; }
+.history-time { font-size: 22rpx; color: var(--gray-mid); }
+.history-likes { font-size: 22rpx; color: var(--gray-mid); }

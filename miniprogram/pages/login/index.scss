@@ -1,0 +1,76 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--black);
+  gap: 48rpx;
+}
+
+.logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.logo-zh {
+  font-size: 60rpx;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 8rpx;
+}
+
+.logo-en {
+  font-size: 28rpx;
+  color: var(--accent);
+  letter-spacing: 10rpx;
+  font-weight: 600;
+}
+
+.tagline {
+  font-size: 24rpx;
+  color: #555;
+  letter-spacing: 2rpx;
+  margin-top: 8rpx;
+}
+
+.login-btn {
+  background: var(--accent);
+  color: var(--black);
+  font-size: 32rpx;
+  font-weight: 700;
+  padding: 28rpx 80rpx;
+  letter-spacing: 4rpx;
+}
+
+.nick-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  width: 100%;
+  padding: 0 64rpx;
+  box-sizing: border-box;
+}
+.nick-label { font-size: 22rpx; color: #666; letter-spacing: 2rpx; }
+.nick-input {
+  background: #1a1a1a;
+  border: 2rpx solid #333;
+  padding: 24rpx 28rpx;
+  font-size: 28rpx;
+  color: var(--white);
+  width: 100%;
+  box-sizing: border-box;
+}
+.nick-ph { color: #555; }
+
+.login-btn.loading {
+  background: #cca800;
+}
+
+.hint {
+  font-size: 22rpx;
+  color: #555;
+  letter-spacing: 1rpx;
+}

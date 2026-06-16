@@ -1,0 +1,13 @@
+.stars {
+  display: flex;
+  gap: 8rpx;
+}
+
+.star {
+  font-size: 56rpx;
+  color: #333;
+  line-height: 1;
+}
+
+.star.filled { color: var(--accent); }
+.star.readonly { pointer-events: none; }

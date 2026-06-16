@@ -1,0 +1,7 @@
+{
+  "renderer": "skyline",
+  "usingComponents": {
+    "rating-stars": "/components/rating-stars/index",
+    "review-item": "/components/review-item/index"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "appid":     "<your-wechat-appid>",
+  "appsecret": "<your-wechat-appsecret>",
+  "env":       "<your-cloud-env-id>",
+  "batch_size": 20
+}

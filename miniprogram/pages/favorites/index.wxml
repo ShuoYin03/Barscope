@@ -1,0 +1,71 @@
+<view class="page">
+  <!-- TOPBAR -->
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="topbar-title">收藏</text>
+    <text class="topbar-sub">COLLECTION</text>
+  </view>
+
+  <!-- LOGGED-OUT STATE -->
+  <view wx:if="{{!isLoggedIn}}" class="gate-content">
+    <text class="gate-icon">☆</text>
+    <text class="gate-title">登录后查看你的专辑收藏架</text>
+    <text class="gate-sub">收藏喜欢的专辑，随时回顾你的品味历程</text>
+    <view class="gate-btn" bindtap="onLogin"><text>立即登录</text></view>
+  </view>
+
+  <!-- LOADING STATE -->
+  <scroll-view wx:elif="{{loading}}" class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="shelf-header">
+      <view class="sk" style="width:120rpx;height:30rpx;" />
+    </view>
+    <view class="album-grid">
+      <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="skel-cell">
+        <view class="sk" style="width:100%;aspect-ratio:1;margin-bottom:16rpx;" />
+        <view class="sk" style="width:80%;height:24rpx;margin-bottom:8rpx;" />
+        <view class="sk" style="width:60%;height:20rpx;" />
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- LOGGED-IN: EMPTY STATE -->
+  <view wx:elif="{{favorites.length === 0}}" class="empty-shelf">
+    <text class="empty-icon">▨</text>
+    <text class="empty-title">收藏架还是空的</text>
+    <text class="empty-sub">去发现页面找找你喜欢的专辑吧</text>
+    <view class="discover-btn" bindtap="onGoDiscover"><text>去发现</text></view>
+  </view>
+
+  <!-- LOGGED-IN: SHELF -->
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="shelf-header">
+      <text class="shelf-count">{{favorites.length}} 张专辑</text>
+    </view>
+    <view class="album-grid">
+      <view
+        wx:for="{{favorites}}"
+        wx:key="id"
+        class="grid-cell"
+        bindtap="onAlbumTap"
+        data-id="{{item.id}}"
+      >
+        <view class="grid-cover">
+          <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="cover-pat">
+            <view /><view />
+            <view /><view />
+          </view>
+          <view class="grid-score-badge">
+            <text>{{item.score}}</text>
+          </view>
+        </view>
+        <text class="grid-title">{{item.title}}</text>
+        <text class="grid-artist">{{item.artist}}</text>
+        <view class="grid-tag-row">
+          <text wx:for="{{item.genres}}" wx:for-item="g" wx:key="*this" class="grid-tag">{{g}}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <bottom-nav selected="{{3}}" />
+</view>
