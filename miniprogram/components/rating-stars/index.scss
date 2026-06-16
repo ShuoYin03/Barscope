@@ -1,13 +1,25 @@
-.stars {
+.score-picker {
   display: flex;
-  gap: 8rpx;
+  gap: 10rpx;
+  flex-wrap: wrap;
 }
 
-.star {
-  font-size: 56rpx;
-  color: #333;
-  line-height: 1;
+.score-btn {
+  width: 60rpx;
+  height: 60rpx;
+  line-height: 60rpx;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #666;
+  border: 2rpx solid #333;
+  border-radius: 8rpx;
 }
 
-.star.filled { color: var(--accent); }
-.star.readonly { pointer-events: none; }
+.score-btn.selected {
+  color: #000;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.score-btn.readonly { pointer-events: none; }

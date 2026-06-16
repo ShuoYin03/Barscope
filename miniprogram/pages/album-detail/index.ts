@@ -34,7 +34,7 @@ function mapAlbum(raw: any): AlbumData {
     genres:      raw.genres      || [],
     avgScore:    Math.round(score * 10) / 10,
     reviewCount: raw.reviewCount || 0,
-    scoreFill:   Math.round(score / 5 * 100) + '%',
+    scoreFill:   Math.round(score / 10 * 100) + '%',
     coverUrl:    raw.coverUrl    || '',
   }
 }

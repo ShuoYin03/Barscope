@@ -18,6 +18,7 @@ interface Album {
   genres: string[]
   avgScore: number
   reviewCount: number
+  trackCount?: number
 }
 
 interface Review {

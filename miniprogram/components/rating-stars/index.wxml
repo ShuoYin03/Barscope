@@ -1,9 +1,9 @@
-<view class="stars">
+<view class="score-picker">
   <text
-    wx:for="{{stars}}"
+    wx:for="{{scores}}"
     wx:key="*this"
-    class="star {{item <= value ? 'filled' : ''}} {{readonly ? 'readonly' : ''}}"
-    bindtap="onStar"
+    class="score-btn {{item === value ? 'selected' : ''}} {{readonly ? 'readonly' : ''}}"
+    bindtap="onTap"
     data-v="{{item}}"
-  >★</text>
+  >{{item}}</text>
 </view>

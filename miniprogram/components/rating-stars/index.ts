@@ -4,10 +4,10 @@ Component({
     readonly: { type: Boolean, value: false },
   },
   data: {
-    stars: [1, 2, 3, 4, 5],
+    scores: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   },
   methods: {
-    onStar(e: WechatMiniprogram.TouchEvent) {
+    onTap(e: WechatMiniprogram.TouchEvent) {
       if (this.properties.readonly) return
       const v = (e.currentTarget.dataset as { v: number }).v
       this.triggerEvent('change', { value: v })

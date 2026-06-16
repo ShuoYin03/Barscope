@@ -1,7 +1,7 @@
 Component({
   properties: {
     score: { type: Number, value: 0 },
-    maxScore: { type: Number, value: 5 },
+    maxScore: { type: Number, value: 10 },
   },
   data: { fillWidth: '0%' },
   observers: {

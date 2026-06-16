@@ -14,7 +14,7 @@ const GENRES = [
 ]
 
 function scoreFill(score: number) {
-  return Math.round(score / 5 * 100) + '%'
+  return Math.round(score / 10 * 100) + '%'
 }
 
 Page({

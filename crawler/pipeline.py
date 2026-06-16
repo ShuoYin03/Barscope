@@ -33,6 +33,7 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 sys.path.insert(0, BASE_DIR)
 from spider_netease import run_fission, load_rappers, save_rappers, RAPPERS_FILE
 from upload import clean
+from db_client import CrawlerDB
 
 # ── 微信 HTTP API ──────────────────────────────────────────────────────────────
 
@@ -152,10 +153,11 @@ def upload_candidates(token: str, env: str, batch_size: int = 100) -> dict:
 
 # ── 主流程 ─────────────────────────────────────────────────────────────────────
 
-def main():
+def main(from_scheduler: bool = False):
     parser = argparse.ArgumentParser(description="Barscope 爬虫")
-    parser.add_argument("--dry-run", action="store_true", help="只爬取+清洗，不上传")
-    args = parser.parse_args()
+    parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
+    parser.add_argument("--skip-db-check", action="store_true", help="跳过 DB pending 检查（直接运行）")
+    args = parser.parse_args() if not from_scheduler else argparse.Namespace(dry_run=False, skip_db_check=False)
 
     if not os.path.exists(CONFIG_FILE):
         print("[!] 找不到 config.json")
@@ -171,53 +173,108 @@ def main():
         print("[!] 请先在 config.json 填入 appsecret")
         return
 
-    # ── 获取 token（dry-run 跳过）────────────────────────────────────────────
-    token = None
-    if not args.dry_run:
-        print("━━━ 获取 access_token ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        try:
-            token = get_access_token(appid, appsecret)
-        except RuntimeError as e:
-            print(f"  ✗ {e}")
+    db = CrawlerDB(cfg) if not args.dry_run else None
+
+    # ── DB: 认领任务 ─────────────────────────────────────────────────────────
+    if db and not args.skip_db_check:
+        print("━━━ 检查爬虫触发状态 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        claimed = db.claim_run()
+        if not claimed:
+            print("  未发现 pending 任务，退出。（如需强制运行，加 --skip-db-check）")
+            return
+        print("  已认领任务，开始运行。")
+        db.append_log("爬虫任务开始")
+
+    errors_list: list = []
+
+    try:
+        # ── 获取 token（dry-run 跳过）────────────────────────────────────────
+        token = None
+        if not args.dry_run:
+            print("━━━ 获取 access_token ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            try:
+                token = get_access_token(appid, appsecret)
+            except RuntimeError as e:
+                print(f"  ✗ {e}")
+                if db: db.fail_run(str(e))
+                return
+
+            # ── Step 1: 同步审核结果 ─────────────────────────────────────────
+            print("\n━━━ Step 1：同步审核结果 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            if db: db.append_log("Step 1: 同步审核结果")
+            sync_decisions(token, env)
+
+        # ── Step 2: 裂变爬取 ─────────────────────────────────────────────────
+        print("\n━━━ Step 2：BFS 裂变爬取 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        if db: db.append_log("Step 2: BFS 裂变爬取开始")
+
+        rappers_data = load_rappers()
+        total_artists = len(rappers_data.get("rappers", []))
+        if db: db.update_progress(total_artists=total_artists)
+
+        raw_albums = run_fission(dry_run=False)
+        albums_found = len(raw_albums)
+
+        if db:
+            db.update_progress(
+                total_artists=total_artists,
+                processed=total_artists,
+                albums_found=albums_found,
+            )
+            db.append_log(f"Step 2: 爬取完成，原始专辑 {albums_found} 张")
+
+        # ── Step 3: 清洗 ─────────────────────────────────────────────────────
+        print("\n━━━ Step 3：清洗 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        if db: db.append_log("Step 3: 数据清洗")
+        cleaned = clean(raw_albums)
+        print(f"  原始 {len(raw_albums)} 张  →  清洗后 {len(cleaned)} 张")
+
+        if args.dry_run:
+            print("\n[dry-run] 完成，跳过上传。")
             return
 
-        # ── Step 1: 同步审核结果 ─────────────────────────────────────────────
-        print("\n━━━ Step 1：同步审核结果 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        sync_decisions(token, env)
+        # ── Step 4: 上传专辑 ─────────────────────────────────────────────────
+        print("\n━━━ Step 4：上传专辑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        if db: db.append_log(f"Step 4: 上传 {len(cleaned)} 张专辑")
+        if cleaned:
+            result = upload_albums(cleaned, token, env, batch_size=batch_sz)
+        else:
+            result = {"inserted": 0, "updated": 0, "skipped": 0, "errors": 0}
+            print("  没有新专辑需要上传")
 
-    # ── Step 2: 裂变爬取 ─────────────────────────────────────────────────────
-    print("\n━━━ Step 2：BFS 裂变爬取 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    raw_albums = run_fission(dry_run=False)
+        if result.get("errors", 0) > 0:
+            errors_list.append(f"上传专辑错误: {result['errors']} 张")
 
-    # ── Step 3: 清洗 ─────────────────────────────────────────────────────────
-    print("\n━━━ Step 3：清洗 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    cleaned = clean(raw_albums)
-    print(f"  原始 {len(raw_albums)} 张  →  清洗后 {len(cleaned)} 张")
+        # ── Step 5: 上传候选艺人 ─────────────────────────────────────────────
+        print("\n━━━ Step 5：上传候选艺人 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        if db: db.append_log("Step 5: 上传候选艺人")
+        cand_result = upload_candidates(token, env)
 
-    if args.dry_run:
-        print("\n[dry-run] 完成，跳过上传。")
-        return
+        new_candidates = cand_result.get("inserted", 0)
 
-    # ── Step 4: 上传专辑 ─────────────────────────────────────────────────────
-    print("\n━━━ Step 4：上传专辑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    if cleaned:
-        result = upload_albums(cleaned, token, env, batch_size=batch_sz)
-    else:
-        result = {"inserted": 0, "updated": 0, "skipped": 0, "errors": 0}
-        print("  没有新专辑需要上传")
-
-    # ── Step 5: 上传候选艺人 ─────────────────────────────────────────────────
-    print("\n━━━ Step 5：上传候选艺人 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    upload_candidates(token, env)
-
-    print(f"""
+        print(f"""
 ━━━ 完成 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   新增专辑: {result['inserted']}
   更新专辑: {result['updated']}
   跳过:     {result['skipped']}
   错误:     {result['errors']}
+  新候选:   {new_candidates}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """)
+
+        if db:
+            db.append_log(f"完成 — 新增专辑 {result['inserted']} 张，新候选 {new_candidates} 位")
+            db.complete_run(
+                new_albums=result["inserted"],
+                new_candidates=new_candidates,
+                errors=errors_list,
+            )
+
+    except Exception as e:
+        print(f"\n[!] 运行出错: {e}")
+        if db:
+            db.append_log(f"运行出错: {e}")
+            db.fail_run(str(e))
 
 
 if __name__ == "__main__":

@@ -41,6 +41,11 @@ def clean(raw_list: list) -> list:
         if year < 1990 or year > CURRENT_YEAR:
             continue
 
+        # 过滤单曲/EP（曲目数 < 3）
+        track_count = int(a.get("trackCount") or 0)
+        if track_count > 0 and track_count < 3:
+            continue
+
         # title+artist 去重
         key = f"{title.lower()}|||{artist.lower()}"
         if key in seen:
@@ -58,6 +63,7 @@ def clean(raw_list: list) -> list:
             "crawlSource": a.get("crawlSource") or "",
             "avgScore":    0.0,
             "reviewCount": 0,
+            "trackCount":  track_count,
         })
 
     return cleaned

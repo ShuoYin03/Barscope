@@ -27,7 +27,7 @@
         </view>
         <view class="hero-score-row">
           <text class="score-num">{{album.avgScore}}</text>
-          <text class="score-denom">/5</text>
+          <text class="score-denom">/10</text>
           <text class="score-count">{{album.reviewCount}}人评分</text>
         </view>
       </view>

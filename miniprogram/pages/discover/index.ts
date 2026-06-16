@@ -29,7 +29,7 @@ function mapAlbum(a: any): AlbumCard {
     year:      a.releaseYear || 0,
     score:     Math.round(score * 10) / 10,
     genres:    a.genres   || [],
-    scoreFill: Math.round(score / 5 * 100) + '%',
+    scoreFill: Math.round(score / 10 * 100) + '%',
     coverUrl:  a.coverUrl || '',
   }
 }

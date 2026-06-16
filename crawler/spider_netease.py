@@ -206,10 +206,13 @@ def normalize_album(
     pub_ms         = raw.get("publishTime") or 0
     year           = ms_to_year(pub_ms) if pub_ms else 0
     album_id       = str(raw.get("id", ""))
+    track_count    = int(raw.get("size") or 0)
 
     if not title or not primary_artist or not cover:
         return None
     if any(kw in title for kw in SKIP_TITLE_KEYWORDS):
+        return None
+    if track_count > 0 and track_count < 3:
         return None
 
     return {
@@ -224,6 +227,7 @@ def normalize_album(
         "crawlSource":   crawl_source,
         "avgScore":      0.0,
         "reviewCount":   0,
+        "trackCount":    track_count,
     }
 
 # ── 核心工具：拉取单个艺人专辑 ─────────────────────────────────────────────────

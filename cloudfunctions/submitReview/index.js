@@ -10,8 +10,8 @@ exports.main = async (event, context) => {
   if (!albumId || !rating || !content) {
     return { success: false, error: '参数不完整' }
   }
-  if (rating < 1 || rating > 5) {
-    return { success: false, error: '评分范围 1-5' }
+  if (rating < 1 || rating > 10) {
+    return { success: false, error: '评分范围 1-10' }
   }
 
   try {

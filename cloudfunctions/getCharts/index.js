@@ -28,7 +28,7 @@ exports.main = async (event, context) => {
       artist: album.artist,
       year: album.releaseYear,
       score: album.avgScore || 0,
-      scoreFill: Math.round((album.avgScore || 0) / 5 * 100) + '%',
+      scoreFill: Math.round((album.avgScore || 0) / 10 * 100) + '%',
       coverUrl: album.coverUrl || '',
       trend: 'same',
       trendText: '─',
