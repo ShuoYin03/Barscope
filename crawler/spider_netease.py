@@ -7,6 +7,7 @@ Barscope · 网易云音乐爬虫（多模式版）
   playlist    -- 给定歌单 ID → 提取艺人 → 加入 rappers.json → 拉取专辑
   discover    -- 搜索说唱歌单 → 提取新艺人 → 加入 rappers.json → 拉取专辑
   add-artist  -- 给定艺人 ID → 加入 rappers.json → 拉取专辑
+  album       -- 给定专辑 ID → 精确收录单张专辑（跳过过滤）
   fission     -- 从种子艺人出发，通过专辑合作关系递归扩展，直到无新艺人
 
 用法:
@@ -15,6 +16,7 @@ Barscope · 网易云音乐爬虫（多模式版）
   python spider_netease.py --mode playlist --id 123456789
   python spider_netease.py --mode discover
   python spider_netease.py --mode add-artist --id 123456
+  python spider_netease.py --mode album --id 123456
   python spider_netease.py --mode fission                    # 所有已知艺人为种子
   python spider_netease.py --mode fission --rapper GAI       # 单一种子
   python spider_netease.py --mode fission --rapper "GAI,马思唯,Higher Brothers"
@@ -185,17 +187,39 @@ def ne_get_playlist_tracks(playlist_id) -> list:
         print(f"  [!] playlist tracks {playlist_id}: {e}")
     return []
 
+
+def ne_get_album(album_id: int) -> Optional[dict]:
+    """
+    按专辑 ID 拉取专辑详情，返回专辑 raw dict（含 name/artist/artists/picUrl/size）。
+    与 hotAlbums[] 单项结构一致，可直接喂给 normalize_album。
+    """
+    try:
+        # 注意：/api/album/{id} 已被风控（code -462），必须用 v1 接口
+        resp = requests.get(
+            f"https://music.163.com/api/v1/album/{album_id}",
+            headers=HEADERS,
+            timeout=12,
+        )
+        data = resp.json()
+        if data.get("code") == 200:
+            return data.get("album")
+    except Exception as e:
+        print(f"  [!] album {album_id}: {e}")
+    return None
+
 # ── 数据标准化 ─────────────────────────────────────────────────────────────────
 
 def normalize_album(
     raw: dict,
     fallback_artist: str = "",
     crawl_source: str = "",
+    skip_filters: bool = False,
 ) -> Optional[dict]:
     """
     把网易云专辑 raw dict 转成标准格式。
     raw 来自 artist/albums 接口的 hotAlbums[] 项目。
     crawl_source: 描述本条数据如何被发现，例如 "netease:search:GAI"
+    skip_filters: 跳过节目合辑/单曲过滤（用于「按专辑 ID」精确收录）
     """
     title          = (raw.get("name") or "").strip()
     primary_artist = (raw.get("artist") or {}).get("name", "").strip() or fallback_artist
@@ -210,24 +234,29 @@ def normalize_album(
 
     if not title or not primary_artist or not cover:
         return None
-    if any(kw in title for kw in SKIP_TITLE_KEYWORDS):
-        return None
-    if track_count > 0 and track_count < 3:
-        return None
+    if not skip_filters:
+        if any(kw in title for kw in SKIP_TITLE_KEYWORDS):
+            return None
+        if track_count > 0 and track_count < 3:
+            return None
+
+    artist_obj       = raw.get("artist") or {}
+    netease_artist_id = str(artist_obj["id"]) if artist_obj.get("id") else ""
 
     return {
-        "title":         title,
-        "artist":        artist,
-        "primaryArtist": primary_artist,
-        "releaseYear":   year,
-        "coverUrl":      cover,
-        "genres":        [],
-        "sourceId":      album_id,
-        "source":        "netease",
-        "crawlSource":   crawl_source,
-        "avgScore":      0.0,
-        "reviewCount":   0,
-        "trackCount":    track_count,
+        "title":            title,
+        "artist":           artist,
+        "primaryArtist":    primary_artist,
+        "neteaseArtistId":  netease_artist_id,
+        "releaseYear":      year,
+        "coverUrl":         cover,
+        "genres":           [],
+        "sourceId":         album_id,
+        "source":           "netease",
+        "crawlSource":      crawl_source,
+        "avgScore":         0.0,
+        "reviewCount":      0,
+        "trackCount":       track_count,
     }
 
 # ── 核心工具：拉取单个艺人专辑 ─────────────────────────────────────────────────
@@ -537,12 +566,42 @@ def run_add_artist(artist_id: int, dry_run: bool = False) -> List[dict]:
     merge_and_save_albums(albums, dry_run=dry_run)
     return albums
 
-# ── 模式 5：fission（裂变）──────────────────────────────────────────────────────
+# ── 模式 5：album（按专辑 ID）────────────────────────────────────────────────────
+
+def run_album(album_id: int, dry_run: bool = False) -> List[dict]:
+    """
+    按专辑 ID 精确收录单张专辑（跳过节目合辑/单曲过滤）。
+    不修改 rappers.json，只把这一张专辑写入 albums_raw.json。
+    """
+    print(f"\n[album]  专辑 ID: {album_id}\n")
+
+    print("  查询专辑信息...", end=" ", flush=True)
+    raw = ne_get_album(album_id)
+    if not raw:
+        print(f"✗  未找到 ID={album_id} 的专辑")
+        return []
+
+    album = normalize_album(
+        raw,
+        crawl_source=f"netease:album:{album_id}",
+        skip_filters=True,
+    )
+    if not album:
+        print("✗  专辑数据不完整（缺标题/艺人/封面）")
+        return []
+
+    print(f"✓  《{album['title']}》 — {album['artist']}  ({album['trackCount']} 首)")
+
+    merge_and_save_albums([album], dry_run=dry_run)
+    return [album]
+
+# ── 模式 6：fission（裂变）──────────────────────────────────────────────────────
 
 def run_fission(
-    seed_names: List[str] = None,
-    dry_run:    bool      = False,
-    max_rounds: int       = 2,
+    seed_names:   List[str] = None,
+    dry_run:      bool      = False,
+    max_rounds:   int       = 2,
+    should_abort=None,
 ) -> List[dict]:
     """
     裂变爬虫：从种子艺人出发，通过专辑合作关系递归扩展。
@@ -552,8 +611,9 @@ def run_fission(
       → 过滤已知 / excluded → 写入 candidates → 成为第 N+1 轮种子
       → 重复，直到无新合作艺人或达到 max_rounds
 
-    seed_names : 种子艺人名字列表（None = rappers.json 里所有已知 ID 的艺人）
-    max_rounds : BFS 最大轮数（默认 2：第 1 轮=初始种子，第 2 轮=合作艺人）
+    seed_names   : 种子艺人名字列表（None = rappers.json 里所有已知 ID 的艺人）
+    max_rounds   : BFS 最大轮数（默认 2：第 1 轮=初始种子，第 2 轮=合作艺人）
+    should_abort : 可选回调，返回 True 时尽快停止裂变并返回已收集的专辑
     """
     print(f"\n[fission]  裂变爬虫启动（最多 {max_rounds} 轮）\n")
 
@@ -591,6 +651,7 @@ def run_fission(
           f"{'...' if len(seeds) > 5 else ''})\n")
 
     round_num = 0
+    aborted   = False
 
     while seeds:
         round_num += 1
@@ -603,6 +664,11 @@ def run_fission(
         fission_updates: Dict[str, tuple] = {}
 
         for i, rapper in enumerate(seeds, 1):
+            if should_abort and should_abort():
+                print("\n  [中止] 收到中止信号，停止裂变")
+                aborted = True
+                break
+
             orig_name = rapper["name"]
             art_id    = rapper.get("id")
 
@@ -678,6 +744,9 @@ def run_fission(
             if changed and not dry_run:
                 save_rappers(data)
                 print(f"  ID/规范名 已回写 → {RAPPERS_FILE}")
+
+        if aborted:
+            break
 
         if not new_collab_map:
             print(f"\n  第 {round_num} 轮无新合作艺人，裂变结束。")
@@ -759,7 +828,7 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["search", "playlist", "discover", "add-artist", "fission"],
+        choices=["search", "playlist", "discover", "add-artist", "album", "fission"],
         default="search",
         help="运行模式（默认: search）",
     )
@@ -767,7 +836,7 @@ def main():
         "--rapper",
         help="[search] 只爬指定艺人；[fission] 逗号分隔的种子艺人名（空=全部）",
     )
-    parser.add_argument("--id",         help="[playlist/add-artist] 歌单ID 或 艺人ID")
+    parser.add_argument("--id",         help="[playlist/add-artist/album] 歌单ID / 艺人ID / 专辑ID")
     parser.add_argument("--max-rounds", type=int, default=2,
                         help="[fission] BFS 最大轮数（默认 2）")
     parser.add_argument("--dry-run", action="store_true", help="只打印，不写文件")
@@ -798,6 +867,14 @@ def main():
             run_add_artist(int(args.id), dry_run=args.dry_run)
         except ValueError:
             print(f"[!] 艺人ID 必须是数字，收到: {args.id!r}")
+
+    elif args.mode == "album":
+        if not args.id:
+            parser.error("--mode album 需要 --id <专辑ID>")
+        try:
+            run_album(int(args.id), dry_run=args.dry_run)
+        except ValueError:
+            print(f"[!] 专辑ID 必须是数字，收到: {args.id!r}")
 
     elif args.mode == "fission":
         seed_names = None

@@ -48,38 +48,63 @@ async function fetchNeteaseAlbums(artistId) {
 }
 
 function normalizeAlbum(raw, fallbackArtist) {
-  const primaryArtist = ((raw.artist || {}).name || '').trim() || fallbackArtist
-  const allArtists    = (raw.artists || []).map(a => (a.name || '').trim()).filter(Boolean)
-  const artist        = allArtists.length > 1 ? allArtists.join(' / ') : primaryArtist
-  const cover         = raw.picUrl || raw.blurPicUrl || ''
-  const year          = raw.publishTime ? new Date(raw.publishTime).getFullYear() : 0
-  const id            = String(raw.id || '')
-  const now           = new Date().getFullYear()
+  const primaryArtist    = ((raw.artist || {}).name || '').trim() || fallbackArtist
+  const neteaseArtistId  = (raw.artist && raw.artist.id) ? String(raw.artist.id) : null
+  const allArtists       = (raw.artists || []).map(a => (a.name || '').trim()).filter(Boolean)
+  const artist           = allArtists.length > 1 ? allArtists.join(' / ') : primaryArtist
+  const cover            = raw.picUrl || raw.blurPicUrl || ''
+  const year             = raw.publishTime ? new Date(raw.publishTime).getFullYear() : 0
+  const id               = String(raw.id || '')
+  const trackCount       = Number(raw.size || 0)
+  const now              = new Date().getFullYear()
 
-  if (!primaryArtist || !cover)                     return null
-  if (!(raw.name || '').trim())                     return null
-  if (year < 1990 || year > now + 1)                return null
+  if (!primaryArtist || !cover)                        return null
+  if (!(raw.name || '').trim())                        return null
+  if (year < 1990 || year > now + 1)                   return null
   if (SKIP_KEYWORDS.some(kw => raw.name.includes(kw))) return null
+  if (trackCount > 0 && trackCount < 3)                return null
 
-  return { title: raw.name.trim(), artist, primaryArtist, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0 }
+  return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
 }
 
 async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
   const raw        = await fetchNeteaseAlbums(artistId)
   const normalized = raw.map(r => normalizeAlbum(r, artistName)).filter(Boolean)
-  if (!normalized.length) return 0
+  if (!normalized.length) {
+    return { fetched: raw.length, normalized: 0, existing: 0, inserted: 0 }
+  }
 
   const sourceIds = normalized.map(a => a.sourceId).filter(Boolean).slice(0, 100)
   const existing  = await db.collection('albums')
     .where({ sourceId: _.in(sourceIds) })
-    .field({ _id: true, sourceId: true })
+    .field({ _id: true, sourceId: true, neteaseArtistId: true, primaryArtist: true, trackCount: true })
     .limit(sourceIds.length)
     .get()
-  const existSet  = new Set(existing.data.map(d => d.sourceId))
-  const toInsert  = normalized.filter(a => !existSet.has(a.sourceId))
 
-  await Promise.allSettled(toInsert.map(a => db.collection('albums').add({ data: { ...a, approved } })))
-  return toInsert.length
+  const existMap = new Map(existing.data.map(d => [d.sourceId, d]))
+
+  // 回填历史专辑缺失的 neteaseArtistId / primaryArtist
+  const needsBackfill = normalized.filter(a => {
+    const ex = existMap.get(a.sourceId)
+    return ex && (!ex.neteaseArtistId || !ex.primaryArtist || (!ex.trackCount && a.trackCount))
+  })
+  if (needsBackfill.length) {
+    await Promise.allSettled(
+      needsBackfill.map(a => {
+        const ex = existMap.get(a.sourceId)
+        const patch = {}
+        if (!ex.neteaseArtistId && a.neteaseArtistId) patch.neteaseArtistId = a.neteaseArtistId
+        if (!ex.primaryArtist   && a.primaryArtist)   patch.primaryArtist   = a.primaryArtist
+        if (!ex.trackCount      && a.trackCount)       patch.trackCount      = a.trackCount
+        return db.collection('albums').doc(ex._id).update({ data: patch })
+      })
+    )
+  }
+
+  const toInsert  = normalized.filter(a => !existMap.has(a.sourceId))
+  const results   = await Promise.allSettled(toInsert.map(a => db.collection('albums').add({ data: { ...a, approved } })))
+  const inserted  = results.filter(r => r.status === 'fulfilled').length
+  return { fetched: raw.length, normalized: normalized.length, existing: existMap.size, inserted }
 }
 
 /**
@@ -107,10 +132,13 @@ exports.main = async (event, context) => {
     return { success: false, error: 'unauthorized' }
   }
 
-  if (action === 'list')            return await listCandidates(event.status, event.page || 1, event.pageSize || 30)
-  if (action === 'decide')          return await decide(event.decisions || [])
-  if (action === 'stats')           return await stats()
-  if (action === 'refresh_albums')  return await refreshAlbums(event.candidateId)
+  if (action === 'list')                  return await listCandidates(event.status, event.page || 1, event.pageSize || 30, event.keyword || '')
+  if (action === 'decide')               return await decide(event.decisions || [])
+  if (action === 'stats')                return await stats()
+  if (action === 'refresh_albums')       return await refreshAlbums(event.candidateId)
+  if (action === 'list_admin_albums')    return await listAdminAlbums(event.artistId, event.artistName)
+  if (action === 'toggle_album_approved') return await toggleAlbumApproved(event.albumId, !!event.approved)
+  if (action === 'cleanup_singles')      return await cleanupSingles()
 
   return { success: false, error: 'unknown action' }
 }
@@ -187,11 +215,14 @@ async function upsertCandidates(candidates) {
 }
 
 // ── list ──────────────────────────────────────────────────────────────────────
-async function listCandidates(status, page, pageSize) {
+async function listCandidates(status, page, pageSize, keyword) {
   try {
-    const q = status
-      ? db.collection('artist_candidates').where({ status })
-      : db.collection('artist_candidates').where({})
+    const conditions = {}
+    if (status) conditions.status = status
+    if (keyword && keyword.trim()) {
+      conditions.artistName = db.RegExp({ regexp: keyword.trim(), options: 'i' })
+    }
+    const q = db.collection('artist_candidates').where(conditions)
 
     const countResult = await q.count()
     const total = countResult.total
@@ -204,6 +235,43 @@ async function listCandidates(status, page, pageSize) {
       .get()
 
     return { success: true, list: listResult.data, total, page, pageSize }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── list_admin_albums ─────────────────────────────────────────────────────────
+async function listAdminAlbums(artistId, artistName) {
+  try {
+    const escapedName = artistName ? artistName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : ''
+    const [r1, r2, r3] = await Promise.all([
+      artistId
+        ? db.collection('albums').where({ neteaseArtistId: String(artistId) }).orderBy('releaseYear', 'desc').limit(200).get()
+        : Promise.resolve({ data: [] }),
+      artistName
+        ? db.collection('albums').where({ primaryArtist: artistName }).orderBy('releaseYear', 'desc').limit(200).get()
+        : Promise.resolve({ data: [] }),
+      escapedName
+        ? db.collection('albums').where({ artist: db.RegExp({ regexp: escapedName, options: 'i' }) }).orderBy('releaseYear', 'desc').limit(200).get()
+        : Promise.resolve({ data: [] }),
+    ])
+    const seen = {}
+    const merged = []
+    r1.data.concat(r2.data).concat(r3.data).forEach(function(a) {
+      if (!seen[a._id]) { seen[a._id] = true; merged.push(a) }
+    })
+    merged.sort(function(a, b) { return (b.releaseYear || 0) - (a.releaseYear || 0) })
+    return { success: true, list: merged, total: merged.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── toggle_album_approved ─────────────────────────────────────────────────────
+async function toggleAlbumApproved(albumId, approved) {
+  try {
+    await db.collection('albums').doc(albumId).update({ data: { approved } })
+    return { success: true }
   } catch (e) {
     return { success: false, error: e.message }
   }
@@ -235,8 +303,9 @@ async function decide(decisions) {
     const { artistName, artistId } = fetch.value.data
     const isApproved = d.decision === 'approved'
 
-    // Update approved flag on existing albums — match primaryArtist (new) or artist (legacy single-artist)
+    // Update approved flag on existing albums — by artistId (reliable) + name fallback for legacy docs
     await Promise.allSettled([
+      db.collection('albums').where({ neteaseArtistId: String(artistId) }).update({ data: { approved: isApproved } }),
       db.collection('albums').where({ primaryArtist: artistName }).update({ data: { approved: isApproved } }),
       db.collection('albums').where({ artist: artistName }).update({ data: { approved: isApproved } }),
     ])
@@ -244,6 +313,10 @@ async function decide(decisions) {
     // On approval: fetch & insert the full discography from Netease
     if (isApproved && artistId) {
       await upsertAlbumsForArtist(artistId, artistName)
+      try {
+        const countRes = await db.collection('albums').where({ neteaseArtistId: String(artistId) }).count()
+        await db.collection('artist_candidates').doc(d.id).update({ data: { albumSize: countRes.total } })
+      } catch {}
     }
   })
 
@@ -290,14 +363,33 @@ async function refreshAlbums(candidateId) {
     if (!c) return { success: false, error: 'not found' }
 
     const isApproved = c.status === 'approved'
-    const inserted   = await upsertAlbumsForArtist(c.artistId, c.artistName, isApproved)
+    const stats      = await upsertAlbumsForArtist(c.artistId, c.artistName, isApproved)
 
     await Promise.allSettled([
+      db.collection('albums').where({ neteaseArtistId: String(c.artistId) }).update({ data: { approved: isApproved } }),
       db.collection('albums').where({ primaryArtist: c.artistName }).update({ data: { approved: isApproved } }),
       db.collection('albums').where({ artist: c.artistName }).update({ data: { approved: isApproved } }),
     ])
 
-    return { success: true, inserted }
+    try {
+      const countRes = await db.collection('albums').where({ neteaseArtistId: String(c.artistId) }).count()
+      await db.collection('artist_candidates').doc(candidateId).update({ data: { albumSize: countRes.total } })
+    } catch {}
+
+    return { success: true, ...stats }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── cleanup_singles ───────────────────────────────────────────────────────────
+async function cleanupSingles() {
+  try {
+    const [r1, r2] = await Promise.all([
+      db.collection('albums').where({ trackCount: 1 }).remove(),
+      db.collection('albums').where({ trackCount: 2 }).remove(),
+    ])
+    return { success: true, removed: r1.stats.removed + r2.stats.removed }
   } catch (e) {
     return { success: false, error: e.message }
   }

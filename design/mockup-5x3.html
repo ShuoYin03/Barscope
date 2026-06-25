@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Barscope — 5×3 Design Exploration</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=VT323&family=Special+Elite&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px 8px}
+.page-nav{display:flex;gap:2px;margin-bottom:6px}
+.var-nav{display:flex;gap:2px;margin-bottom:14px;flex-wrap:wrap}
+.pnav{padding:9px 18px;background:#1A1A1A;color:#555;border:none;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.pnav.on{background:#C94E25;color:#000}
+.vnav{padding:8px 14px;background:#222;color:#555;border:none;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.vnav.on{background:#F0E8D4;color:#0E0B09}
+.pw{display:none;justify-content:center}
+.pw.on{display:flex}
+.phone{width:375px;overflow:hidden;border:1px solid #333;display:flex;flex-direction:column}
+.bnav{display:flex;margin-top:auto;flex-shrink:0}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 18px;gap:3px;cursor:pointer}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spin2{to{transform:rotate(-360deg)}}
+</style>
+</head>
+<body>
+
+<div class="page-nav">
+  <button class="pnav on" onclick="setPage('H')">首页 HOME</button>
+  <button class="pnav" onclick="setPage('P')">个人页 PROFILE</button>
+  <button class="pnav" onclick="setPage('R')">评分 RATING</button>
+</div>
+<div class="var-nav">
+  <button class="vnav on" onclick="setVar('A')">A · 黑胶 VINYL</button>
+  <button class="vnav" onclick="setVar('B')">B · 地下 ZINE</button>
+  <button class="vnav" onclick="setVar('C')">C · 磁带 TAPE</button>
+  <button class="vnav" onclick="setVar('D')">D · 涂鸦 TAG</button>
+  <button class="vnav" onclick="setVar('E')">E · 报刊 PRESS</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     H O M E   PAGE  ×  5
+════════════════════════════════════════════════════ -->
+
+<!-- H-A  VINYL -->
+<div id="H-A" class="pw on"><div class="phone" style="background:#08060A;color:#F0E8D4;min-height:700px">
+  <div style="padding:40px 16px 10px;display:flex;align-items:flex-end;justify-content:space-between">
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#F0E8D4;line-height:1">BARSCOPE</div>
+      <div style="font-size:9px;color:#5A5044;letter-spacing:3px;margin-top:1px">中文说唱</div>
+    </div>
+    <i class="ti ti-search" style="font-size:18px;color:#5A5044;padding-bottom:4px"></i>
+  </div>
+
+  <!-- RECORD -->
+  <div style="display:flex;flex-direction:column;align-items:center;padding:12px 0 4px">
+    <div style="width:220px;height:220px;border-radius:50%;position:relative;
+      background:radial-gradient(circle at 50% 50%,
+        #C94E25 0,#C94E25 16%,
+        #100A0E 17%,#100A0E 19%,#1A1218 20%,#100A0E 22%,#1A1218 23%,#100A0E 25%,
+        #1A1218 26%,#100A0E 28%,#1A1218 29%,#100A0E 31%,#1A1218 32%,#100A0E 34%,
+        #1A1218 35%,#100A0E 37%,#1A1218 38%,#100A0E 40%,#1A1218 41%,#100A0E 43%,
+        #1A1218 44%,#100A0E 46%,#1A1218 47%,#100A0E 100%);
+      box-shadow:0 0 0 3px #08060A,0 0 0 5px #2A2420">
+      <!-- center label -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:76px;height:76px;border-radius:50%;background:#C94E25;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:#08060A;line-height:1">9.4</div>
+        <div style="font-size:7px;color:#08060A;opacity:0.7;letter-spacing:1px">BARSCOPE</div>
+      </div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:#08060A;z-index:3"></div>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:#F0E8D4;letter-spacing:1px">未定义</div>
+      <div style="font-size:11px;color:#5A5044;margin-top:2px;letter-spacing:1px">武汉说唱协会 · 2024</div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #2A2420;margin:8px 16px"></div>
+  <div style="padding:8px 16px 4px;font-size:9px;letter-spacing:3px;color:#5A5044;font-weight:700">SIDE A — TOP CHARTS</div>
+  <div style="padding:0 16px">
+    <div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid #1A1714;gap:10px">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#C94E25;width:24px">A1</span>
+      <span style="flex:1;font-size:13px;color:#F0E8D4">未定义 <span style="color:#5A5044;font-size:11px">武汉说唱协会</span></span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#C94E25">9.4</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid #1A1714;gap:10px">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#5A5044;width:24px">A2</span>
+      <span style="flex:1;font-size:13px;color:#F0E8D4">盘古 <span style="color:#5A5044;font-size:11px">黄旭</span></span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#C94E25">9.1</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid #1A1714;gap:10px">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#5A5044;width:24px">A3</span>
+      <span style="flex:1;font-size:13px;color:#F0E8D4">黑蟠桃 <span style="color:#5A5044;font-size:11px">GAI</span></span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#C94E25">8.9</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 0;gap:10px">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#5A5044;width:24px">B1</span>
+      <span style="flex:1;font-size:13px;color:#F0E8D4">烟雾弥漫 <span style="color:#5A5044;font-size:11px">TT</span></span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#C94E25">8.7</span>
+    </div>
+  </div>
+  <div style="padding:8px 16px 0;text-align:right;font-size:11px;color:#C94E25;letter-spacing:1px">更多 →</div>
+
+  <div class="bnav" style="background:#08060A;border-top:1px solid #2A2420">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#C94E25"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#C94E25">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#5A5044"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#5A5044">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#5A5044"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#5A5044">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#5A5044"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#5A5044">ME</span></div>
+  </div>
+</div></div>
+
+<!-- H-B  ZINE -->
+<div id="H-B" class="pw"><div class="phone" style="background:#F2EDE0;color:#1A1A1A;min-height:700px">
+  <div style="background:#1A1A1A;padding:36px 16px 10px;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-family:'Special Elite',serif;font-size:22px;color:#F2EDE0;letter-spacing:1px">BARSCOPE</span>
+    <span style="font-size:9px;color:#C94E25;font-weight:700;letter-spacing:2px;border:1px solid #C94E25;padding:2px 6px">地下 VOL.7</span>
+  </div>
+
+  <!-- featured — tilted -->
+  <div style="padding:18px 20px 0;position:relative">
+    <div style="transform:rotate(-1.5deg);border:3px solid #1A1A1A;background:#fff;padding:10px">
+      <div style="background:#1A1A1A;height:130px;display:flex;align-items:center;justify-content:center">
+        <div style="text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:#C94E25;line-height:1">未定义</div>
+          <div style="font-size:10px;color:#F2EDE0;letter-spacing:2px;margin-top:4px">武汉说唱协会</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <div>
+          <div style="font-family:'Special Elite',serif;font-size:14px;color:#1A1A1A">未定义</div>
+          <div style="font-size:10px;color:#666;margin-top:1px">武汉说唱协会 · 2024</div>
+        </div>
+        <div style="width:50px;height:50px;border:3px solid #C94E25;border-radius:50%;display:flex;align-items:center;justify-content:center;transform:rotate(8deg)">
+          <span style="font-family:'Special Elite',serif;font-size:20px;color:#C94E25;font-weight:700">9.4</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- chart list -->
+  <div style="padding:14px 20px 0">
+    <div style="font-family:'Special Elite',serif;font-size:11px;color:#1A1A1A;letter-spacing:1px;border-bottom:2px solid #1A1A1A;padding-bottom:4px;margin-bottom:8px">— TOP RATED ——————</div>
+    <div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dotted #999">
+      <span style="font-family:'Special Elite',serif;font-size:12px;width:20px;color:#666">01</span>
+      <span style="font-family:'Special Elite',serif;font-size:13px;flex:1;color:#1A1A1A">未定义</span>
+      <div style="border:2px solid #C94E25;padding:1px 6px"><span style="font-family:'Special Elite',serif;font-size:12px;color:#C94E25;font-weight:700">9.4</span></div>
+    </div>
+    <div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dotted #999">
+      <span style="font-family:'Special Elite',serif;font-size:12px;width:20px;color:#666">02</span>
+      <span style="font-family:'Special Elite',serif;font-size:13px;flex:1;color:#1A1A1A">盘古</span>
+      <div style="border:2px solid #1A1A1A;padding:1px 6px"><span style="font-family:'Special Elite',serif;font-size:12px;color:#1A1A1A">9.1</span></div>
+    </div>
+    <div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dotted #999">
+      <span style="font-family:'Special Elite',serif;font-size:12px;width:20px;color:#666">03</span>
+      <span style="font-family:'Special Elite',serif;font-size:13px;flex:1;color:#1A1A1A">黑蟠桃</span>
+      <div style="border:2px solid #1A1A1A;padding:1px 6px"><span style="font-family:'Special Elite',serif;font-size:12px;color:#1A1A1A">8.9</span></div>
+    </div>
+    <div style="display:flex;align-items:center;padding:6px 0">
+      <span style="font-family:'Special Elite',serif;font-size:12px;width:20px;color:#666">04</span>
+      <span style="font-family:'Special Elite',serif;font-size:13px;flex:1;color:#1A1A1A">烟雾弥漫</span>
+      <div style="border:2px solid #1A1A1A;padding:1px 6px"><span style="font-family:'Special Elite',serif;font-size:12px;color:#1A1A1A">8.7</span></div>
+    </div>
+    <div style="text-align:right;padding-top:8px"><span style="font-family:'Special Elite',serif;font-size:11px;border-bottom:2px solid #C94E25;color:#1A1A1A">查看全部 →</span></div>
+  </div>
+
+  <!-- genre stamps -->
+  <div style="padding:12px 20px;display:flex;flex-wrap:wrap;gap:6px">
+    <span style="border:2px solid #1A1A1A;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#1A1A1A;transform:rotate(-1.5deg);display:inline-block">TRAP</span>
+    <span style="border:2px solid #C94E25;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#C94E25;display:inline-block">DRILL</span>
+    <span style="border:2px solid #1A1A1A;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#1A1A1A;transform:rotate(0.8deg);display:inline-block">OLD SCHOOL</span>
+    <span style="background:#1A1A1A;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#F2EDE0;display:inline-block">硬核</span>
+    <span style="border:2px solid #1A1A1A;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#1A1A1A;display:inline-block">融合</span>
+  </div>
+
+  <div class="bnav" style="background:#1A1A1A;border-top:2px solid #1A1A1A">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#C94E25"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#C94E25">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#555"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#555">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#555"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#555">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#555"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#555">ME</span></div>
+  </div>
+</div></div>
+
+<!-- H-C  CASSETTE/TAPE -->
+<div id="H-C" class="pw"><div class="phone" style="background:#130E06;color:#D4A855;min-height:700px">
+  <!-- LCD header -->
+  <div style="padding:36px 16px 10px;background:#0A0802">
+    <div style="background:#0C2010;border:1px solid #1A4020;padding:8px 12px">
+      <div style="font-family:'VT323',monospace;font-size:14px;color:#3DB060;letter-spacing:2px;display:flex;justify-content:space-between">
+        <span>BARSCOPE.SYS</span><span>▶ PLAYING</span>
+      </div>
+      <div style="font-family:'VT323',monospace;font-size:20px;color:#3DB060;margin-top:2px;letter-spacing:1px">未定义 — 武汉说唱协会</div>
+      <div style="display:flex;justify-content:space-between;margin-top:3px">
+        <span style="font-family:'VT323',monospace;font-size:12px;color:#1A6030">TRAP · 2024</span>
+        <span style="font-family:'VT323',monospace;font-size:12px;color:#3DB060">SCORE: 9.4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- cassette graphic -->
+  <div style="padding:12px 16px;display:flex;justify-content:center">
+    <div style="width:260px;background:#2A1C0C;border:3px solid #5A3C1A;border-radius:8px;padding:10px">
+      <div style="background:#C94E25;padding:5px 10px;margin-bottom:8px;text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:#130E06;letter-spacing:2px">未定义</div>
+        <div style="font-size:8px;color:#130E06;opacity:0.8;letter-spacing:1px">武汉说唱协会 // BARSCOPE</div>
+      </div>
+      <!-- window -->
+      <div style="background:#0A0802;border:2px solid #5A3C1A;border-radius:44px;height:44px;display:flex;align-items:center;justify-content:space-around;padding:0 20px">
+        <div style="width:30px;height:30px;border-radius:50%;border:3px solid #5A3C1A;position:relative;background:radial-gradient(circle,#2A1C0C 0,#2A1C0C 38%,transparent 39%)">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#5A3C1A"></div>
+        </div>
+        <span style="font-family:'VT323',monospace;font-size:10px;color:#5A3C1A;text-align:center;letter-spacing:1px">SIDE A</span>
+        <div style="width:30px;height:30px;border-radius:50%;border:3px solid #5A3C1A;position:relative;background:radial-gradient(circle,#2A1C0C 0,#2A1C0C 38%,transparent 39%)">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#5A3C1A"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span style="font-family:'VT323',monospace;font-size:10px;color:#5A3C1A">TYPE II · CrO₂</span>
+        <span style="font-family:'VT323',monospace;font-size:10px;color:#5A3C1A">60 MIN</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- track listing -->
+  <div style="padding:0 16px">
+    <div style="font-family:'VT323',monospace;font-size:12px;color:#5A3C1A;letter-spacing:2px;border-bottom:1px solid #2A1C0C;padding-bottom:4px;margin-bottom:4px">TRACK LISTING / SIDE A</div>
+    <div style="display:flex;padding:7px 0;border-bottom:1px solid #1A120A">
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#C94E25;width:30px">01</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;flex:1;color:#D4A855">未定义</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#C94E25">9.4</span>
+    </div>
+    <div style="display:flex;padding:7px 0;border-bottom:1px solid #1A120A">
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#5A3C1A;width:30px">02</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;flex:1;color:#D4A855">盘古</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855">9.1</span>
+    </div>
+    <div style="display:flex;padding:7px 0;border-bottom:1px solid #1A120A">
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#5A3C1A;width:30px">03</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;flex:1;color:#D4A855">黑蟠桃</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855">8.9</span>
+    </div>
+    <div style="display:flex;padding:7px 0">
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#5A3C1A;width:30px">04</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;flex:1;color:#D4A855">烟雾弥漫</span>
+      <span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855">8.7</span>
+    </div>
+  </div>
+
+  <div class="bnav" style="background:#0A0802;border-top:1px solid #2A1C0C">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#C94E25"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#C94E25">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#5A3C1A"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#5A3C1A"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#5A3C1A"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">ME</span></div>
+  </div>
+</div></div>
+
+<!-- H-D  TAG/GRAFFITI -->
+<div id="H-D" class="pw"><div class="phone" style="background:#060606;color:#F0F0F0;min-height:700px">
+  <div style="padding:40px 16px 10px;display:flex;align-items:flex-end;justify-content:space-between">
+    <div style="font-size:28px;font-weight:900;color:#DFEC04;line-height:1;letter-spacing:-1px;text-shadow:-2px 0 #000,2px 0 #000,0 -2px #000,0 2px #000">BARSCOPE</div>
+    <i class="ti ti-search" style="font-size:18px;color:#555;padding-bottom:4px"></i>
+  </div>
+  <div style="padding:0 16px 8px;font-size:9px;color:#555;letter-spacing:3px;text-transform:uppercase">中文说唱 · underground</div>
+
+  <!-- sticker featured -->
+  <div style="margin:0 16px 12px;border:4px solid #DFEC04">
+    <div style="background:#141204;height:170px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+      <div style="position:absolute;font-size:110px;font-weight:900;color:#1E1A04;line-height:0.85;opacity:0.9;letter-spacing:-8px;text-align:center">未<br>定</div>
+      <div style="position:relative;text-align:center">
+        <div style="font-size:13px;color:#DFEC04;font-weight:700;letter-spacing:3px;text-transform:uppercase">武汉说唱协会</div>
+        <div style="font-size:10px;color:#555;letter-spacing:1px;margin-top:4px">WUHAN RAP CREW</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0A0A0A">
+      <div>
+        <div style="font-size:16px;font-weight:900;color:#F0F0F0;letter-spacing:-0.5px">未定义</div>
+        <div style="font-size:10px;color:#555;letter-spacing:1px;margin-top:2px">2024 · TRAP</div>
+      </div>
+      <div style="background:#DFEC04;padding:6px 14px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)">
+        <span style="font-size:28px;font-weight:900;color:#060606;line-height:1">9.4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- chart rows -->
+  <div style="padding:0 16px">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1A1A1A">
+      <div style="background:#DFEC04;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:11px;font-weight:900;color:#060606">1</span></div>
+      <span style="flex:1;font-size:13px;color:#F0F0F0;font-weight:700">未定义</span>
+      <span style="font-size:14px;font-weight:900;color:#DFEC04">9.4</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1A1A1A">
+      <div style="background:#2A2A2A;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:11px;font-weight:900;color:#F0F0F0">2</span></div>
+      <span style="flex:1;font-size:13px;color:#F0F0F0;font-weight:700">盘古</span>
+      <span style="font-size:14px;font-weight:900;color:#F0F0F0">9.1</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1A1A1A">
+      <div style="background:#2A2A2A;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:11px;font-weight:900;color:#F0F0F0">3</span></div>
+      <span style="flex:1;font-size:13px;color:#F0F0F0;font-weight:700">黑蟠桃</span>
+      <span style="font-size:14px;font-weight:900;color:#F0F0F0">8.9</span>
+    </div>
+  </div>
+  <div style="padding:10px 16px;display:flex;flex-wrap:wrap;gap:6px">
+    <span style="border:2px solid #DFEC04;padding:4px 10px;font-size:11px;font-weight:900;color:#DFEC04;letter-spacing:1px">TRAP</span>
+    <span style="border:2px solid #444;padding:4px 10px;font-size:11px;font-weight:900;color:#444;letter-spacing:1px">DRILL</span>
+    <span style="border:2px solid #444;padding:4px 10px;font-size:11px;font-weight:900;color:#444;letter-spacing:1px">OLD SCHOOL</span>
+    <span style="background:#1A1A1A;padding:4px 10px;font-size:11px;font-weight:900;color:#F0F0F0;letter-spacing:1px">全部 →</span>
+  </div>
+
+  <div class="bnav" style="background:#060606;border-top:1px solid #2A2A2A">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#DFEC04"></i><span style="font-size:11px;font-weight:700;color:#DFEC04">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#444"></i><span style="font-size:11px;font-weight:700;color:#444">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#444"></i><span style="font-size:11px;font-weight:700;color:#444">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#444"></i><span style="font-size:11px;font-weight:700;color:#444">ME</span></div>
+  </div>
+</div></div>
+
+<!-- H-E  PRESS/TABLOID -->
+<div id="H-E" class="pw"><div class="phone" style="background:#F6F2E8;color:#1A1A1A;min-height:700px">
+  <div style="padding:40px 0 0;border-bottom:4px solid #1A1A1A">
+    <div style="text-align:center;padding:0 16px 8px">
+      <div style="font-family:Georgia,serif;font-size:30px;font-weight:900;color:#1A1A1A;letter-spacing:-1px;line-height:1">BARSCOPE</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+        <div style="height:1px;background:#1A1A1A;flex:1"></div>
+        <span style="font-size:9px;color:#1A1A1A;letter-spacing:2px">中文说唱 · VOL.47</span>
+        <div style="height:1px;background:#1A1A1A;flex:1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- front page story -->
+  <div style="padding:12px 16px">
+    <div style="font-family:Georgia,serif;font-size:28px;font-weight:900;color:#1A1A1A;line-height:1.05;margin-bottom:8px">本周最佳：<br>《未定义》<br><span style="color:#C94E25">9.4分</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;border-top:2px solid #1A1A1A;border-bottom:1px solid #1A1A1A;padding:4px 0;margin-bottom:10px">
+      <span style="font-size:10px;color:#666;letter-spacing:1px">武汉说唱协会 · 2024</span>
+      <span style="background:#C94E25;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;letter-spacing:1px">FEATURED</span>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div style="width:78px;height:78px;background:#1A1A1A;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <span style="font-family:Georgia,serif;font-size:12px;color:#F6F2E8;text-align:center;line-height:1.3">未<br>定<br>义</span>
+      </div>
+      <div>
+        <p style="font-family:Georgia,serif;font-size:11px;color:#1A1A1A;line-height:1.6">武汉说唱协会新作震撼，以独特腔调与实力说唱席卷榜单首位...</p>
+        <span style="font-size:10px;color:#C94E25;font-weight:700;letter-spacing:1px;margin-top:6px;display:block">阅读全文 →</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- chart table -->
+  <div style="border-top:3px double #1A1A1A;margin:0 16px">
+    <div style="font-family:Georgia,serif;font-size:10px;font-weight:700;letter-spacing:2px;color:#1A1A1A;padding:5px 0;text-align:center;text-transform:uppercase;border-bottom:1px solid #1A1A1A">本周榜单 TOP CHARTS</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr style="border-bottom:1px solid #E0DDD5">
+        <td style="padding:6px 0;color:#999;width:20px;font-family:Georgia,serif">1</td>
+        <td style="padding:6px 0;font-family:Georgia,serif;color:#1A1A1A;font-weight:700">未定义</td>
+        <td style="padding:6px 0;text-align:right;font-family:Georgia,serif;color:#C94E25;font-weight:900;font-size:15px">9.4</td>
+      </tr>
+      <tr style="border-bottom:1px solid #E0DDD5">
+        <td style="padding:6px 0;color:#999;font-family:Georgia,serif">2</td>
+        <td style="padding:6px 0;font-family:Georgia,serif;color:#1A1A1A">盘古</td>
+        <td style="padding:6px 0;text-align:right;font-family:Georgia,serif;color:#1A1A1A;font-weight:700;font-size:13px">9.1</td>
+      </tr>
+      <tr style="border-bottom:1px solid #E0DDD5">
+        <td style="padding:6px 0;color:#999;font-family:Georgia,serif">3</td>
+        <td style="padding:6px 0;font-family:Georgia,serif;color:#1A1A1A">黑蟠桃</td>
+        <td style="padding:6px 0;text-align:right;font-family:Georgia,serif;color:#1A1A1A;font-size:13px">8.9</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0;color:#999;font-family:Georgia,serif">4</td>
+        <td style="padding:6px 0;font-family:Georgia,serif;color:#1A1A1A">烟雾弥漫</td>
+        <td style="padding:6px 0;text-align:right;font-family:Georgia,serif;color:#1A1A1A;font-size:13px">8.7</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="bnav" style="background:#1A1A1A;border-top:2px solid #1A1A1A;margin-top:auto">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#C94E25"></i><span style="font-family:Georgia,serif;font-size:11px;color:#C94E25">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#555"></i><span style="font-family:Georgia,serif;font-size:11px;color:#555">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#555"></i><span style="font-family:Georgia,serif;font-size:11px;color:#555">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#555"></i><span style="font-family:Georgia,serif;font-size:11px;color:#555">ME</span></div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════
+     P R O F I L E   PAGE  ×  5
+════════════════════════════════════════════════════ -->
+
+<!-- P-A  VINYL -->
+<div id="P-A" class="pw"><div class="phone" style="background:#08060A;color:#F0E8D4;min-height:700px">
+  <div style="padding:40px 16px 12px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#F0E8D4;line-height:1">PROFILE</div>
+    <i class="ti ti-settings" style="font-size:18px;color:#5A5044;padding-bottom:2px"></i>
+  </div>
+
+  <!-- vinyl avatar -->
+  <div style="display:flex;align-items:center;gap:20px;padding:0 16px 16px">
+    <div style="width:100px;height:100px;border-radius:50%;flex-shrink:0;position:relative;
+      background:radial-gradient(circle at 50% 50%,#C94E25 0,#C94E25 18%,#100A0E 19%,#1A1218 22%,#100A0E 24%,#1A1218 27%,#100A0E 29%,#1A1218 32%,#100A0E 34%,#100A0E 100%);
+      box-shadow:0 0 0 2px #08060A,0 0 0 4px #2A2420">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:#C94E25;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:#08060A;line-height:1">S</span>
+      </div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:#08060A"></div>
+    </div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#F0E8D4;letter-spacing:1px;line-height:1">SHUOYIN03</div>
+      <div style="margin-top:6px;background:#C94E25;display:inline-block;padding:2px 8px">
+        <span style="font-size:10px;font-weight:700;color:#08060A;letter-spacing:2px">乐评人</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats as record info -->
+  <div style="border-top:1px solid #2A2420;border-bottom:1px solid #2A2420;display:flex;padding:12px 16px;gap:0">
+    <div style="flex:1;text-align:center;border-right:1px solid #2A2420">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#F0E8D4;line-height:1">12</div>
+      <div style="font-size:9px;color:#5A5044;letter-spacing:2px;margin-top:2px">评论</div>
+    </div>
+    <div style="flex:1;text-align:center;border-right:1px solid #2A2420">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#F0E8D4;line-height:1">45</div>
+      <div style="font-size:9px;color:#5A5044;letter-spacing:2px;margin-top:2px">收藏</div>
+    </div>
+    <div style="flex:1;text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:#F0E8D4;line-height:1">8</div>
+      <div style="font-size:9px;color:#5A5044;letter-spacing:2px;margin-top:2px">专辑</div>
+    </div>
+  </div>
+
+  <div style="padding:12px 16px 4px;font-size:9px;letter-spacing:3px;color:#5A5044;font-weight:700">SIDE A — 我的</div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1714"><i class="ti ti-messages" style="font-size:17px;color:#5A5044;margin-right:12px"></i><span style="flex:1;font-size:14px;color:#F0E8D4">我的评论</span><i class="ti ti-chevron-right" style="font-size:15px;color:#2A2420"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1714"><i class="ti ti-bookmark" style="font-size:17px;color:#5A5044;margin-right:12px"></i><span style="flex:1;font-size:14px;color:#F0E8D4">我的收藏</span><i class="ti ti-chevron-right" style="font-size:15px;color:#2A2420"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px"><i class="ti ti-adjustments" style="font-size:17px;color:#5A5044;margin-right:12px"></i><span style="flex:1;font-size:14px;color:#F0E8D4">偏好设置</span><i class="ti ti-chevron-right" style="font-size:15px;color:#2A2420"></i></div>
+
+  <div style="padding:12px 16px 4px;font-size:9px;letter-spacing:3px;color:#C94E25;font-weight:700;border-top:2px solid #C94E25;margin-top:8px">SIDE B — ADMIN</div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1714"><i class="ti ti-user-check" style="font-size:17px;color:#C94E25;margin-right:12px"></i><span style="flex:1;font-size:14px;color:#F0E8D4">艺人候选审核</span><i class="ti ti-chevron-right" style="font-size:15px;color:#2A2420"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1714"><i class="ti ti-robot" style="font-size:17px;color:#C94E25;margin-right:12px"></i><span style="flex:1;font-size:14px;color:#F0E8D4">爬虫管理</span><i class="ti ti-chevron-right" style="font-size:15px;color:#2A2420"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px"><i class="ti ti-shield-check" style="font-size:17px;color:#C94E25;margin-right:12px"></i><span style="flex:1;font-size:14px;color:#F0E8D4">乐评人认证</span><i class="ti ti-chevron-right" style="font-size:15px;color:#2A2420"></i></div>
+
+  <div class="bnav" style="background:#08060A;border-top:1px solid #2A2420">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#5A5044"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#5A5044">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#5A5044"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#5A5044">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#5A5044"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#5A5044">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#C94E25"></i><span style="font-family:'Bebas Neue',sans-serif;font-size:11px;color:#C94E25">ME</span></div>
+  </div>
+</div></div>
+
+<!-- P-B  ZINE WANTED POSTER -->
+<div id="P-B" class="pw"><div class="phone" style="background:#F2EDE0;color:#1A1A1A;min-height:700px">
+  <div style="background:#1A1A1A;padding:36px 16px 10px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-family:'Special Elite',serif;font-size:20px;color:#F2EDE0">PROFILE</span>
+    <i class="ti ti-settings" style="font-size:18px;color:#C94E25"></i>
+  </div>
+
+  <!-- WANTED poster -->
+  <div style="margin:16px;border:3px solid #1A1A1A;padding:12px;text-align:center">
+    <div style="font-family:'Special Elite',serif;font-size:10px;letter-spacing:4px;color:#666;margin-bottom:8px">— MEMBER FILE —</div>
+    <!-- photo placeholder -->
+    <div style="width:90px;height:90px;background:#1A1A1A;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;border:2px solid #C94E25">
+      <span style="font-family:'Special Elite',serif;font-size:40px;color:#F2EDE0">S</span>
+    </div>
+    <div style="font-family:'Special Elite',serif;font-size:24px;color:#1A1A1A;letter-spacing:2px">SHUOYIN03</div>
+    <div style="margin-top:6px;display:inline-block;border:2px solid #C94E25;padding:2px 10px">
+      <span style="font-family:'Special Elite',serif;font-size:10px;color:#C94E25;letter-spacing:3px">乐评人 · CRITIC</span>
+    </div>
+  </div>
+
+  <!-- stats as file data -->
+  <div style="margin:0 16px;border:3px solid #1A1A1A;border-top:none">
+    <div style="display:flex;border-bottom:2px solid #1A1A1A">
+      <div style="flex:1;padding:10px;text-align:center;border-right:2px solid #1A1A1A">
+        <div style="font-family:'Special Elite',serif;font-size:24px;color:#C94E25">12</div>
+        <div style="font-size:9px;color:#666;letter-spacing:2px">评论</div>
+      </div>
+      <div style="flex:1;padding:10px;text-align:center;border-right:2px solid #1A1A1A">
+        <div style="font-family:'Special Elite',serif;font-size:24px;color:#1A1A1A">45</div>
+        <div style="font-size:9px;color:#666;letter-spacing:2px">收藏</div>
+      </div>
+      <div style="flex:1;padding:10px;text-align:center">
+        <div style="font-family:'Special Elite',serif;font-size:24px;color:#1A1A1A">8</div>
+        <div style="font-size:9px;color:#666;letter-spacing:2px">专辑</div>
+      </div>
+    </div>
+    <div style="padding:10px 12px;border-bottom:1px dotted #999;display:flex;justify-content:space-between">
+      <span style="font-family:'Special Elite',serif;font-size:13px;color:#1A1A1A">我的评论</span>
+      <span style="font-family:'Special Elite',serif;font-size:12px;color:#C94E25">→</span>
+    </div>
+    <div style="padding:10px 12px;border-bottom:1px dotted #999;display:flex;justify-content:space-between">
+      <span style="font-family:'Special Elite',serif;font-size:13px;color:#1A1A1A">我的收藏</span>
+      <span style="font-family:'Special Elite',serif;font-size:12px;color:#C94E25">→</span>
+    </div>
+    <div style="padding:10px 12px;display:flex;justify-content:space-between">
+      <span style="font-family:'Special Elite',serif;font-size:13px;color:#1A1A1A">偏好设置</span>
+      <span style="font-family:'Special Elite',serif;font-size:12px;color:#C94E25">→</span>
+    </div>
+  </div>
+
+  <!-- admin — red stamp -->
+  <div style="margin:12px 16px 0;transform:rotate(-1deg)">
+    <div style="border:3px solid #C94E25;padding:10px 12px">
+      <div style="font-family:'Special Elite',serif;font-size:10px;color:#C94E25;letter-spacing:3px;margin-bottom:8px">⬛ ADMIN ACCESS</div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #C94E25">
+        <span style="font-family:'Special Elite',serif;font-size:12px;color:#1A1A1A">艺人候选审核</span><span style="color:#C94E25">→</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #C94E25">
+        <span style="font-family:'Special Elite',serif;font-size:12px;color:#1A1A1A">爬虫管理</span><span style="color:#C94E25">→</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0">
+        <span style="font-family:'Special Elite',serif;font-size:12px;color:#1A1A1A">乐评人认证</span><span style="color:#C94E25">→</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bnav" style="background:#1A1A1A;border-top:2px solid #1A1A1A;margin-top:auto">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#555"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#555">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#555"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#555">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#555"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#555">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#C94E25"></i><span style="font-family:'Special Elite',serif;font-size:11px;color:#C94E25">ME</span></div>
+  </div>
+</div></div>
+
+<!-- P-C  CASSETTE J-CARD -->
+<div id="P-C" class="pw"><div class="phone" style="background:#130E06;color:#D4A855;min-height:700px">
+  <div style="padding:36px 16px 10px;background:#0A0802;display:flex;justify-content:space-between;align-items:flex-end">
+    <span style="font-family:'VT323',monospace;font-size:22px;color:#3DB060;letter-spacing:2px">USER.DAT</span>
+    <i class="ti ti-settings" style="font-size:18px;color:#5A3C1A;padding-bottom:2px"></i>
+  </div>
+
+  <!-- J-card strip -->
+  <div style="background:#C94E25;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-family:'VT323',monospace;font-size:22px;color:#130E06;letter-spacing:1px;line-height:1">SHUOYIN03</div>
+      <div style="font-size:9px;color:#130E06;opacity:0.8;letter-spacing:2px;margin-top:2px">乐评人 · CRITIC · 认证</div>
+    </div>
+    <!-- cassette reel icon -->
+    <div style="width:40px;height:40px;border-radius:50%;border:3px solid #130E06;position:relative;background:radial-gradient(circle,#C94E25 0,#C94E25 35%,transparent 36%)">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#130E06"></div>
+    </div>
+  </div>
+
+  <!-- LCD stats -->
+  <div style="background:#0C2010;border-top:1px solid #1A4020;border-bottom:1px solid #1A4020;display:flex">
+    <div style="flex:1;padding:10px;text-align:center;border-right:1px solid #1A4020">
+      <div style="font-family:'VT323',monospace;font-size:26px;color:#3DB060;line-height:1">12</div>
+      <div style="font-family:'VT323',monospace;font-size:11px;color:#1A6030;letter-spacing:1px">评论</div>
+    </div>
+    <div style="flex:1;padding:10px;text-align:center;border-right:1px solid #1A4020">
+      <div style="font-family:'VT323',monospace;font-size:26px;color:#3DB060;line-height:1">45</div>
+      <div style="font-family:'VT323',monospace;font-size:11px;color:#1A6030;letter-spacing:1px">收藏</div>
+    </div>
+    <div style="flex:1;padding:10px;text-align:center">
+      <div style="font-family:'VT323',monospace;font-size:26px;color:#3DB060;line-height:1">8</div>
+      <div style="font-family:'VT323',monospace;font-size:11px;color:#1A6030;letter-spacing:1px">专辑</div>
+    </div>
+  </div>
+
+  <div style="padding:10px 16px 4px;font-family:'VT323',monospace;font-size:12px;color:#5A3C1A;letter-spacing:2px">TRACK A — 我的</div>
+  <div style="display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid #1A120A"><span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855;flex:1">我的评论</span><span style="font-family:'VT323',monospace;font-size:16px;color:#C94E25">▶</span></div>
+  <div style="display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid #1A120A"><span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855;flex:1">我的收藏</span><span style="font-family:'VT323',monospace;font-size:16px;color:#5A3C1A">▶</span></div>
+  <div style="display:flex;align-items:center;padding:9px 16px"><span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855;flex:1">偏好设置</span><span style="font-family:'VT323',monospace;font-size:16px;color:#5A3C1A">▶</span></div>
+
+  <div style="padding:10px 16px 4px;font-family:'VT323',monospace;font-size:12px;color:#C94E25;letter-spacing:2px;border-top:2px solid #C94E25;margin-top:8px">TRACK B — ADMIN</div>
+  <div style="display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid #1A120A"><span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855;flex:1">艺人候选审核</span><span style="font-family:'VT323',monospace;font-size:16px;color:#C94E25">▶</span></div>
+  <div style="display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid #1A120A"><span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855;flex:1">爬虫管理</span><span style="font-family:'VT323',monospace;font-size:16px;color:#C94E25">▶</span></div>
+  <div style="display:flex;align-items:center;padding:9px 16px"><span style="font-family:'VT323',monospace;font-size:18px;color:#D4A855;flex:1">乐评人认证</span><span style="font-family:'VT323',monospace;font-size:16px;color:#C94E25">▶</span></div>
+
+  <div class="bnav" style="background:#0A0802;border-top:1px solid #2A1C0C">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#5A3C1A"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#5A3C1A"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#5A3C1A"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#C94E25"></i><span style="font-family:'VT323',monospace;font-size:14px;color:#C94E25">ME</span></div>
+  </div>
+</div></div>
+
+<!-- P-D  TAG WALL -->
+<div id="P-D" class="pw"><div class="phone" style="background:#060606;color:#F0F0F0;min-height:700px">
+  <div style="padding:40px 16px 12px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div style="font-size:26px;font-weight:900;color:#DFEC04;line-height:1;text-shadow:-2px 0 #000,2px 0 #000,0 -2px #000,0 2px #000">PROFILE</div>
+    <i class="ti ti-settings" style="font-size:18px;color:#444;padding-bottom:2px"></i>
+  </div>
+
+  <!-- tag-style username block -->
+  <div style="margin:0 16px 14px;border:4px solid #DFEC04;padding:14px;position:relative">
+    <div style="font-size:34px;font-weight:900;color:#DFEC04;line-height:1;letter-spacing:-1px;text-shadow:-2px 0 #000,2px 0 #000,0 -2px #000,0 2px #000">SHUOYIN03</div>
+    <div style="margin-top:6px;display:inline-block;background:#DFEC04;padding:2px 8px">
+      <span style="font-size:10px;font-weight:900;color:#060606;letter-spacing:2px">乐评人 CRITIC</span>
+    </div>
+    <!-- corner mark -->
+    <div style="position:absolute;top:-2px;right:-2px;width:20px;height:20px;background:#C94E25"></div>
+  </div>
+
+  <!-- stats in pill boxes -->
+  <div style="display:flex;gap:6px;padding:0 16px 14px">
+    <div style="flex:1;border:2px solid #DFEC04;padding:8px;text-align:center">
+      <div style="font-size:26px;font-weight:900;color:#DFEC04;line-height:1">12</div>
+      <div style="font-size:9px;font-weight:700;color:#555;letter-spacing:2px;margin-top:2px">评论</div>
+    </div>
+    <div style="flex:1;border:2px solid #2A2A2A;padding:8px;text-align:center">
+      <div style="font-size:26px;font-weight:900;color:#F0F0F0;line-height:1">45</div>
+      <div style="font-size:9px;font-weight:700;color:#555;letter-spacing:2px;margin-top:2px">收藏</div>
+    </div>
+    <div style="flex:1;border:2px solid #2A2A2A;padding:8px;text-align:center">
+      <div style="font-size:26px;font-weight:900;color:#F0F0F0;line-height:1">8</div>
+      <div style="font-size:9px;font-weight:700;color:#555;letter-spacing:2px;margin-top:2px">专辑</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1A1A"><span style="flex:1;font-size:14px;font-weight:700;color:#F0F0F0">我的评论</span><span style="font-size:14px;font-weight:900;color:#DFEC04">→</span></div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1A1A"><span style="flex:1;font-size:14px;font-weight:700;color:#F0F0F0">我的收藏</span><span style="font-size:14px;font-weight:900;color:#444">→</span></div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1A1A"><span style="flex:1;font-size:14px;font-weight:700;color:#F0F0F0">偏好设置</span><span style="font-size:14px;font-weight:900;color:#444">→</span></div>
+
+  <!-- admin block - C94E25 border -->
+  <div style="border-top:3px solid #C94E25;margin-top:8px">
+    <div style="padding:8px 16px 4px;font-size:9px;font-weight:900;color:#C94E25;letter-spacing:3px">ADMIN ACCESS</div>
+    <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1A1A"><span style="flex:1;font-size:14px;font-weight:700;color:#F0F0F0">艺人候选审核</span><span style="font-size:14px;font-weight:900;color:#C94E25">→</span></div>
+    <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1A1A1A"><span style="flex:1;font-size:14px;font-weight:700;color:#F0F0F0">爬虫管理</span><span style="font-size:14px;font-weight:900;color:#C94E25">→</span></div>
+    <div style="display:flex;align-items:center;padding:12px 16px"><span style="flex:1;font-size:14px;font-weight:700;color:#F0F0F0">乐评人认证</span><span style="font-size:14px;font-weight:900;color:#C94E25">→</span></div>
+  </div>
+
+  <div class="bnav" style="background:#060606;border-top:1px solid #2A2A2A">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#444"></i><span style="font-size:11px;font-weight:700;color:#444">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#444"></i><span style="font-size:11px;font-weight:700;color:#444">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#444"></i><span style="font-size:11px;font-weight:700;color:#444">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#DFEC04"></i><span style="font-size:11px;font-weight:700;color:#DFEC04">ME</span></div>
+  </div>
+</div></div>
+
+<!-- P-E  PRESS PASS -->
+<div id="P-E" class="pw"><div class="phone" style="background:#F6F2E8;color:#1A1A1A;min-height:700px">
+  <div style="background:#1A1A1A;padding:36px 16px 10px;display:flex;justify-content:space-between;align-items:flex-end">
+    <span style="font-family:Georgia,serif;font-size:20px;color:#F6F2E8;font-weight:900">PROFILE</span>
+    <i class="ti ti-settings" style="font-size:18px;color:#555;padding-bottom:2px"></i>
+  </div>
+
+  <!-- press pass badge -->
+  <div style="margin:16px;border:3px solid #1A1A1A">
+    <div style="background:#C94E25;padding:6px 12px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-family:Georgia,serif;font-size:11px;font-weight:700;color:#fff;letter-spacing:2px">BARSCOPE PRESS PASS</span>
+      <span style="font-size:9px;color:#fff;opacity:0.8">NO.0042</span>
+    </div>
+    <div style="padding:12px;display:flex;gap:12px;border-bottom:2px solid #1A1A1A">
+      <div style="width:64px;height:64px;background:#1A1A1A;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="font-family:Georgia,serif;font-size:32px;color:#F6F2E8;font-weight:900">S</span>
+      </div>
+      <div>
+        <div style="font-family:Georgia,serif;font-size:18px;font-weight:900;color:#1A1A1A;line-height:1">SHUOYIN03</div>
+        <div style="font-size:10px;color:#666;letter-spacing:1px;margin-top:3px">乐评人 / MUSIC CRITIC</div>
+        <div style="margin-top:6px;display:inline-block;background:#1A1A1A;padding:2px 8px">
+          <span style="font-size:9px;font-weight:700;color:#C94E25;letter-spacing:2px">ALL AREAS</span>
+        </div>
+      </div>
+    </div>
+    <!-- barcode -->
+    <div style="padding:8px 12px;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;height:24px;background:repeating-linear-gradient(90deg,#1A1A1A 0,#1A1A1A 2px,transparent 2px,transparent 4px,#1A1A1A 4px,#1A1A1A 5px,transparent 5px,transparent 8px)"></div>
+      <span style="font-size:8px;color:#999;font-family:Georgia,serif;white-space:nowrap">BARSCOPE-042</span>
+    </div>
+  </div>
+
+  <!-- stats in newspaper style -->
+  <div style="margin:0 16px;border-top:2px solid #1A1A1A;border-bottom:1px solid #1A1A1A;display:flex">
+    <div style="flex:1;padding:10px;text-align:center;border-right:1px solid #1A1A1A">
+      <div style="font-family:Georgia,serif;font-size:24px;font-weight:900;color:#1A1A1A;line-height:1">12</div>
+      <div style="font-size:9px;color:#666;letter-spacing:2px">评论</div>
+    </div>
+    <div style="flex:1;padding:10px;text-align:center;border-right:1px solid #1A1A1A">
+      <div style="font-family:Georgia,serif;font-size:24px;font-weight:900;color:#1A1A1A;line-height:1">45</div>
+      <div style="font-size:9px;color:#666;letter-spacing:2px">收藏</div>
+    </div>
+    <div style="flex:1;padding:10px;text-align:center">
+      <div style="font-family:Georgia,serif;font-size:24px;font-weight:900;color:#1A1A1A;line-height:1">8</div>
+      <div style="font-size:9px;color:#666;letter-spacing:2px">专辑</div>
+    </div>
+  </div>
+
+  <div style="padding:0 16px;margin-top:12px">
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #E0DDD5"><span style="flex:1;font-family:Georgia,serif;font-size:13px;color:#1A1A1A">我的评论</span><span style="font-size:12px;color:#C94E25;font-weight:700">→</span></div>
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #E0DDD5"><span style="flex:1;font-family:Georgia,serif;font-size:13px;color:#1A1A1A">我的收藏</span><span style="font-size:12px;color:#999">→</span></div>
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:2px solid #1A1A1A"><span style="flex:1;font-family:Georgia,serif;font-size:13px;color:#1A1A1A">偏好设置</span><span style="font-size:12px;color:#999">→</span></div>
+    <div style="padding:8px 0 4px;font-size:9px;font-weight:700;color:#C94E25;letter-spacing:2px;text-transform:uppercase">Restricted — Admin</div>
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #E0DDD5"><span style="flex:1;font-family:Georgia,serif;font-size:13px;color:#1A1A1A">艺人候选审核</span><span style="font-size:12px;color:#C94E25;font-weight:700">→</span></div>
+    <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #E0DDD5"><span style="flex:1;font-family:Georgia,serif;font-size:13px;color:#1A1A1A">爬虫管理</span><span style="font-size:12px;color:#C94E25;font-weight:700">→</span></div>
+    <div style="display:flex;align-items:center;padding:10px 0"><span style="flex:1;font-family:Georgia,serif;font-size:13px;color:#1A1A1A">乐评人认证</span><span style="font-size:12px;color:#C94E25;font-weight:700">→</span></div>
+  </div>
+
+  <div class="bnav" style="background:#1A1A1A;margin-top:auto">
+    <div class="bni"><i class="ti ti-home" style="font-size:20px;color:#555"></i><span style="font-family:Georgia,serif;font-size:11px;color:#555">HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar" style="font-size:20px;color:#555"></i><span style="font-family:Georgia,serif;font-size:11px;color:#555">CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass" style="font-size:20px;color:#555"></i><span style="font-family:Georgia,serif;font-size:11px;color:#555">DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user" style="font-size:20px;color:#C94E25"></i><span style="font-family:Georgia,serif;font-size:11px;color:#C94E25">ME</span></div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════
+     R A T I N G   COMPONENT  ×  5
+════════════════════════════════════════════════════ -->
+
+<!-- R-A  VINYL DIAL -->
+<div id="R-A" class="pw"><div class="phone" style="background:#08060A;color:#F0E8D4;min-height:680px">
+  <div style="padding:40px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+    <i class="ti ti-arrow-left" style="font-size:18px;color:#F0E8D4;padding-bottom:2px"></i>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#F0E8D4;line-height:1">WRITE REVIEW</div>
+  </div>
+  <div style="padding:0 16px 16px;font-size:11px;color:#5A5044;letter-spacing:1px">黑蟠桃 · GAI</div>
+
+  <!-- vinyl dial rating -->
+  <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 20px">
+    <!-- big record with score on label -->
+    <div id="ra-record" style="width:200px;height:200px;border-radius:50%;position:relative;cursor:pointer;
+      background:radial-gradient(circle at 50% 50%,#C94E25 0,#C94E25 20%,
+        #100A0E 21%,#1A1218 23%,#100A0E 25%,#1A1218 27%,#100A0E 29%,#1A1218 31%,
+        #100A0E 33%,#1A1218 35%,#100A0E 37%,#1A1218 39%,#100A0E 41%,#1A1218 43%,
+        #100A0E 45%,#100A0E 100%);
+      box-shadow:0 0 0 3px #08060A,0 0 0 5px #2A2420">
+      <!-- score label -->
+      <div id="ra-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:80px;height:80px;border-radius:50%;background:#C94E25;
+        display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div id="ra-score" style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:#08060A;line-height:1">—</div>
+        <div style="font-size:7px;color:#08060A;opacity:0.7;letter-spacing:1px">SCORE</div>
+      </div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:#08060A"></div>
+    </div>
+
+    <div style="font-size:10px;color:#5A5044;letter-spacing:2px;margin-top:12px;text-transform:uppercase" id="ra-hint">点击唱片旁数字评分</div>
+
+    <!-- numbers arranged in arc below record -->
+    <div style="display:flex;gap:0;margin-top:10px">
+      <div id="ra-btns" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;width:280px">
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:0 16px 12px">
+    <div style="font-size:9px;letter-spacing:3px;color:#5A5044;font-weight:700;margin-bottom:8px;text-transform:uppercase">评语</div>
+    <textarea style="width:100%;background:#1A1714;border:1px solid #2A2420;color:#F0E8D4;padding:10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;outline:none" rows="3" placeholder="写下你的评语..."></textarea>
+  </div>
+  <button id="ra-submit" style="margin:0 16px;padding:13px;background:#C94E25;color:#0E0B09;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;border:none;width:calc(100% - 32px);cursor:pointer;opacity:0.4" disabled>提交评论</button>
+</div></div>
+
+<!-- R-B  ZINE STAMP -->
+<div id="R-B" class="pw"><div class="phone" style="background:#F2EDE0;color:#1A1A1A;min-height:680px">
+  <div style="background:#1A1A1A;padding:36px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+    <i class="ti ti-arrow-left" style="font-size:18px;color:#F2EDE0;padding-bottom:2px"></i>
+    <span style="font-family:'Special Elite',serif;font-size:20px;color:#F2EDE0">WRITE REVIEW</span>
+  </div>
+  <div style="padding:12px 16px 8px;font-family:'Special Elite',serif;font-size:12px;color:#666">黑蟠桃 · GAI</div>
+
+  <!-- paper score area -->
+  <div style="margin:0 16px 16px;border:2px solid #1A1A1A;padding:16px;background:#fff;position:relative">
+    <div style="font-family:'Special Elite',serif;font-size:11px;color:#999;letter-spacing:2px;margin-bottom:10px">YOUR SCORE / 你的评分</div>
+    <!-- big score circle -->
+    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+      <div id="rb-circle" style="width:90px;height:90px;border:4px solid #C94E25;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative">
+        <span id="rb-score" style="font-family:'Special Elite',serif;font-size:40px;color:#C94E25;font-weight:700">—</span>
+      </div>
+    </div>
+    <!-- number grid - typewriter style -->
+    <div id="rb-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px"></div>
+    <div style="font-size:9px;color:#999;font-family:'Special Elite',serif;text-align:center;margin-top:8px" id="rb-hint">点击数字评分</div>
+    <!-- draft lines -->
+    <div style="border-bottom:1px solid #E0E0E0;margin-top:12px;padding-bottom:2px;margin-bottom:2px"></div>
+    <div style="border-bottom:1px solid #E0E0E0;padding-bottom:2px;margin-bottom:2px"></div>
+  </div>
+
+  <div style="padding:0 16px 12px">
+    <div style="font-family:'Special Elite',serif;font-size:11px;color:#666;letter-spacing:1px;margin-bottom:6px">评语 / COMMENT</div>
+    <textarea style="width:100%;background:#fff;border:2px solid #1A1A1A;color:#1A1A1A;padding:10px;font-family:'Special Elite',serif;font-size:13px;resize:none;outline:none" rows="3" placeholder="写下你的评语..."></textarea>
+  </div>
+  <!-- stamp button -->
+  <div style="padding:0 16px">
+    <button id="rb-submit" style="width:100%;padding:13px;background:#1A1A1A;color:#F2EDE0;font-family:'Special Elite',serif;font-size:16px;letter-spacing:3px;border:none;cursor:pointer;opacity:0.4" disabled>⬛ SUBMIT REVIEW</button>
+  </div>
+</div></div>
+
+<!-- R-C  VU METER -->
+<div id="R-C" class="pw"><div class="phone" style="background:#130E06;color:#D4A855;min-height:680px">
+  <div style="background:#0A0802;padding:36px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+    <i class="ti ti-arrow-left" style="font-size:18px;color:#3DB060;padding-bottom:2px"></i>
+    <span style="font-family:'VT323',monospace;font-size:20px;color:#3DB060;letter-spacing:2px">WRITE REVIEW</span>
+  </div>
+  <div style="background:#0C2010;border-bottom:1px solid #1A4020;padding:8px 16px">
+    <div style="font-family:'VT323',monospace;font-size:14px;color:#3DB060;letter-spacing:2px">NOW REVIEWING: 黑蟠桃 — GAI</div>
+  </div>
+
+  <!-- LCD score display -->
+  <div style="background:#0C2010;border:1px solid #1A4020;margin:16px;padding:12px;text-align:center">
+    <div style="font-family:'VT323',monospace;font-size:11px;color:#1A6030;letter-spacing:3px">YOUR SCORE</div>
+    <div id="rc-display" style="font-family:'VT323',monospace;font-size:60px;color:#3DB060;line-height:1;margin-top:4px">—</div>
+    <div id="rc-hint" style="font-family:'VT323',monospace;font-size:11px;color:#1A6030;letter-spacing:2px;margin-top:4px">TAP A BAR</div>
+  </div>
+
+  <!-- VU meter bars -->
+  <div style="padding:0 16px;display:flex;align-items:flex-end;gap:3px;height:100px">
+    <div id="rc-bars" style="display:flex;align-items:flex-end;gap:3px;width:100%;height:100%"></div>
+  </div>
+  <div style="padding:4px 16px 16px;display:flex;justify-content:space-between">
+    <span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">1</span>
+    <span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">5</span>
+    <span style="font-family:'VT323',monospace;font-size:14px;color:#5A3C1A">10</span>
+  </div>
+
+  <div style="padding:0 16px 12px">
+    <div style="font-family:'VT323',monospace;font-size:12px;color:#5A3C1A;letter-spacing:2px;margin-bottom:6px">COMMENT.TXT</div>
+    <textarea style="width:100%;background:#0C2010;border:1px solid #1A4020;color:#3DB060;padding:10px;font-family:'VT323',monospace;font-size:16px;resize:none;outline:none" rows="3" placeholder="输入评语..."></textarea>
+  </div>
+  <button id="rc-submit" style="margin:0 16px;padding:13px;background:#0C2010;color:#3DB060;font-family:'VT323',monospace;font-size:18px;letter-spacing:3px;border:1px solid #1A4020;width:calc(100% - 32px);cursor:pointer;opacity:0.4" disabled>[ SUBMIT REVIEW ]</button>
+</div></div>
+
+<!-- R-D  TAG BUBBLE LETTERS -->
+<div id="R-D" class="pw"><div class="phone" style="background:#060606;color:#F0F0F0;min-height:680px">
+  <div style="padding:40px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+    <i class="ti ti-arrow-left" style="font-size:18px;color:#DFEC04;padding-bottom:2px"></i>
+    <div style="font-size:24px;font-weight:900;color:#DFEC04;line-height:1;text-shadow:-2px 0 #000,2px 0 #000,0 -2px #000,0 2px #000">RATE IT</div>
+  </div>
+  <div style="padding:0 16px 16px;font-size:10px;font-weight:700;color:#555;letter-spacing:2px;text-transform:uppercase">黑蟠桃 · GAI</div>
+
+  <!-- giant score display -->
+  <div style="text-align:center;padding:0 16px 8px">
+    <div id="rd-score" style="font-size:100px;font-weight:900;color:#DFEC04;line-height:0.9;text-shadow:-4px 0 #000,4px 0 #000,0 -4px #000,0 4px #000,-4px -4px #000,-4px 4px #000,4px -4px #000,4px 4px #000">—</div>
+  </div>
+  <div style="height:3px;background:#DFEC04;margin:0 16px 16px"></div>
+
+  <!-- bubble letter number grid -->
+  <div id="rd-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:0 16px;margin-bottom:16px"></div>
+
+  <div style="padding:0 16px 12px">
+    <div style="font-size:9px;font-weight:900;color:#444;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px">写评语</div>
+    <textarea style="width:100%;background:#111;border:2px solid #2A2A2A;color:#F0F0F0;padding:10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;outline:none" rows="3" placeholder="写下你的评语..."></textarea>
+  </div>
+  <button id="rd-submit" style="margin:0 16px;padding:13px;background:#DFEC04;color:#060606;font-size:16px;font-weight:900;letter-spacing:2px;border:none;width:calc(100% - 32px);cursor:pointer;opacity:0.4" disabled>SUBMIT →</button>
+</div></div>
+
+<!-- R-E  PRESS VERDICT -->
+<div id="R-E" class="pw"><div class="phone" style="background:#F6F2E8;color:#1A1A1A;min-height:680px">
+  <div style="background:#1A1A1A;padding:36px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+    <i class="ti ti-arrow-left" style="font-size:18px;color:#F6F2E8;padding-bottom:2px"></i>
+    <span style="font-family:Georgia,serif;font-size:18px;color:#F6F2E8;font-weight:900">FILE A REVIEW</span>
+  </div>
+  <div style="border-bottom:2px solid #1A1A1A;padding:8px 16px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-family:Georgia,serif;font-size:12px;color:#1A1A1A;font-weight:700">黑蟠桃 · GAI</span>
+    <span style="font-size:9px;color:#999;letter-spacing:1px">ALBUM REVIEW</span>
+  </div>
+
+  <!-- VERDICT box -->
+  <div style="margin:16px;border:3px solid #1A1A1A">
+    <div style="background:#1A1A1A;padding:6px 10px">
+      <span style="font-family:Georgia,serif;font-size:10px;font-weight:900;color:#C94E25;letter-spacing:3px;text-transform:uppercase">Verdict</span>
+    </div>
+    <div style="padding:12px;display:flex;align-items:center;gap:12px">
+      <div id="re-score" style="font-family:Georgia,serif;font-size:64px;font-weight:900;color:#C94E25;line-height:1;min-width:80px">—</div>
+      <div>
+        <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:4px">/ 10</div>
+        <div id="re-verdict" style="font-family:Georgia,serif;font-size:13px;color:#1A1A1A;font-weight:700">选择你的评分</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- number selectors -->
+  <div id="re-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#1A1A1A;margin:0 16px 16px;border:2px solid #1A1A1A"></div>
+
+  <div style="padding:0 16px 12px">
+    <div style="font-family:Georgia,serif;font-size:10px;font-weight:700;color:#1A1A1A;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid #1A1A1A;padding-bottom:4px;margin-bottom:8px">Your Review</div>
+    <textarea style="width:100%;background:#fff;border:1px solid #1A1A1A;color:#1A1A1A;padding:10px;font-family:Georgia,serif;font-size:12px;resize:none;outline:none" rows="3" placeholder="Write your review..."></textarea>
+  </div>
+  <button id="re-submit" style="margin:0 16px;padding:13px;background:#1A1A1A;color:#F6F2E8;font-family:Georgia,serif;font-size:14px;font-weight:900;letter-spacing:2px;border:none;width:calc(100% - 32px);cursor:pointer;opacity:0.4" disabled>PUBLISH REVIEW</button>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════  JS  ════ -->
+<script>
+var cur = {page:'H', varnt:'A'};
+
+function setPage(p) {
+  cur.page = p;
+  document.querySelectorAll('.pnav').forEach(function(b,i){b.classList.toggle('on',['H','P','R'][i]===p)});
+  render();
+}
+function setVar(v) {
+  cur.varnt = v;
+  document.querySelectorAll('.vnav').forEach(function(b,i){b.classList.toggle('on',['A','B','C','D','E'][i]===v)});
+  render();
+}
+function render() {
+  document.querySelectorAll('.pw').forEach(function(el){el.classList.remove('on')});
+  var id = cur.page + '-' + cur.varnt;
+  var el = document.getElementById(id);
+  if(el) el.classList.add('on');
+}
+
+/* ── RATING INTERACTIONS ── */
+
+// R-A vinyl dial buttons
+(function(){
+  var g = document.getElementById('ra-btns');
+  if(!g) return;
+  for(var i=1;i<=10;i++){
+    (function(n){
+      var b = document.createElement('button');
+      b.textContent = n;
+      b.style.cssText = 'width:46px;height:46px;background:#1A1714;color:#5A5044;border:1px solid #2A2420;font-family:\'Bebas Neue\',sans-serif;font-size:22px;cursor:pointer;transition:background 0.08s,color 0.08s';
+      b.onclick = function(){
+        document.getElementById('ra-score').textContent = n===10?'10':n+'.0';
+        document.getElementById('ra-hint').textContent = n+' / 10';
+        document.getElementById('ra-submit').disabled = false;
+        document.getElementById('ra-submit').style.opacity = '1';
+        g.querySelectorAll('button').forEach(function(x,xi){
+          var ni=xi+1;
+          x.style.background = ni===n?'#C94E25':(ni<n?'#2A2420':'#1A1714');
+          x.style.color = ni===n?'#08060A':(ni<n?'#F0E8D4':'#5A5044');
+        });
+      };
+      g.appendChild(b);
+    })(i);
+  }
+})();
+
+// R-B zine grid
+(function(){
+  var g = document.getElementById('rb-grid');
+  if(!g) return;
+  for(var i=1;i<=10;i++){
+    (function(n){
+      var b = document.createElement('button');
+      b.textContent = n;
+      b.style.cssText = 'padding:8px 4px;background:#fff;color:#999;border:2px solid #1A1A1A;font-family:\'Special Elite\',serif;font-size:16px;cursor:pointer';
+      b.onclick = function(){
+        document.getElementById('rb-score').textContent = n===10?'10':n+'.0';
+        document.getElementById('rb-hint').textContent = n+' / 10';
+        document.getElementById('rb-submit').disabled=false;
+        document.getElementById('rb-submit').style.opacity='1';
+        g.querySelectorAll('button').forEach(function(x,xi){
+          var ni=xi+1;
+          x.style.background = ni===n?'#C94E25':'#fff';
+          x.style.color = ni===n?'#fff':'#999';
+          x.style.borderColor = ni===n?'#C94E25':'#1A1A1A';
+        });
+      };
+      g.appendChild(b);
+    })(i);
+  }
+})();
+
+// R-C VU meter bars
+(function(){
+  var cont = document.getElementById('rc-bars');
+  if(!cont) return;
+  var bars = [];
+  for(var i=1;i<=10;i++){
+    (function(n){
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:stretch;cursor:pointer;height:100%';
+      var bar = document.createElement('div');
+      var h = (n/10)*100;
+      bar.style.cssText = 'flex:1;background:#1A4020;cursor:pointer;margin-top:auto;align-self:flex-end;width:100%;min-height:'+Math.round(h)+'%';
+      bar.style.height = Math.round(h)+'%';
+      wrap.appendChild(bar);
+      wrap.onclick = function(){
+        document.getElementById('rc-display').textContent = n===10?'10':n+'.0';
+        document.getElementById('rc-hint').textContent = 'SCORE: '+n+'/10';
+        document.getElementById('rc-submit').disabled=false;
+        document.getElementById('rc-submit').style.opacity='1';
+        cont.querySelectorAll('div>div').forEach(function(x,xi){
+          x.style.background = xi<n?'#C94E25':'#1A4020';
+        });
+      };
+      cont.appendChild(wrap);
+    })(i);
+  }
+})();
+
+// R-D tag bubble grid
+(function(){
+  var g = document.getElementById('rd-grid');
+  if(!g) return;
+  for(var i=1;i<=10;i++){
+    (function(n){
+      var b = document.createElement('button');
+      b.textContent = n;
+      b.style.cssText = 'aspect-ratio:1;background:#111;color:#444;border:3px solid #2A2A2A;font-size:26px;font-weight:900;cursor:pointer;border-radius:50%;transition:all 0.08s';
+      b.onclick = function(){
+        document.getElementById('rd-score').textContent = n===10?'10':n+'.0';
+        document.getElementById('rd-submit').disabled=false;
+        document.getElementById('rd-submit').style.opacity='1';
+        g.querySelectorAll('button').forEach(function(x,xi){
+          var ni=xi+1;
+          x.style.background = ni===n?'#DFEC04':(ni<n?'#1E1E04':'#111');
+          x.style.color = ni===n?'#060606':(ni<n?'#DFEC04':'#444');
+          x.style.borderColor = ni===n?'#DFEC04':(ni<n?'#2A2A04':'#2A2A2A');
+        });
+      };
+      g.appendChild(b);
+    })(i);
+  }
+})();
+
+// R-E press verdict grid
+(function(){
+  var verdicts = ['','','','','','惨不忍睹','尚可','不错','很好','精彩','神作'];
+  var g = document.getElementById('re-grid');
+  if(!g) return;
+  for(var i=1;i<=10;i++){
+    (function(n){
+      var b = document.createElement('button');
+      b.textContent = n;
+      b.style.cssText = 'padding:10px 0;background:#F6F2E8;color:#999;border:none;font-family:Georgia,serif;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.08s';
+      b.onclick = function(){
+        document.getElementById('re-score').textContent = n===10?'10':n+'.0';
+        document.getElementById('re-verdict').textContent = verdicts[n]||'';
+        document.getElementById('re-submit').disabled=false;
+        document.getElementById('re-submit').style.opacity='1';
+        g.querySelectorAll('button').forEach(function(x,xi){
+          var ni=xi+1;
+          x.style.background = ni===n?'#C94E25':'#F6F2E8';
+          x.style.color = ni===n?'#fff':'#999';
+        });
+      };
+      g.appendChild(b);
+    })(i);
+  }
+})();
+</script>
+</body>
+</html>

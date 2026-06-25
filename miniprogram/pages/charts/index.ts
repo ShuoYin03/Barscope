@@ -1,5 +1,12 @@
 type Period = 'weekly' | 'monthly' | 'annual'
 
+function fmtScore(n: number): string {
+  if (!n) return '—'
+  const r = Math.round(n * 10) / 10
+  if (r === 10) return '10'
+  return r.toFixed(1)
+}
+
 interface ChartEntry {
   rank:      number
   albumId:   string
@@ -36,7 +43,7 @@ Page({
 
   onShow() {
     if (typeof this.getTabBar === 'function') {
-      this.getTabBar().setData({ selected: 1 })
+      this.getTabBar()?.setData({ selected: 1 })
     }
   },
 
@@ -56,7 +63,8 @@ Page({
 
         const list: ChartEntry[] = (result.list || []).map((item: any) => ({
           ...item,
-          year: item.year || item.releaseYear,
+          year:         item.year || item.releaseYear,
+          scoreDisplay: fmtScore(item.score),
         }))
 
         this.setData({ list, loading: false })

@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barscope — 对齐预览 Aligned Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+<style>
+/* ── DESIGN TOKENS (mirrors mock + fixes) ─────────────── */
+:root{
+  --black:#08060A;
+  --card:#1A1714;
+  --accent:#C94E25;
+  --cream:#F0E8D4;
+  --gray-mid:#5A5044;
+  --gray-light:#2A2420;
+  --groove-a:#100A0E;
+  --groove-b:#1A1218;
+  --bebas:'Bebas Neue',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px 8px;color:#888}
+h1.lead{color:var(--cream);font-family:var(--bebas);letter-spacing:3px;font-size:22px;margin-bottom:2px}
+p.sub{font-size:12px;color:#777;margin-bottom:14px;line-height:1.5}
+
+/* nav tabs */
+.nav{display:flex;gap:2px;margin-bottom:16px;flex-wrap:wrap}
+.nb{padding:9px 16px;background:#1A1A1A;color:#666;border:none;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.nb.on{background:var(--accent);color:#000}
+
+/* layout */
+.stage{display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+.pw{display:none}.pw.on{display:block}
+.cap{text-align:center;font-size:11px;color:#888;letter-spacing:2px;margin-top:8px;text-transform:uppercase}
+
+/* phone shell */
+.phone{width:375px;background:var(--black);color:var(--cream);min-height:720px;display:flex;flex-direction:column;border:1px solid #333;overflow:hidden;position:relative}
+
+/* ── SHARED VINYL DISC ───────────────────────────────── */
+.disc{
+  border-radius:50%;position:relative;flex-shrink:0;
+  background:radial-gradient(circle at 50% 50%,
+    var(--accent) 0,var(--accent) 17%,
+    var(--groove-a) 18%,var(--groove-b) 20%,var(--groove-a) 22%,var(--groove-b) 24%,
+    var(--groove-a) 26%,var(--groove-b) 28%,var(--groove-a) 30%,var(--groove-b) 32%,
+    var(--groove-a) 34%,var(--groove-b) 36%,var(--groove-a) 38%,var(--groove-b) 40%,
+    var(--groove-a) 42%,var(--groove-b) 44%,var(--groove-a) 100%);
+  box-shadow:0 0 0 3px var(--black),0 0 0 5px var(--gray-light)
+}
+.disc .label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;background:var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.disc .spindle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:var(--black);z-index:3}
+/* smaller shadow for list discs */
+.disc.sm{box-shadow:0 0 0 2px var(--black),0 0 0 3px var(--gray-light)}
+.disc.no-shadow{box-shadow:none}
+
+/* ── SECTION DIVIDER (SIDE A/B) ─────────────────────── */
+.side{padding:14px 16px 6px;font-size:9px;letter-spacing:3px;color:var(--gray-mid);font-weight:700;display:flex;align-items:center;gap:10px}
+.side::after{content:"";flex:1;height:1px;background:var(--gray-light)}
+.side.b{color:var(--accent);border-top:2px solid var(--accent);margin-top:8px}
+.side.b::after{background:var(--accent);opacity:.4}
+
+/* ── TOPBAR ─────────────────────────────────────────── */
+.topbar{padding:40px 16px 12px;display:flex;align-items:flex-end;justify-content:space-between}
+.topbar .ttl{font-family:var(--bebas);font-size:30px;letter-spacing:2px;line-height:1}
+.topbar .ti{font-size:18px;color:var(--gray-mid);padding-bottom:4px}
+.topbar-sub{font-size:9px;color:var(--gray-mid);letter-spacing:3px;margin-top:2px}
+
+/* ── BOTTOM NAV ─────────────────────────────────────── */
+.bnav{display:flex;margin-top:auto;flex-shrink:0;background:var(--black);border-top:1px solid var(--gray-light)}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 18px;gap:3px;cursor:pointer}
+.bni .ti{font-size:20px;color:var(--gray-mid)}
+.bni span{font-family:var(--bebas);font-size:11px;color:var(--gray-mid)}
+.bni.on .ti,.bni.on span{color:var(--accent)}
+
+.scroll{flex:1;overflow:hidden}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<h1 class="lead">BARSCOPE · 对齐预览 — 黑胶 VINYL</h1>
+<p class="sub">实现与 mock 对齐后的视觉验收预览。所有尺寸基于 375px × 1rpx=0.5px 规则换算，黑胶纹路使用统一 CSS 变量。</p>
+
+<div class="nav">
+  <button class="nb on" onclick="go('HO')">首页 HOME</button>
+  <button class="nb" onclick="go('CH')">榜单 CHARTS</button>
+  <button class="nb" onclick="go('DI')">发现 DISCOVER</button>
+  <button class="nb" onclick="go('FA')">收藏 FAVORITES</button>
+  <button class="nb" onclick="go('PR')">个人 PROFILE</button>
+  <button class="nb" onclick="go('AL')">专辑 ALBUM</button>
+  <button class="nb" onclick="go('WR')">评分 RATING</button>
+  <button class="nb" onclick="go('LO')">登录 LOGIN</button>
+  <button class="nb" onclick="go('AD')">管理 ADMIN</button>
+</div>
+<div class="stage">
+
+<!-- ════════ HOME ════════ -->
+<div id="HO" class="pw on">
+<div class="phone">
+  <!-- topbar -->
+  <div style="padding:40px 16px 10px;display:flex;align-items:flex-end;justify-content:space-between">
+    <div>
+      <div style="font-family:var(--bebas);font-size:24px;letter-spacing:2px;color:var(--cream);line-height:1">BARSCOPE</div>
+      <div style="font-size:9px;color:var(--gray-mid);letter-spacing:3px;margin-top:1px">中文说唱</div>
+    </div>
+    <i class="ti ti-search" style="font-size:18px;color:var(--gray-mid);padding-bottom:4px"></i>
+  </div>
+
+  <!-- hero vinyl disc (220px = 440rpx) -->
+  <div style="display:flex;flex-direction:column;align-items:center;padding:12px 0 4px">
+    <div class="disc" style="width:220px;height:220px">
+      <div class="label" style="width:76px;height:76px">
+        <div style="font-family:var(--bebas);font-size:30px;color:var(--black);line-height:1">9.4</div>
+        <div style="font-size:7px;color:var(--black);opacity:0.7;letter-spacing:1px">BARSCOPE</div>
+      </div>
+      <div class="spindle"></div>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <div style="font-family:var(--bebas);font-size:20px;color:var(--cream);letter-spacing:1px">未定义</div>
+      <div style="font-size:11px;color:var(--gray-mid);margin-top:2px;letter-spacing:1px">武汉说唱协会 · 2024</div>
+    </div>
+  </div>
+
+  <!-- Side A: top charts text rows -->
+  <div style="border-top:2px solid var(--gray-light);margin:8px 16px"></div>
+  <div style="padding:8px 16px 4px;font-size:9px;letter-spacing:3px;color:var(--gray-mid);font-weight:700">SIDE A — TOP CHARTS</div>
+  <div style="padding:0 16px">
+    <div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--card);gap:10px">
+      <span style="font-family:var(--bebas);font-size:16px;color:var(--accent);width:24px">A1</span>
+      <span style="flex:1;font-size:13px;color:var(--cream)">未定义 <span style="color:var(--gray-mid);font-size:11px">武汉说唱协会</span></span>
+      <span style="font-family:var(--bebas);font-size:18px;color:var(--accent)">9.4</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--card);gap:10px">
+      <span style="font-family:var(--bebas);font-size:16px;color:var(--gray-mid);width:24px">A2</span>
+      <span style="flex:1;font-size:13px;color:var(--cream)">盘古 <span style="color:var(--gray-mid);font-size:11px">黄旭</span></span>
+      <span style="font-family:var(--bebas);font-size:18px;color:var(--accent)">9.1</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--card);gap:10px">
+      <span style="font-family:var(--bebas);font-size:16px;color:var(--gray-mid);width:24px">A3</span>
+      <span style="flex:1;font-size:13px;color:var(--cream)">黑蟠桃 <span style="color:var(--gray-mid);font-size:11px">GAI</span></span>
+      <span style="font-family:var(--bebas);font-size:18px;color:var(--accent)">8.9</span>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 0;gap:10px">
+      <span style="font-family:var(--bebas);font-size:16px;color:var(--gray-mid);width:24px">B1</span>
+      <span style="flex:1;font-size:13px;color:var(--cream)">烟雾弥漫 <span style="color:var(--gray-mid);font-size:11px">TT</span></span>
+      <span style="font-family:var(--bebas);font-size:18px;color:var(--accent)">8.7</span>
+    </div>
+  </div>
+  <div style="padding:8px 16px 0;text-align:right;font-size:11px;color:var(--accent);letter-spacing:1px">更多 →</div>
+
+  <div class="bnav">
+    <div class="bni on"><i class="ti ti-home"></i><span>HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar"></i><span>CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass"></i><span>DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user"></i><span>ME</span></div>
+  </div>
+</div>
+<div class="cap">HOME · 首页（英雄黑胶 220px · 榜单文字行）</div>
+</div>
+
+<!-- ════════ CHARTS ════════ -->
+<div id="CH" class="pw">
+<div class="phone">
+  <div class="topbar">
+    <div>
+      <div class="ttl">CHARTS</div>
+      <div class="topbar-sub">总榜 · 全部专辑</div>
+    </div>
+    <i class="ti ti-search"></i>
+  </div>
+
+  <!-- filter chips: Bebas Neue, 15px -->
+  <div style="display:flex;gap:6px;padding:0 16px 10px;overflow-x:auto">
+    <span style="font-family:var(--bebas);font-size:15px;letter-spacing:1px;padding:5px 14px;background:var(--accent);color:var(--black);white-space:nowrap">ALL</span>
+    <span style="font-family:var(--bebas);font-size:15px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--gray-light);color:var(--gray-mid);white-space:nowrap">2024</span>
+    <span style="font-family:var(--bebas);font-size:15px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--gray-light);color:var(--gray-mid);white-space:nowrap">TRAP</span>
+    <span style="font-family:var(--bebas);font-size:15px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--gray-light);color:var(--gray-mid);white-space:nowrap">DRILL</span>
+    <span style="font-family:var(--bebas);font-size:15px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--gray-light);color:var(--gray-mid);white-space:nowrap">单曲</span>
+  </div>
+
+  <div class="scroll">
+    <div class="side">SIDE A — TOP 5</div>
+    <div style="padding:0 16px">
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--accent);width:34px;text-align:center">A1</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">未定义</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">武汉说唱协会 · 2024</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">9.4</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--accent);width:34px;text-align:center">A2</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">盘古</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">黄旭 · 2023</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">9.1</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--accent);width:34px;text-align:center">A3</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">黑蟠桃</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">GAI · 2022</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">8.9</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--accent);width:34px;text-align:center">A4</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">天行九歌</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">艾热 · 2024</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">8.8</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--accent);width:34px;text-align:center">A5</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">烟雾弥漫</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">TT · 2023</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">8.7</span>
+      </div>
+    </div>
+    <div class="side b">SIDE B — 6–10</div>
+    <div style="padding:0 16px">
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--gray-mid);width:34px;text-align:center">B1</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">差不多先生</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">谢帝 · 2021</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">8.6</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--gray-mid);width:34px;text-align:center">B2</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">老子明天不上班</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">谢帝 · 2020</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">8.4</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:11px 0">
+        <span style="font-family:var(--bebas);font-size:22px;color:var(--gray-mid);width:34px;text-align:center">B3</span>
+        <div class="disc sm" style="width:48px;height:48px"><div class="label" style="width:16px;height:16px"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--cream)">超社会</div><div style="font-size:11px;color:var(--gray-mid);margin-top:2px">GAI · 2017</div></div>
+        <span style="font-family:var(--bebas);font-size:26px;color:var(--cream)">8.3</span>
+      </div>
+    </div>
+    <div style="padding:18px 16px 8px;text-align:center;font-family:var(--bebas);font-size:13px;color:var(--gray-light);letter-spacing:5px">— END OF SIDE B —</div>
+  </div>
+
+  <div class="bnav">
+    <div class="bni"><i class="ti ti-home"></i><span>HOME</span></div>
+    <div class="bni on"><i class="ti ti-chart-bar"></i><span>CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass"></i><span>DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user"></i><span>ME</span></div>
+  </div>
+</div>
+<div class="cap">CHARTS · 榜单（Bebas 筛选片 · A/B 面分区）</div>
+</div>
+
+<!-- ════════ DISCOVER ════════ -->
+<div id="DI" class="pw">
+<div class="phone">
+  <div class="topbar">
+    <div class="ttl">DISCOVER</div>
+    <i class="ti ti-adjustments-horizontal"></i>
+  </div>
+
+  <!-- search -->
+  <div style="padding:0 16px 14px">
+    <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--gray-light);padding:12px 14px">
+      <i class="ti ti-search" style="font-size:16px;color:var(--gray-mid)"></i>
+      <span style="font-size:13px;color:var(--gray-mid)">搜索专辑、艺人…</span>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="side">SIDE A — 风格 GENRES</div>
+    <!-- genre stamps: Bebas 18px -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 16px 14px">
+      <span style="font-family:var(--bebas);font-size:18px;letter-spacing:1px;padding:8px 16px;background:var(--accent);color:var(--black)">TRAP</span>
+      <span style="font-family:var(--bebas);font-size:18px;letter-spacing:1px;padding:8px 16px;border:1px solid var(--gray-light);color:var(--cream)">DRILL</span>
+      <span style="font-family:var(--bebas);font-size:18px;letter-spacing:1px;padding:8px 16px;border:1px solid var(--gray-light);color:var(--cream)">BOOM BAP</span>
+      <span style="font-family:var(--bebas);font-size:18px;letter-spacing:1px;padding:8px 16px;border:1px solid var(--gray-light);color:var(--cream)">OLD SCHOOL</span>
+      <span style="font-family:var(--bebas);font-size:18px;letter-spacing:1px;padding:8px 16px;border:1px solid var(--gray-light);color:var(--cream)">硬核 / 方言</span>
+      <span style="font-family:var(--bebas);font-size:18px;letter-spacing:1px;padding:8px 16px;border:1px solid var(--gray-light);color:var(--cream)">融合</span>
+    </div>
+
+    <div class="side b">SIDE B — 随机唱针 SHUFFLE</div>
+    <div style="padding:0 16px">
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--card)">
+        <div class="disc sm" style="width:64px;height:64px"><div class="label" style="width:22px;height:22px"></div><div class="spindle"></div></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;color:var(--cream)">未定义</div>
+          <div style="font-size:11px;color:var(--gray-mid);margin-top:3px">武汉说唱协会 · TRAP · 2024</div>
+        </div>
+        <span style="font-family:var(--bebas);font-size:24px;color:var(--accent)">9.4</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--card)">
+        <div class="disc sm" style="width:64px;height:64px"><div class="label" style="width:22px;height:22px"></div><div class="spindle"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15px;color:var(--cream)">盘古</div><div style="font-size:11px;color:var(--gray-mid);margin-top:3px">黄旭 · BOOM BAP · 2023</div></div>
+        <span style="font-family:var(--bebas);font-size:24px;color:var(--accent)">9.1</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--card)">
+        <div class="disc sm" style="width:64px;height:64px"><div class="label" style="width:22px;height:22px"></div><div class="spindle"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15px;color:var(--cream)">黑蟠桃</div><div style="font-size:11px;color:var(--gray-mid);margin-top:3px">GAI · 硬核 · 2022</div></div>
+        <span style="font-family:var(--bebas);font-size:24px;color:var(--accent)">8.9</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 0">
+        <div class="disc sm" style="width:64px;height:64px"><div class="label" style="width:22px;height:22px"></div><div class="spindle"></div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:15px;color:var(--cream)">天行九歌</div><div style="font-size:11px;color:var(--gray-mid);margin-top:3px">艾热 · 融合 · 2024</div></div>
+        <span style="font-family:var(--bebas);font-size:24px;color:var(--accent)">8.8</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bnav">
+    <div class="bni"><i class="ti ti-home"></i><span>HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar"></i><span>CHARTS</span></div>
+    <div class="bni on"><i class="ti ti-compass"></i><span>DISCOVER</span></div>
+    <div class="bni"><i class="ti ti-user"></i><span>ME</span></div>
+  </div>
+</div>
+<div class="cap">DISCOVER · 发现（Bebas 风格标签 · 唱针列表）</div>
+</div>
+
+<!-- ════════ FAVORITES ════════ -->
+<div id="FA" class="pw">
+<div class="phone">
+  <div class="topbar">
+    <div>
+      <div class="ttl">我的收藏</div>
+      <div class="topbar-sub">MY COLLECTION · 45 张</div>
+    </div>
+    <i class="ti ti-layout-grid"></i>
+  </div>
+
+  <div class="scroll">
+    <div class="side">SIDE A — 唱片墙 SHELF</div>
+    <!-- 2-col vinyl grid (120px discs) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--gray-light);margin:4px 16px 0">
+      <div style="background:var(--card);padding:18px 14px 16px;display:flex;flex-direction:column;align-items:center">
+        <div class="disc" style="width:120px;height:120px"><div class="label" style="width:40px;height:40px"></div><div class="spindle"></div></div>
+        <div style="width:100%;margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="min-width:0"><div style="font-size:13px;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">未定义</div><div style="font-size:10px;color:var(--gray-mid);margin-top:2px">武汉说唱协会</div></div>
+          <span style="font-family:var(--bebas);font-size:16px;color:var(--black);background:var(--accent);padding:2px 8px;flex-shrink:0;margin-left:6px">9.4</span>
+        </div>
+      </div>
+      <div style="background:var(--card);padding:18px 14px 16px;display:flex;flex-direction:column;align-items:center">
+        <div class="disc" style="width:120px;height:120px"><div class="label" style="width:40px;height:40px"></div><div class="spindle"></div></div>
+        <div style="width:100%;margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="min-width:0"><div style="font-size:13px;color:var(--cream);">盘古</div><div style="font-size:10px;color:var(--gray-mid);margin-top:2px">黄旭</div></div>
+          <span style="font-family:var(--bebas);font-size:16px;color:var(--black);background:var(--accent);padding:2px 8px;flex-shrink:0;margin-left:6px">9.1</span>
+        </div>
+      </div>
+      <div style="background:var(--card);padding:18px 14px 16px;display:flex;flex-direction:column;align-items:center">
+        <div class="disc" style="width:120px;height:120px"><div class="label" style="width:40px;height:40px"></div><div class="spindle"></div></div>
+        <div style="width:100%;margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="min-width:0"><div style="font-size:13px;color:var(--cream);">黑蟠桃</div><div style="font-size:10px;color:var(--gray-mid);margin-top:2px">GAI</div></div>
+          <span style="font-family:var(--bebas);font-size:16px;color:var(--black);background:var(--accent);padding:2px 8px;flex-shrink:0;margin-left:6px">8.9</span>
+        </div>
+      </div>
+      <div style="background:var(--card);padding:18px 14px 16px;display:flex;flex-direction:column;align-items:center">
+        <div class="disc" style="width:120px;height:120px"><div class="label" style="width:40px;height:40px"></div><div class="spindle"></div></div>
+        <div style="width:100%;margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="min-width:0"><div style="font-size:13px;color:var(--cream);">天行九歌</div><div style="font-size:10px;color:var(--gray-mid);margin-top:2px">艾热</div></div>
+          <span style="font-family:var(--bebas);font-size:16px;color:var(--black);background:var(--accent);padding:2px 8px;flex-shrink:0;margin-left:6px">8.8</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:18px 16px;text-align:center;font-family:var(--bebas);font-size:13px;color:var(--gray-light);letter-spacing:5px">— 45 RECORDS —</div>
+  </div>
+
+  <div class="bnav">
+    <div class="bni"><i class="ti ti-home"></i><span>HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar"></i><span>CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass"></i><span>DISCOVER</span></div>
+    <div class="bni on"><i class="ti ti-user"></i><span>ME</span></div>
+  </div>
+</div>
+<div class="cap">FAVORITES · 收藏（唱片墙 2 列 · 120px · RECORDS 尾部）</div>
+</div>
+
+<!-- ════════ PROFILE ════════ -->
+<div id="PR" class="pw">
+<div class="phone">
+  <div style="padding:40px 16px 12px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div style="font-family:var(--bebas);font-size:24px;letter-spacing:2px;color:var(--cream);line-height:1">PROFILE</div>
+    <i class="ti ti-settings" style="font-size:18px;color:var(--gray-mid);padding-bottom:2px"></i>
+  </div>
+
+  <!-- vinyl avatar (100px = 200rpx, fixed from 60px) -->
+  <div style="display:flex;align-items:center;gap:20px;padding:0 16px 16px">
+    <div class="disc" style="width:100px;height:100px;box-shadow:0 0 0 2px var(--black),0 0 0 4px var(--gray-light)">
+      <div class="label" style="width:36px;height:36px">
+        <span style="font-family:var(--bebas);font-size:18px;color:var(--black)">S</span>
+      </div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:var(--black);z-index:3"></div>
+    </div>
+    <div>
+      <div style="font-family:var(--bebas);font-size:26px;color:var(--cream);letter-spacing:1px;line-height:1">SHUOYIN03</div>
+      <div style="margin-top:6px;background:var(--accent);display:inline-block;padding:2px 8px">
+        <span style="font-size:10px;font-weight:700;color:var(--black);letter-spacing:2px">乐评人</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats strip (26px = 52rpx numbers, fixed from 22px) -->
+  <div style="border-top:1px solid var(--gray-light);border-bottom:1px solid var(--gray-light);display:flex;padding:12px 16px">
+    <div style="flex:1;text-align:center;border-right:1px solid var(--gray-light)">
+      <div style="font-family:var(--bebas);font-size:26px;color:var(--cream);line-height:1">12</div>
+      <div style="font-size:9px;color:var(--gray-mid);letter-spacing:2px;margin-top:2px">评论</div>
+    </div>
+    <div style="flex:1;text-align:center;border-right:1px solid var(--gray-light)">
+      <div style="font-family:var(--bebas);font-size:26px;color:var(--cream);line-height:1">45</div>
+      <div style="font-size:9px;color:var(--gray-mid);letter-spacing:2px;margin-top:2px">收藏</div>
+    </div>
+    <div style="flex:1;text-align:center">
+      <div style="font-family:var(--bebas);font-size:26px;color:var(--cream);line-height:1">8</div>
+      <div style="font-size:9px;color:var(--gray-mid);letter-spacing:2px;margin-top:2px">专辑</div>
+    </div>
+  </div>
+
+  <div style="padding:12px 16px 4px;font-size:9px;letter-spacing:3px;color:var(--gray-mid);font-weight:700">SIDE A — 我的</div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--card)"><i class="ti ti-messages" style="font-size:17px;color:var(--gray-mid);margin-right:12px"></i><span style="flex:1;font-size:14px;color:var(--cream)">我的评论</span><i class="ti ti-chevron-right" style="font-size:15px;color:var(--gray-light)"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--card)"><i class="ti ti-bookmark" style="font-size:17px;color:var(--gray-mid);margin-right:12px"></i><span style="flex:1;font-size:14px;color:var(--cream)">我的收藏</span><i class="ti ti-chevron-right" style="font-size:15px;color:var(--gray-light)"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px"><i class="ti ti-adjustments" style="font-size:17px;color:var(--gray-mid);margin-right:12px"></i><span style="flex:1;font-size:14px;color:var(--cream)">偏好设置</span><i class="ti ti-chevron-right" style="font-size:15px;color:var(--gray-light)"></i></div>
+
+  <div style="padding:12px 16px 4px;font-size:9px;letter-spacing:3px;color:var(--accent);font-weight:700;border-top:2px solid var(--accent);margin-top:8px">SIDE B — ADMIN</div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--card)"><i class="ti ti-user-check" style="font-size:17px;color:var(--accent);margin-right:12px"></i><span style="flex:1;font-size:14px;color:var(--cream)">艺人候选审核</span><i class="ti ti-chevron-right" style="font-size:15px;color:var(--gray-light)"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--card)"><i class="ti ti-robot" style="font-size:17px;color:var(--accent);margin-right:12px"></i><span style="flex:1;font-size:14px;color:var(--cream)">爬虫管理</span><i class="ti ti-chevron-right" style="font-size:15px;color:var(--gray-light)"></i></div>
+  <div style="display:flex;align-items:center;padding:12px 16px"><i class="ti ti-shield-check" style="font-size:17px;color:var(--accent);margin-right:12px"></i><span style="flex:1;font-size:14px;color:var(--cream)">乐评人认证</span><i class="ti ti-chevron-right" style="font-size:15px;color:var(--gray-light)"></i></div>
+
+  <div class="bnav">
+    <div class="bni"><i class="ti ti-home"></i><span>HOME</span></div>
+    <div class="bni"><i class="ti ti-chart-bar"></i><span>CHARTS</span></div>
+    <div class="bni"><i class="ti ti-compass"></i><span>DISCOVER</span></div>
+    <div class="bni on"><i class="ti ti-user"></i><span>ME</span></div>
+  </div>
+</div>
+<div class="cap">PROFILE · 个人页（头像 100px 修正 · 26px 数字）</div>
+</div>
+
+<!-- ════════ ALBUM DETAIL ════════ -->
+<div id="AL" class="pw">
+<div class="phone">
+  <div style="padding:40px 16px 10px;display:flex;align-items:center;gap:12px">
+    <i class="ti ti-arrow-left" style="font-size:20px;color:var(--cream)"></i>
+    <span style="font-family:var(--bebas);font-size:18px;letter-spacing:2px;color:var(--gray-mid)">ALBUM</span>
+  </div>
+
+  <div class="scroll">
+    <!-- hero: 200px disc (400rpx, fixed from 180px) -->
+    <div style="display:flex;flex-direction:column;align-items:center;padding:8px 16px 20px;background:#0A070C">
+      <div class="disc" style="width:200px;height:200px">
+        <div class="label" style="width:72px;height:72px">
+          <div style="font-family:var(--bebas);font-size:30px;color:var(--black);line-height:1">8.9</div>
+          <div style="font-size:7px;color:var(--black);opacity:.7;letter-spacing:1px">BARSCOPE</div>
+        </div>
+        <div class="spindle"></div>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <div style="font-family:var(--bebas);font-size:32px;color:var(--cream);letter-spacing:1px;line-height:1">黑蟠桃</div>
+        <div style="font-size:12px;color:var(--gray-mid);margin-top:4px;letter-spacing:1px">GAI · 2022 · 硬核 / 方言</div>
+      </div>
+      <div style="display:flex;gap:24px;margin-top:16px">
+        <div style="text-align:center"><div style="font-family:var(--bebas);font-size:22px;color:var(--cream)">8.9</div><div style="font-size:8px;color:var(--gray-mid);letter-spacing:2px;margin-top:2px">评分</div></div>
+        <div style="text-align:center"><div style="font-family:var(--bebas);font-size:22px;color:var(--cream)">312</div><div style="font-size:8px;color:var(--gray-mid);letter-spacing:2px;margin-top:2px">评论</div></div>
+        <div style="text-align:center"><div style="font-family:var(--bebas);font-size:22px;color:var(--cream)">12</div><div style="font-size:8px;color:var(--gray-mid);letter-spacing:2px;margin-top:2px">曲目</div></div>
+      </div>
+    </div>
+
+    <div class="side">SIDE A — 曲目 TRACKS</div>
+    <div style="padding:0 16px">
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:18px;color:var(--accent);width:26px">01</span>
+        <span style="flex:1;font-size:13px;color:var(--cream)">天干物燥</span>
+        <span style="font-size:11px;color:var(--gray-mid)">3:42</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--card)">
+        <span style="font-family:var(--bebas);font-size:18px;color:var(--gray-mid);width:26px">02</span>
+        <span style="flex:1;font-size:13px;color:var(--cream)">空城计</span>
+        <span style="font-size:11px;color:var(--gray-mid)">4:05</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0">
+        <span style="font-family:var(--bebas);font-size:18px;color:var(--gray-mid);width:26px">03</span>
+        <span style="flex:1;font-size:13px;color:var(--cream)">兰花草</span>
+        <span style="font-size:11px;color:var(--gray-mid)">3:18</span>
+      </div>
+    </div>
+
+    <div class="side b">SIDE B — 乐评 REVIEWS</div>
+    <div style="padding:0 16px">
+      <!-- critic review: 4px left border -->
+      <div style="border-left:4px solid var(--accent);background:var(--card);padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div class="disc no-shadow" style="width:40px;height:40px;background:var(--accent)"></div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:13px;color:var(--cream)">乐评君</span>
+              <span style="font-family:var(--bebas);font-size:12px;color:var(--black);background:var(--accent);padding:1px 8px">乐评人</span>
+            </div>
+            <div style="font-size:10px;color:var(--gray-mid);margin-top:2px">2 天前</div>
+          </div>
+          <span style="font-family:var(--bebas);font-size:26px;color:var(--accent)">9.0</span>
+        </div>
+        <div style="font-size:12px;color:var(--gray-mid);line-height:1.6">方言说唱的天花板，beat 抓耳，flow 老练，整张专辑完成度极高…</div>
+      </div>
+      <div style="padding:14px 0;border-bottom:1px solid var(--card)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div class="disc no-shadow" style="width:40px;height:40px"></div>
+          <div style="flex:1"><div style="font-size:13px;color:var(--cream)">阿强</div><div style="font-size:10px;color:var(--gray-mid);margin-top:2px">5 天前</div></div>
+          <span style="font-family:var(--bebas);font-size:26px;color:var(--gray-mid)">8.5</span>
+        </div>
+        <div style="font-size:12px;color:var(--gray-mid);line-height:1.6">巴蜀 trap 的代表作之一，循环了一整周。</div>
+      </div>
+    </div>
+    <div style="height:80px"></div>
+  </div>
+
+  <!-- sticky bottom bar -->
+  <div style="flex-shrink:0;padding:12px 16px;background:var(--black);border-top:1px solid var(--gray-light)">
+    <div style="background:var(--accent);color:var(--black);font-family:var(--bebas);font-size:18px;letter-spacing:3px;text-align:center;padding:14px">＋ 写评论 WRITE REVIEW</div>
+  </div>
+</div>
+<div class="cap">ALBUM DETAIL · 专辑（200px Hero · A/B 曲目/乐评）</div>
+</div>
+
+<!-- ════════ WRITE REVIEW (RATING) ════════ -->
+<div id="WR" class="pw">
+<div class="phone">
+  <div style="padding:40px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+    <i class="ti ti-arrow-left" style="font-size:18px;color:var(--cream);padding-bottom:2px"></i>
+    <div style="font-family:var(--bebas);font-size:22px;letter-spacing:2px;color:var(--cream);line-height:1">WRITE REVIEW</div>
+  </div>
+  <div style="padding:0 16px 16px;font-size:11px;color:var(--gray-mid);letter-spacing:1px">黑蟠桃 · GAI</div>
+
+  <!-- vinyl dial: 200px (400rpx, fixed from 110px) -->
+  <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 20px">
+    <div class="disc" style="width:200px;height:200px;cursor:pointer">
+      <div class="label" style="width:80px;height:80px" id="wr-label">
+        <div id="wr-score" style="font-family:var(--bebas);font-size:36px;color:var(--black);line-height:1">—</div>
+        <div style="font-size:7px;color:var(--black);opacity:0.7;letter-spacing:1px">SCORE</div>
+      </div>
+      <div class="spindle"></div>
+    </div>
+    <div style="font-size:10px;color:var(--gray-mid);letter-spacing:2px;margin-top:12px">点击下方数字评分</div>
+  </div>
+
+  <!-- number buttons -->
+  <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;width:280px;margin:0 auto 16px" id="wr-grid"></div>
+
+  <div style="padding:0 16px 12px">
+    <div style="font-size:9px;letter-spacing:3px;color:var(--gray-mid);font-weight:700;margin-bottom:8px">评语</div>
+    <textarea style="width:100%;background:var(--card);border:1px solid var(--gray-light);color:var(--cream);padding:10px;font-size:13px;resize:none;font-family:-apple-system,sans-serif;outline:none;box-sizing:border-box" rows="3" placeholder="写下你的评语..."></textarea>
+  </div>
+  <div id="wr-submit" style="margin:0 16px;padding:13px;background:var(--accent);color:var(--black);font-family:var(--bebas);font-size:17px;letter-spacing:2px;text-align:center;opacity:0.4;cursor:pointer">提交评论</div>
+</div>
+<div class="cap">RATING · 评分（200px 黑胶表盘 · 10按钮 · 修正自 110px）</div>
+</div>
+
+<!-- ════════ LOGIN ════════ -->
+<div id="LO" class="pw">
+<div class="phone" style="justify-content:center;align-items:center;padding:0 36px;text-align:center">
+  <!-- spinning record: 160px (320rpx, fixed from 100px) -->
+  <div class="disc" style="width:160px;height:160px;animation:spin 8s linear infinite">
+    <div class="label" style="width:58px;height:58px">
+      <span style="font-family:var(--bebas);font-size:34px;color:var(--black)">韵</span>
+    </div>
+    <div class="spindle"></div>
+  </div>
+  <!-- BARSCOPE title: 44px (88rpx, fixed from 30px) -->
+  <div style="font-family:var(--bebas);font-size:44px;letter-spacing:4px;color:var(--cream);margin-top:28px;line-height:1">BARSCOPE</div>
+  <div style="font-size:14px;color:var(--accent);letter-spacing:8px;margin-top:6px">韵 镜</div>
+  <div style="font-size:12px;color:var(--gray-mid);letter-spacing:2px;margin-top:10px">华语说唱最大评分社区</div>
+
+  <div style="width:100%;margin-top:40px;text-align:left">
+    <div style="font-size:9px;color:var(--gray-mid);letter-spacing:3px;margin-bottom:8px">你的昵称 / NICKNAME</div>
+    <div style="background:var(--card);border:1px solid var(--gray-light);padding:14px 16px;font-size:14px;color:var(--gray-mid)">输入昵称或使用微信昵称</div>
+  </div>
+  <div style="width:100%;margin-top:16px;background:var(--accent);color:var(--black);font-family:var(--bebas);font-size:20px;letter-spacing:3px;text-align:center;padding:16px">微信一键登录</div>
+  <div style="font-size:11px;color:var(--gray-mid);margin-top:16px;letter-spacing:1px">登录后可评分 · 收藏 · 发表评论</div>
+</div>
+<div class="cap">LOGIN · 登录（160px 旋转黑胶 · 44px 标题，修正自 100px/30px）</div>
+</div>
+
+<!-- ════════ ADMIN ════════ -->
+<div id="AD" class="pw">
+<div class="phone">
+  <div style="padding:40px 16px 12px;display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--accent)">
+    <i class="ti ti-arrow-left" style="font-size:20px;color:var(--cream);padding-bottom:2px"></i>
+    <div style="font-family:var(--bebas);font-size:28px;letter-spacing:2px;line-height:1">ADMIN</div>
+    <span style="font-family:var(--bebas);font-size:14px;color:var(--accent);letter-spacing:4px;padding-bottom:3px">SIDE B</span>
+  </div>
+  <div style="display:flex;border-bottom:1px solid var(--gray-light)">
+    <div style="flex:1;text-align:center;padding:14px 0;border-bottom:3px solid var(--accent)">
+      <span style="font-family:var(--bebas);font-size:15px;color:var(--accent);letter-spacing:1px">艺人审核</span>
+    </div>
+    <div style="flex:1;text-align:center;padding:14px 0;border-bottom:3px solid transparent">
+      <span style="font-family:var(--bebas);font-size:15px;color:var(--gray-mid);letter-spacing:1px">爬虫管理</span>
+    </div>
+    <div style="flex:1;text-align:center;padding:14px 0;border-bottom:3px solid transparent">
+      <span style="font-family:var(--bebas);font-size:15px;color:var(--gray-mid);letter-spacing:1px">乐评人</span>
+    </div>
+  </div>
+  <div class="scroll">
+    <div style="margin:16px;border:1px solid var(--gray-light);background:var(--card);padding:18px">
+      <div style="font-family:var(--bebas);font-size:13px;color:var(--gray-mid);letter-spacing:4px;margin-bottom:14px">CRAWLER STATUS</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:12px;height:12px;border-radius:50%;background:#22c55e"></div>
+        <span style="font-size:16px;color:var(--cream);font-weight:700">运行中 RUNNING</span>
+        <span style="font-size:11px;color:var(--gray-mid);margin-left:auto">02:14 前</span>
+      </div>
+      <div style="height:6px;background:var(--gray-light);overflow:hidden">
+        <div style="height:100%;width:68%;background:var(--accent)"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <div style="flex:1;background:var(--gray-light);padding:12px;text-align:center"><div style="font-family:var(--bebas);font-size:26px;color:var(--cream);line-height:1">128</div><div style="font-size:9px;color:var(--gray-mid);margin-top:4px">新增</div></div>
+        <div style="flex:1;background:var(--gray-light);padding:12px;text-align:center"><div style="font-family:var(--bebas);font-size:26px;color:var(--cream);line-height:1">14</div><div style="font-size:9px;color:var(--gray-mid);margin-top:4px">更新</div></div>
+        <div style="flex:1;background:var(--gray-light);padding:12px;text-align:center"><div style="font-family:var(--bebas);font-size:26px;color:var(--cream);line-height:1">2</div><div style="font-size:9px;color:var(--gray-mid);margin-top:4px">失败</div></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:16px">
+        <div style="flex:1;background:var(--accent);color:var(--black);font-family:var(--bebas);font-size:15px;letter-spacing:2px;text-align:center;padding:14px">▶ 立即运行</div>
+        <div style="flex:1;background:var(--card);border:1px solid var(--gray-light);color:var(--cream);font-family:var(--bebas);font-size:15px;letter-spacing:2px;text-align:center;padding:14px">清空日志</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:18px 16px;background:var(--card);margin:0 16px;border:1px solid var(--gray-light)">
+      <div style="width:64px;height:64px;background:var(--black);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="font-family:var(--bebas);font-size:32px;color:var(--accent)">未</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;color:var(--cream);font-weight:700;margin-bottom:4px">未定义</div>
+        <div style="font-size:11px;color:var(--gray-mid);margin-bottom:2px">来源：网易云音乐</div>
+        <div style="font-size:11px;color:var(--gray-mid);margin-bottom:14px">武汉说唱协会 · 2024 · TRAP</div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1;background:#16a34a;color:#fff;font-size:13px;font-weight:700;letter-spacing:2px;text-align:center;padding:12px">通过</div>
+          <div style="flex:1;background:#dc2626;color:#fff;font-size:13px;font-weight:700;letter-spacing:2px;text-align:center;padding:12px">拒绝</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cap">ADMIN · 管理后台（直角卡片 · Bebas 标签 · 爬虫状态）</div>
+</div>
+
+</div><!-- end .stage -->
+
+<script>
+// page nav
+function go(id){
+  document.querySelectorAll('.pw').forEach(e=>e.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  var ids=['HO','CH','DI','FA','PR','AL','WR','LO','AD'];
+  document.querySelectorAll('.nb').forEach((b,i)=>b.classList.toggle('on',ids[i]===id));
+}
+
+// rating buttons
+(function(){
+  var grid=document.getElementById('wr-grid');
+  var scoreEl=document.getElementById('wr-score');
+  var submitEl=document.getElementById('wr-submit');
+  var sel=0;
+  for(var i=1;i<=10;i++){
+    var btn=document.createElement('div');
+    btn.dataset.v=i;
+    btn.style.cssText='width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:#08060A;border:1px solid #2A2420;cursor:pointer;font-family:"Bebas Neue",sans-serif;font-size:20px;color:#5A5044;';
+    btn.textContent=i;
+    btn.onclick=function(){
+      sel=+this.dataset.v;
+      scoreEl.textContent=sel;
+      submitEl.style.opacity='1';
+      grid.querySelectorAll('div').forEach(function(b){
+        var v=+b.dataset.v;
+        if(v===sel){b.style.background='#C94E25';b.style.color='#08060A';b.style.borderColor='#C94E25';}
+        else if(v<sel){b.style.background='#2A2420';b.style.color='#F0E8D4';b.style.borderColor='#2A2420';}
+        else{b.style.background='#08060A';b.style.color='#5A5044';b.style.borderColor='#2A2420';}
+      });
+    };
+    grid.appendChild(btn);
+  }
+})();
+</script>
+</body>
+</html>

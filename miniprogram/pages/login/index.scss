@@ -5,19 +5,76 @@
   justify-content: center;
   min-height: 100vh;
   background: var(--black);
-  gap: 48rpx;
+  gap: 40rpx;
 }
 
+/* Vinyl disc logo decoration */
 .logo-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12rpx;
+  gap: 16rpx;
+}
+
+@keyframes vinyl-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-vinyl-disc { animation: none; }
+}
+
+.logo-vinyl-disc {
+  width: 320rpx;
+  height: 320rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    var(--accent) 0, var(--accent) 17%,
+    var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
+    var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
+    var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
+    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
+  );
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light);
+  margin-bottom: 16rpx;
+  animation: vinyl-spin 8s linear infinite;
+}
+
+.logo-vinyl-label {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-vinyl-text {
+  font-family: var(--font-bebas);
+  font-size: 68rpx;
+  color: var(--black);
+  line-height: 1;
+}
+
+.logo-vinyl-spindle {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12rpx; height: 12rpx;
+  border-radius: 50%;
+  background: var(--black);
+  z-index: 3;
 }
 
 .logo-zh {
-  font-size: 60rpx;
-  font-weight: 700;
+  font-family: var(--font-bebas);
+  font-size: 88rpx;
   color: var(--white);
   letter-spacing: 8rpx;
 }
@@ -26,23 +83,24 @@
   font-size: 28rpx;
   color: var(--accent);
   letter-spacing: 10rpx;
-  font-weight: 600;
 }
 
 .tagline {
   font-size: 24rpx;
-  color: #555;
+  color: var(--gray-mid);
   letter-spacing: 2rpx;
-  margin-top: 8rpx;
+  margin-top: 4rpx;
 }
 
 .login-btn {
   background: var(--accent);
   color: var(--black);
-  font-size: 32rpx;
-  font-weight: 700;
-  padding: 28rpx 80rpx;
-  letter-spacing: 4rpx;
+  font-family: var(--font-bebas);
+  font-size: 40rpx;
+  letter-spacing: 6rpx;
+  padding: 32rpx;
+  width: 100%;
+  text-align: center;
 }
 
 .nick-section {
@@ -53,24 +111,28 @@
   padding: 0 64rpx;
   box-sizing: border-box;
 }
-.nick-label { font-size: 22rpx; color: #666; letter-spacing: 2rpx; }
+.nick-label {
+  font-size: 18rpx;
+  color: var(--gray-mid);
+  letter-spacing: 6rpx;
+}
 .nick-input {
-  background: #1a1a1a;
-  border: 2rpx solid #333;
-  padding: 24rpx 28rpx;
+  background: var(--off-white);
+  border: 2rpx solid var(--gray-light);
+  padding: 28rpx 32rpx;
   font-size: 28rpx;
   color: var(--white);
   width: 100%;
   box-sizing: border-box;
 }
-.nick-ph { color: #555; }
+.nick-ph { color: var(--gray-mid); }
 
 .login-btn.loading {
-  background: #cca800;
+  background: #aa3d1c;
 }
 
 .hint {
   font-size: 22rpx;
-  color: #555;
+  color: var(--gray-mid);
   letter-spacing: 1rpx;
 }

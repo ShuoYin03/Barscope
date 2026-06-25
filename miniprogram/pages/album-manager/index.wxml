@@ -1,0 +1,143 @@
+<view class="page">
+
+  <!-- TOPBAR -->
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="topbar-back" bindtap="onBack">
+      <text class="back-arrow">←</text>
+    </view>
+    <view class="topbar-titles">
+      <text class="topbar-title">{{view === 'albums' ? selectedArtist.artistName : 'ALBUMS'}}</text>
+      <text class="topbar-sub">{{view === 'albums' ? 'DISCOGRAPHY' : 'MGMT'}}</text>
+    </view>
+  </view>
+
+  <!-- ══ ARTIST LIST ══════════════════════════════════════════════════════════ -->
+  <block wx:if="{{view === 'artists'}}">
+    <view class="search-bar">
+      <view class="search-input-wrap">
+        <text class="search-icon">⌕</text>
+        <input
+          class="search-input"
+          placeholder="搜索已批准艺人…"
+          value="{{artistKeyword}}"
+          bindinput="onArtistSearch"
+          placeholder-style="color:#666"
+        />
+      </view>
+    </view>
+
+    <scroll-view
+      class="content"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      bindscrolltolower="onReachBottom"
+    >
+      <block wx:if="{{artistLoading && artistList.length === 0}}">
+        <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="card-skeleton">
+          <view class="sk skel-pic"></view>
+          <view class="skel-body">
+            <view class="sk skel-name"></view>
+            <view class="sk skel-meta"></view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:elif="{{artistList.length === 0}}" class="empty-state">
+        <text class="empty-icon">○</text>
+        <text class="empty-text">{{artistKeyword ? '没有匹配的艺人' : '暂无已批准艺人'}}</text>
+      </view>
+
+      <block wx:else>
+        <view
+          wx:for="{{artistList}}"
+          wx:key="_id"
+          class="artist-row"
+          bindtap="onArtistTap"
+          data-artist="{{item}}"
+        >
+          <view class="artist-photo">
+            <image wx:if="{{item.picUrl}}" class="photo-img" src="{{item.picUrl}}" mode="aspectFill" />
+            <view wx:else class="photo-fallback">
+              <text class="photo-initial">{{item.artistName[0]}}</text>
+            </view>
+          </view>
+          <view class="artist-info">
+            <text class="artist-name">{{item.artistName}}</text>
+            <text class="artist-meta">{{item.albumSize}} 张专辑</text>
+          </view>
+          <text class="row-arrow">→</text>
+        </view>
+
+        <view wx:if="{{artistLoading}}" class="load-more">
+          <text class="load-more-text">加载中…</text>
+        </view>
+        <view wx:elif="{{!artistHasMore && artistList.length > 0}}" class="list-end">
+          <text class="list-end-text">── 已全部加载 ──</text>
+        </view>
+      </block>
+    </scroll-view>
+  </block>
+
+  <!-- ══ ALBUM LIST ══════════════════════════════════════════════════════════ -->
+  <block wx:elif="{{view === 'albums'}}">
+    <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+
+      <block wx:if="{{albumLoading && albumList.length === 0}}">
+        <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
+          <view class="sk skel-cover"></view>
+          <view class="skel-body">
+            <view class="sk skel-name"></view>
+            <view class="sk skel-meta"></view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:elif="{{albumList.length === 0}}" class="empty-state">
+        <text class="empty-icon">○</text>
+        <text class="empty-text">该艺人暂无已收录专辑</text>
+      </view>
+
+      <block wx:else>
+        <view wx:for="{{albumList}}" wx:key="_id" class="album-row">
+          <view class="album-cover-wrap">
+            <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="album-cover-fallback">
+              <text class="album-cover-icon">♪</text>
+            </view>
+            <!-- Approval overlay indicator -->
+            <view wx:if="{{!item.approved}}" class="cover-hidden-badge">
+              <text class="cover-hidden-text">隐藏</text>
+            </view>
+          </view>
+
+          <view class="album-info">
+            <text class="album-title">{{item.title}}</text>
+            <text class="album-artist">{{item.artist}}</text>
+            <view class="album-meta-row">
+              <text class="album-meta">{{item.releaseYear}}</text>
+              <view wx:if="{{item.trackCount > 0}}" class="meta-dot"></view>
+              <text wx:if="{{item.trackCount > 0}}" class="album-meta">{{item.trackCount}} 首</text>
+              <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
+              <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
+            </view>
+          </view>
+
+          <view
+            class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
+            bindtap="onToggleApproved"
+            data-id="{{item._id}}"
+            data-approved="{{item.approved}}"
+          >
+            <text class="toggle-text">{{item.approved ? '显示' : '隐藏'}}</text>
+          </view>
+        </view>
+
+        <view class="list-end">
+          <text class="list-end-text">── 共 {{albumList.length}} 张 ──</text>
+        </view>
+      </block>
+    </scroll-view>
+  </block>
+
+</view>

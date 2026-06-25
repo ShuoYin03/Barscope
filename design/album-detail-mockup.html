@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390px, initial-scale=1">
+<title>专辑详情 · RAPLOG</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+  :root {
+    --black:   #0a0a0a;
+    --white:   #ffffff;
+    --accent:  #F5C518;
+    --gray:    #888;
+    --light:   #f4f4f2;
+    --border:  #e8e8e6;
+  }
+
+  body {
+    background: var(--light);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    width: 390px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  /* ── TOPBAR ─────────────────────────────────────── */
+  .topbar {
+    position: fixed;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 390px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 52px 20px 14px;
+    background: linear-gradient(to bottom, rgba(10,10,10,0.72) 0%, transparent 100%);
+  }
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255,255,255,0.9);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .back-arrow { font-size: 18px; line-height: 1; }
+  .topbar-label {
+    margin-left: auto;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  /* ── HERO ───────────────────────────────────────── */
+  .hero {
+    position: relative;
+    height: 460px;
+    overflow: hidden;
+  }
+  .hero-blur {
+    position: absolute;
+    inset: -20px;
+    background-image: url('https://p1.music.126.net/mR2ML65ghKC4ples4ED-sg==/109951173145012248.jpg');
+    background-size: cover;
+    background-position: center;
+    filter: blur(28px) brightness(0.38) saturate(1.4);
+    transform: scale(1.1);
+  }
+  .hero-body {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 32px;
+    gap: 0;
+  }
+  .cover-wrap {
+    width: 196px;
+    height: 196px;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .cover-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* score badge over hero bottom */
+  .hero-score {
+    margin-top: 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .score-num {
+    font-size: 52px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+  .score-denom {
+    font-size: 18px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+  .score-count {
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+    margin-left: 8px;
+    align-self: center;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── INFO BLOCK ─────────────────────────────────── */
+  .info-block {
+    background: var(--white);
+    padding: 32px 28px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .album-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--black);
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+    margin-bottom: 10px;
+  }
+  .album-meta {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-size: 14px;
+    color: var(--gray);
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  .meta-artist { color: #444; font-weight: 500; }
+  .meta-sep { margin: 0 8px; color: var(--border); }
+  .meta-year { color: var(--gray); }
+
+  /* score bar */
+  .score-bar-wrap {
+    margin-top: 20px;
+  }
+  .score-bar-track {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    width: 100%;   /* 5/5 */
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ── GENRE CHIPS ────────────────────────────────── */
+  .chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--black);
+    background: var(--light);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 2px;
+  }
+
+  /* ── ACTION ROW ─────────────────────────────────── */
+  .action-row {
+    background: var(--white);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .btn-write {
+    flex: 1;
+    background: var(--black);
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-align: center;
+    padding: 14px 0;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .btn-fav {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    font-size: 20px;
+    color: #bbb;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-fav.active { border-color: var(--accent); color: var(--accent); }
+
+  /* ── REVIEWS ────────────────────────────────────── */
+  .reviews-section {
+    padding: 0 0 80px;
+  }
+  .reviews-head {
+    padding: 28px 28px 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+  }
+  .reviews-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--black);
+    text-transform: uppercase;
+  }
+  .reviews-count {
+    font-size: 12px;
+    color: var(--gray);
+  }
+
+  .review-item {
+    background: var(--white);
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .review-top {
+    display: flex;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--black);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .avatar-text {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 0;
+  }
+  .review-author-block { flex: 1; }
+  .review-author {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+    display: block;
+  }
+  .review-date {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 2px;
+    display: block;
+  }
+  .review-stars {
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .review-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #222;
+    font-weight: 400;
+  }
+  .review-footer {
+    margin-top: 16px;
+    display: flex;
+    gap: 20px;
+  }
+  .review-action {
+    font-size: 12px;
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+  .review-action-icon { font-size: 13px; }
+
+  /* critic badge */
+  .critic-item {
+    background: var(--black);
+    border-left: 3px solid var(--accent);
+    padding: 24px 28px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .critic-item .review-author { color: var(--white); }
+  .critic-item .review-date   { color: #666; }
+  .critic-item .review-body   { color: #ccc; }
+  .critic-item .review-action { color: #555; }
+  .critic-badge {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--accent);
+    background: rgba(245,197,24,0.12);
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* empty state */
+  .empty-reviews {
+    padding: 64px 28px;
+    text-align: center;
+    background: var(--white);
+  }
+  .empty-text {
+    font-size: 13px;
+    color: #bbb;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="back-btn">
+    <span class="back-arrow">←</span>
+    <span>返回</span>
+  </div>
+  <span class="topbar-label">RAPLOG</span>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-blur"></div>
+  <div class="hero-body">
+    <div class="cover-wrap">
+      <img src="https://p1.music.126.net/mR2ML65ghKC4ples4ED-sg==/109951173145012248.jpg" alt="cover">
+    </div>
+    <div class="hero-score">
+      <span class="score-num">5</span>
+      <span class="score-denom">/5</span>
+      <span class="score-count">2人评分</span>
+    </div>
+  </div>
+</div>
+
+<!-- INFO -->
+<div class="info-block">
+  <div class="album-title">春眠不觉晓（feat.沙一汀EL）</div>
+  <div class="album-meta">
+    <span class="meta-artist">孙楠 / 沙一汀EL</span>
+    <span class="meta-sep">·</span>
+    <span class="meta-year">2026</span>
+  </div>
+  <div class="score-bar-wrap">
+    <div class="score-bar-track">
+      <div class="score-bar-fill"></div>
+    </div>
+  </div>
+  <div class="chips">
+    <span class="chip">Trap</span>
+    <span class="chip">Conscious</span>
+  </div>
+</div>
+
+<!-- ACTION ROW -->
+<div class="action-row">
+  <div class="btn-write">写评论</div>
+  <div class="btn-fav">☆</div>
+</div>
+
+<!-- REVIEWS -->
+<div class="reviews-section">
+
+  <div class="reviews-head">
+    <span class="reviews-label">全部评论</span>
+    <span class="reviews-count">1条</span>
+  </div>
+
+  <!-- critic review example -->
+  <div class="critic-item">
+    <div class="review-top">
+      <div class="avatar"><span class="avatar-text">说</span></div>
+      <div class="review-author-block">
+        <span class="review-author">说唱迷<span class="critic-badge">乐评人</span></span>
+        <span class="review-date">今天</span>
+      </div>
+      <div class="review-stars">★★★★★</div>
+    </div>
+    <div class="review-body">nb</div>
+    <div class="review-footer">
+      <span class="review-action"><span class="review-action-icon">♡</span> 0</span>
+      <span class="review-action"><span class="review-action-icon">○</span> 0条回复</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

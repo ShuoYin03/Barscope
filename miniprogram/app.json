@@ -8,7 +8,10 @@
     "pages/album-detail/index",
     "pages/write-review/index",
     "pages/login/index",
-    "pages/admin/index"
+    "pages/admin/index",
+    "pages/crawler/index",
+    "pages/critics/index",
+    "pages/album-manager/index"
   ],
   "tabBar": {
     "custom": true,

@@ -1,4 +1,5 @@
 import { initAuth } from './utils/auth'
+import { BEBAS_NEUE_B64 } from './assets/fonts/bebas-b64'
 
 App<IAppOption>({
   globalData: {
@@ -21,7 +22,16 @@ App<IAppOption>({
       traceUser: true,
     })
 
-    // Try to restore session silently
+    // Bebas Neue bundled as base64 — no network needed, loads synchronously before first render.
+    wx.loadFontFace({
+      global: true,
+      scopes: ['webview', 'native'],
+      family: 'Bebas Neue',
+      source: `url("data:font/truetype;base64,${BEBAS_NEUE_B64}")`,
+      success: () => { console.log('[font] ✓ Bebas Neue loaded') },
+      fail: (e: any) => { console.warn('[font] Bebas failed', e) },
+    } as any)
+
     initAuth()
   },
 })

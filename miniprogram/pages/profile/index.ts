@@ -17,6 +17,8 @@ Page({
     isCritic: false,
     isAdmin: false,
     pendingCount: 0,
+    favCount: 0,
+    albumCount: 0,
     reviews: [] as ProfileReview[],
     loading: false,
   },
@@ -30,7 +32,7 @@ Page({
   },
 
   onShow() {
-    if (typeof this.getTabBar === 'function') this.getTabBar().setData({ selected: 4 })
+    if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 4 })
     const app = getApp<IAppOption>()
     const loggedIn = !!app.globalData.userInfo
     this.setData({
@@ -87,10 +89,22 @@ Page({
               timeAgo: item.timeAgo || '',
               likes: item.likes || 0,
             }))
-            this.setData({ reviews: list, loading: false })
+            const albumCount = new Set(list.map((x: ProfileReview) => x.albumId)).size
+            this.setData({ reviews: list, albumCount, loading: false })
           },
           fail: () => this.setData({ loading: false }),
         })
+
+        // favorites count (non-blocking)
+        wx.cloud.callFunction({
+          name: 'getFavorites',
+          data: {},
+          success: (fr: any) => {
+            if (fr.result && fr.result.success) {
+              this.setData({ favCount: (fr.result.list || []).length })
+            }
+          },
+        } as any)
       },
       fail: () => this.setData({ loading: false }),
     })
@@ -107,8 +121,32 @@ Page({
     })
   },
 
-  onAdminTap() {
+  onAdminCandidates() {
     wx.navigateTo({ url: '/pages/admin/index' })
+  },
+
+  onAdminAlbums() {
+    wx.navigateTo({ url: '/pages/album-manager/index' })
+  },
+
+  onAdminCrawler() {
+    wx.navigateTo({ url: '/pages/crawler/index' })
+  },
+
+  onAdminCritics() {
+    wx.navigateTo({ url: '/pages/critics/index' })
+  },
+
+  onMyReviews() {
+    wx.showToast({ title: '评论页面开发中', icon: 'none' })
+  },
+
+  onMyFavorites() {
+    wx.switchTab({ url: '/pages/favorites/index' })
+  },
+
+  onSettingsTap() {
+    wx.showToast({ title: '设置开发中', icon: 'none' })
   },
 
   onLogin() {
@@ -117,6 +155,6 @@ Page({
 
   onReviewTap(e: WechatMiniprogram.TouchEvent) {
     const id = (e.currentTarget.dataset as { id: string }).id
-    wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
   },
 })

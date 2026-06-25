@@ -1,7 +1,7 @@
 .bottom-nav {
   display: flex;
   background: var(--black);
-  border-top: 2px solid #1a1a1a;
+  border-top: 2rpx solid var(--gray-light);
   padding-bottom: env(safe-area-inset-bottom);
   flex-shrink: 0;
 }
@@ -15,20 +15,30 @@
   padding: 18rpx 0 14rpx;
 }
 
-.nav-icon {
-  font-size: 34rpx;
-  line-height: 1;
-  color: #555;
+.nav-indicator {
+  width: 40rpx;
+  height: 2rpx;
+  background: transparent;
+  margin-bottom: 4rpx;
+}
+
+.nav-item.active .nav-indicator {
+  background: var(--accent);
+}
+
+.nav-icon-img {
+  width: 44rpx;
+  height: 44rpx;
+  flex-shrink: 0;
 }
 
 .nav-label {
-  font-size: 18rpx;
-  color: #555;
+  font-family: var(--font-bebas);
+  font-size: 20rpx;
+  color: var(--gray-mid);
   letter-spacing: 1rpx;
-  font-weight: 600;
 }
 
-.nav-item.active .nav-icon,
 .nav-item.active .nav-label {
   color: var(--accent);
 }

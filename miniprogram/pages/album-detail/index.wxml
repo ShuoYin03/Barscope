@@ -1,70 +1,70 @@
 <view class="page">
 
-  <!-- TOPBAR -->
-  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <view class="back-btn" bindtap="onBack">
-      <text class="back-arrow">←</text>
-      <text class="back-text">返回</text>
-    </view>
-    <text class="topbar-label">Barscope</text>
-  </view>
-
   <!-- LOADING -->
-  <view wx:if="{{loading}}" class="loading-state">
+  <view wx:if="{{loading}}" class="loading-state" style="padding-top: {{topbarHeight}}px">
     <text class="loading-text">加载中…</text>
   </view>
 
   <scroll-view wx:elif="{{album}}" class="content" scroll-y enhanced show-scrollbar="{{false}}">
 
-    <!-- HERO -->
+    <!-- BACK BAR -->
+    <view class="back-bar" style="padding-top: {{statusBarHeight}}px" bindtap="onBack">
+      <text class="back-icon">←</text>
+      <text class="back-label">ALBUM</text>
+    </view>
+
+    <!-- HERO: vinyl disc, cover as center label -->
     <view class="hero">
-      <image wx:if="{{album.coverUrl}}" class="hero-blur" src="{{album.coverUrl}}" mode="aspectFill" />
-      <view class="hero-overlay" />
-      <view class="hero-body">
-        <view class="cover-wrap">
+      <view class="hero-disc">
+        <view class="disc-label">
           <image wx:if="{{album.coverUrl}}" class="cover-img" src="{{album.coverUrl}}" mode="aspectFill" />
-          <view wx:else class="cover-fallback" />
+          <view wx:else class="disc-label-score">
+            <text class="disc-score-num">{{album.avgScore}}</text>
+            <text class="disc-score-sub">BARSCOPE</text>
+          </view>
         </view>
-        <view class="hero-score-row">
-          <text class="score-num">{{album.avgScore}}</text>
-          <text class="score-denom">/10</text>
-          <text class="score-count">{{album.reviewCount}}人评分</text>
+        <view class="disc-spindle" />
+      </view>
+      <text class="hero-title">{{album.title}}</text>
+      <text class="hero-meta">{{album.artist}} · {{album.year}}</text>
+
+      <!-- stat strip -->
+      <view class="stat-strip">
+        <view class="stat-cell">
+          <text class="stat-num">{{album.avgScore}}</text>
+          <text class="stat-label">评分</text>
+        </view>
+        <view class="stat-cell">
+          <text class="stat-num">{{album.reviewCount}}</text>
+          <text class="stat-label">评论</text>
+        </view>
+        <view class="stat-cell">
+          <text class="stat-num">{{album.year}}</text>
+          <text class="stat-label">年份</text>
         </view>
       </view>
     </view>
 
-    <!-- INFO -->
+    <!-- INFO: genre chips + score bar -->
     <view class="info-block">
-      <text class="album-title">{{album.title}}</text>
-      <view class="album-meta">
-        <text class="meta-artist">{{album.artist}}</text>
-        <text class="meta-sep"> · </text>
-        <text class="meta-year">{{album.year}}</text>
+      <view wx:if="{{album.genres.length > 0}}" class="genre-chips">
+        <text
+          wx:for="{{album.genres}}"
+          wx:key="*this"
+          class="genre-chip {{index === 0 ? 'primary' : ''}}"
+        >{{item}}</text>
       </view>
       <view class="score-bar-wrap">
         <view class="score-bar-track">
           <view class="score-bar-fill" style="width: {{album.scoreFill}}" />
         </view>
       </view>
-      <view wx:if="{{album.genres.length > 0}}" class="genre-chips">
-        <text wx:for="{{album.genres}}" wx:key="*this" class="genre-chip">{{item}}</text>
-      </view>
-    </view>
-
-    <!-- ACTION ROW -->
-    <view class="action-row">
-      <view class="btn-write" bindtap="onWriteReview">
-        <text>写评论</text>
-      </view>
-      <view class="btn-fav {{isFavorited ? 'is-fav' : ''}}" bindtap="onFavoriteToggle">
-        <text>{{isFavorited ? '★' : '☆'}}</text>
-      </view>
     </view>
 
     <!-- REVIEWS -->
     <view class="reviews-section">
       <view class="reviews-head">
-        <text class="reviews-label">全部评论</text>
+        <text class="reviews-label">SIDE B — 乐评 REVIEWS</text>
         <text class="reviews-count">{{reviews.length}}条</text>
       </view>
       <view wx:if="{{reviews.length === 0}}" class="no-reviews">
@@ -80,6 +80,16 @@
   <!-- not found -->
   <view wx:elif="{{!loading}}" class="loading-state">
     <text class="loading-text">专辑不存在</text>
+  </view>
+
+  <!-- FIXED BOTTOM: write review + fav -->
+  <view wx:if="{{album}}" class="bottom-bar">
+    <view class="btn-fav {{isFavorited ? 'is-fav' : ''}}" bindtap="onFavoriteToggle">
+      <text class="btn-fav-icon">{{isFavorited ? '★' : '☆'}}</text>
+    </view>
+    <view class="btn-write" bindtap="onWriteReview">
+      <text>＋ 写评论</text>
+    </view>
   </view>
 
 </view>

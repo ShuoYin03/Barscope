@@ -3,32 +3,44 @@
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="back-btn" bindtap="onBack">
       <text class="back-arrow">←</text>
-      <text class="back-text">取消</text>
     </view>
-    <text class="topbar-center">写评论</text>
+    <text class="topbar-title">WRITE REVIEW</text>
   </view>
+
+  <!-- ALBUM SUBTITLE -->
+  <view class="album-sub">{{albumTitle || '专辑'}}</view>
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
 
-    <!-- ALBUM LABEL -->
-    <view class="album-label">
-      <view class="album-cover-sm" />
-      <view class="album-label-info">
-        <text class="album-label-title">{{albumTitle || '专辑'}}</text>
-        <text class="album-label-hint">正在评论</text>
+    <!-- RATING — vinyl dial -->
+    <view class="dial-section">
+      <view class="vinyl-score-disc">
+        <view class="vinyl-score-label">
+          <text class="vinyl-score-num">{{rating > 0 ? (rating === 10 ? '10' : rating + '.0') : '—'}}</text>
+          <text class="vinyl-score-cap">SCORE</text>
+        </view>
+        <view class="vinyl-score-spindle" />
       </view>
-    </view>
 
-    <!-- RATING -->
-    <view class="rating-section">
-      <text class="rating-title">你的评分</text>
-      <rating-stars value="{{rating}}" bind:change="onRatingChange" />
-      <text class="rating-hint">{{rating === 0 ? '点击星星评分' : rating + ' 星'}}</text>
+      <text class="dial-hint">{{rating > 0 ? rating + ' / 10' : '点击下方数字评分'}}</text>
+
+      <!-- 1-10 number buttons -->
+      <view class="num-grid">
+        <view
+          wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}"
+          wx:key="*this"
+          class="num-btn {{rating === item ? 'sel' : (item < rating ? 'fill' : '')}}"
+          bindtap="onRateNum"
+          data-n="{{item}}"
+        >
+          <text>{{item}}</text>
+        </view>
+      </view>
     </view>
 
     <!-- CONTENT INPUT -->
     <view class="input-section">
-      <text class="input-label">评论内容</text>
+      <text class="input-label">评语</text>
       <textarea
         class="content-input"
         placeholder="写下你对这张专辑的感受..."
@@ -44,8 +56,8 @@
 
   <!-- SUBMIT BAR -->
   <view class="submit-bar">
-    <view class="submit-btn {{submitting ? 'disabled' : ''}}" bindtap="onSubmit">
-      <text>{{submitting ? '发布中...' : '发布评论'}}</text>
+    <view class="submit-btn {{(rating > 0 && !submitting) ? '' : 'disabled'}}" bindtap="onSubmit">
+      <text>{{submitting ? '发布中...' : '提交评论'}}</text>
     </view>
   </view>
 </view>

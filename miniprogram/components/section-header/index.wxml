@@ -1,9 +1,13 @@
 <view class="section-hd">
-  <view class="section-hd-left">
-    <text class="section-num">{{num}}</text>
-    <text class="section-title">{{title}}</text>
-  </view>
-  <view wx:if="{{more}}" class="section-more" bindtap="onMore">
-    <text>查看全部 →</text>
+  <view class="section-rule" />
+  <view class="section-row">
+    <view class="section-left">
+      <text class="section-num">{{num}}</text>
+      <text class="section-title">{{title}}</text>
+    </view>
+    <view class="section-groove" />
+    <view wx:if="{{more}}" class="section-more-wrap" bindtap="onMore">
+      <text class="section-more">更多 →</text>
+    </view>
   </view>
 </view>

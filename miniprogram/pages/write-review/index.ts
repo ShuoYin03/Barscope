@@ -23,8 +23,9 @@ Page({
     wx.navigateBack()
   },
 
-  onRatingChange(e: WechatMiniprogram.CustomEvent) {
-    this.setData({ rating: e.detail.value })
+  onRateNum(e: WechatMiniprogram.TouchEvent) {
+    const n = Number((e.currentTarget.dataset as { n: number }).n)
+    this.setData({ rating: n })
   },
 
   onContentInput(e: WechatMiniprogram.Input) {

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "design-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "design", "-p", "3131", "--no-clipboard"],
+      "port": 3131
+    }
+  ]
+}

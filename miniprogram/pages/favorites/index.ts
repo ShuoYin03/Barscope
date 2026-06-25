@@ -39,7 +39,7 @@ Page({
 
   onShow() {
     if (typeof this.getTabBar === 'function') {
-      this.getTabBar().setData({ selected: 3 })
+      this.getTabBar()?.setData({ selected: 3 })
     }
     const app = getApp<IAppOption>()
     const loggedIn = !!app.globalData.userInfo

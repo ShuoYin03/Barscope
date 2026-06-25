@@ -2,16 +2,25 @@
 """
 Barscope · 爬虫流水线（全自动）
 
+爬取模式由云端任务指定（管理员在小程序「爬虫」面板里选择）：
+  search      全量爬取   — rappers.json 所有艺人的专辑
+  add-artist  按艺人ID   — 收录指定艺人的全部专辑（param=艺人ID）
+  album       按专辑ID   — 精确收录单张专辑（param=专辑ID）
+  fission     裂变发现   — 已批准 rapper 的专辑 + 发现新候选（默认/定时）
+
 流程：
   1. 同步管理员审核结果 → 更新本地 rappers.json
-  2. BFS 裂变爬取       → 已批准 rapper 的专辑 + 发现新候选
+  2. 按模式爬取
   3. 清洗数据
   4. 上传专辑到云 DB
-  5. 上传候选艺人到云 DB（等待管理员在小程序里审核）
+  5. 上传候选艺人到云 DB（fission 模式产生候选，等待管理员审核）
 
 用法:
-  python pipeline.py           # 完整流程
-  python pipeline.py --dry-run # 只爬取+清洗，不上传
+  python pipeline.py                              # 认领云端 pending 任务（含模式）
+  python pipeline.py --dry-run                    # 只爬取+清洗，不上传
+  python pipeline.py --skip-db-check --mode search          # 本地强制全量爬取
+  python pipeline.py --skip-db-check --mode add-artist --param 123456
+  python pipeline.py --skip-db-check --mode album --param 123456
 """
 
 import argparse
@@ -31,7 +40,10 @@ BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 sys.path.insert(0, BASE_DIR)
-from spider_netease import run_fission, load_rappers, save_rappers, RAPPERS_FILE
+from spider_netease import (
+    run_fission, run_search, run_add_artist, run_album,
+    load_rappers, save_rappers, RAPPERS_FILE,
+)
 from upload import clean
 from db_client import CrawlerDB
 
@@ -157,7 +169,12 @@ def main(from_scheduler: bool = False):
     parser = argparse.ArgumentParser(description="Barscope 爬虫")
     parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
     parser.add_argument("--skip-db-check", action="store_true", help="跳过 DB pending 检查（直接运行）")
-    args = parser.parse_args() if not from_scheduler else argparse.Namespace(dry_run=False, skip_db_check=False)
+    parser.add_argument("--mode", choices=["search", "add-artist", "album", "fission"],
+                        default="fission",
+                        help="运行模式（仅 --skip-db-check / --dry-run 时生效；正常由云端任务指定）")
+    parser.add_argument("--param", default="", help="模式参数：艺人ID 或 专辑ID")
+    args = parser.parse_args() if not from_scheduler else argparse.Namespace(
+        dry_run=False, skip_db_check=False, mode="fission", param="")
 
     if not os.path.exists(CONFIG_FILE):
         print("[!] 找不到 config.json")
@@ -175,6 +192,10 @@ def main(from_scheduler: bool = False):
 
     db = CrawlerDB(cfg) if not args.dry_run else None
 
+    # 默认模式由 CLI 指定；若认领到云端任务，则被云端任务的模式覆盖
+    mode  = args.mode
+    param = str(args.param or "")
+
     # ── DB: 认领任务 ─────────────────────────────────────────────────────────
     if db and not args.skip_db_check:
         print("━━━ 检查爬虫触发状态 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -182,8 +203,18 @@ def main(from_scheduler: bool = False):
         if not claimed:
             print("  未发现 pending 任务，退出。（如需强制运行，加 --skip-db-check）")
             return
-        print("  已认领任务，开始运行。")
-        db.append_log("爬虫任务开始")
+        mode  = claimed.get("mode", "fission")
+        param = str(claimed.get("param", "") or "")
+        label = f"{mode} / {param}" if param else mode
+        print(f"  已认领任务（模式: {label}），开始运行。")
+        db.append_log(f"爬虫任务开始（模式: {label}）")
+
+    # 校验需要 ID 的模式
+    if mode in ("add-artist", "album") and not param.strip().isdigit():
+        msg = f"模式 {mode} 需要数字 ID，收到: {param!r}"
+        print(f"[!] {msg}")
+        if db: db.fail_run(msg)
+        return
 
     errors_list: list = []
 
@@ -204,15 +235,45 @@ def main(from_scheduler: bool = False):
             if db: db.append_log("Step 1: 同步审核结果")
             sync_decisions(token, env)
 
-        # ── Step 2: 裂变爬取 ─────────────────────────────────────────────────
-        print("\n━━━ Step 2：BFS 裂变爬取 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        if db: db.append_log("Step 2: BFS 裂变爬取开始")
+        # ── Step 2: 爬取 ─────────────────────────────────────────────────────
+        MODE_NAMES = {
+            "search":     "全量爬取",
+            "add-artist": "按艺人ID",
+            "album":      "按专辑ID",
+            "fission":    "BFS 裂变",
+        }
+        mode_name = MODE_NAMES.get(mode, mode)
+        print(f"\n━━━ Step 2：{mode_name}爬取 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        if db: db.append_log(f"Step 2: {mode_name}爬取开始")
 
-        rappers_data = load_rappers()
-        total_artists = len(rappers_data.get("rappers", []))
+        # 中止检测（节流：最多每 5 秒查一次云端 abort 标记）
+        _abort_state = {"last": 0.0, "aborted": False}
+        def _should_abort() -> bool:
+            if not db or _abort_state["aborted"]:
+                return _abort_state["aborted"]
+            now = time.time()
+            if now - _abort_state["last"] < 5:
+                return False
+            _abort_state["last"] = now
+            if db.is_aborted():
+                _abort_state["aborted"] = True
+                return True
+            return False
+
+        rappers_data  = load_rappers()
+        total_artists = len(rappers_data.get("rappers", [])) if mode in ("search", "fission") else 1
         if db: db.update_progress(total_artists=total_artists)
 
-        raw_albums = run_fission(dry_run=False)
+        if mode == "search":
+            raw_albums = run_search(rappers_data.get("rappers", []), dry_run=False)
+        elif mode == "add-artist":
+            raw_albums = run_add_artist(int(param), dry_run=False)
+        elif mode == "album":
+            raw_albums = run_album(int(param), dry_run=False)
+        else:  # fission
+            raw_albums = run_fission(dry_run=False, should_abort=_should_abort)
+
+        aborted      = _abort_state["aborted"] or bool(db and db.is_aborted())
         albums_found = len(raw_albums)
 
         if db:
@@ -226,7 +287,7 @@ def main(from_scheduler: bool = False):
         # ── Step 3: 清洗 ─────────────────────────────────────────────────────
         print("\n━━━ Step 3：清洗 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         if db: db.append_log("Step 3: 数据清洗")
-        cleaned = clean(raw_albums)
+        cleaned = clean(raw_albums, skip_singles_filter=(mode == "album"))
         print(f"  原始 {len(raw_albums)} 张  →  清洗后 {len(cleaned)} 张")
 
         if args.dry_run:
@@ -263,12 +324,16 @@ def main(from_scheduler: bool = False):
 """)
 
         if db:
-            db.append_log(f"完成 — 新增专辑 {result['inserted']} 张，新候选 {new_candidates} 位")
-            db.complete_run(
-                new_albums=result["inserted"],
-                new_candidates=new_candidates,
-                errors=errors_list,
-            )
+            if aborted:
+                db.append_log(f"已中止 — 已上传专辑 {result['inserted']} 张，候选 {new_candidates} 位")
+                db.abort_run(new_albums=result["inserted"], new_candidates=new_candidates)
+            else:
+                db.append_log(f"完成 — 新增专辑 {result['inserted']} 张，新候选 {new_candidates} 位")
+                db.complete_run(
+                    new_albums=result["inserted"],
+                    new_candidates=new_candidates,
+                    errors=errors_list,
+                )
 
     except Exception as e:
         print(f"\n[!] 运行出错: {e}")

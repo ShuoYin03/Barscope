@@ -1,14 +1,14 @@
 <view class="page">
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <text class="topbar-title">发现</text>
-    <text class="topbar-sub">DISCOVER</text>
+    <text class="topbar-title">DISCOVER</text>
+    <text class="topbar-filter">⊞</text>
   </view>
 
   <!-- SEARCH BAR -->
   <view class="search-wrap">
     <view class="search-inner">
-      <text class="search-icon">S</text>
+      <text class="search-icon">⌕</text>
       <input
         class="search-input"
         placeholder="搜索专辑、歌手"
@@ -21,68 +21,69 @@
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
 
-    <!-- GENRE FILTER -->
-    <view class="genre-section">
-      <text class="section-label">按风格浏览</text>
-      <view class="genre-grid">
-        <view
-          wx:for="{{genres}}"
-          wx:key="name"
-          class="genre-cell {{activeGenre === item.name ? 'active' : ''}}"
-          bindtap="onGenreTap"
-          data-genre="{{item.name}}"
-        >
-          <text class="genre-name">{{item.name}}</text>
-          <text class="genre-count">{{item.count}}</text>
-        </view>
+    <!-- GENRE STAMPS -->
+    <view class="side-row">
+      <text class="side-text">SIDE A — 风格 GENRES</text>
+      <view class="side-rule" />
+    </view>
+    <view class="genre-stamps">
+      <view
+        wx:for="{{genres}}"
+        wx:key="name"
+        class="genre-stamp {{activeGenre === item.name ? 'active' : ''}}"
+        bindtap="onGenreTap"
+        data-genre="{{item.name}}"
+      >
+        <text class="genre-name">{{item.name}}</text>
       </view>
     </view>
 
     <!-- ALBUM LIST -->
-    <view class="album-section">
-      <text class="section-label">{{activeGenre ? activeGenre + ' · ' : ''}}{{loading ? '加载中' : list.length + ' 张专辑'}}</text>
-      <!-- skeleton -->
-      <view wx:if="{{loading}}">
-        <view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="skel-row" style="background:var(--white);">
-          <view class="sk" style="width:92rpx;height:92rpx;flex-shrink:0;" />
-          <view class="skel-info">
-            <view class="sk" style="width:70%;height:26rpx;" />
-            <view class="sk" style="width:55%;height:20rpx;" />
-            <view class="sk" style="width:40%;height:18rpx;" />
-          </view>
-          <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
+    <view class="side-row">
+      <text class="side-text">SIDE B — {{activeGenre ? activeGenre : '全部'}} · {{loading ? '加载中' : list.length + ' 张'}}</text>
+      <view class="side-rule" />
+    </view>
+
+    <!-- skeleton -->
+    <view wx:if="{{loading}}" class="album-list">
+      <view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="skel-row">
+        <view class="sk" style="width:128rpx;height:128rpx;border-radius:50%;flex-shrink:0;" />
+        <view class="skel-info">
+          <view class="sk" style="width:70%;height:26rpx;" />
+          <view class="sk" style="width:55%;height:20rpx;" />
+          <view class="sk" style="width:40%;height:18rpx;" />
         </view>
+        <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
       </view>
-      <!-- empty -->
-      <view wx:elif="{{list.length === 0}}" class="empty-state">
-        <text class="empty-text">没有找到相关专辑</text>
-      </view>
-      <!-- real -->
-      <view wx:else>
-        <view
-          wx:for="{{list}}"
-          wx:key="id"
-          class="album-row"
-          bindtap="onAlbumTap"
-          data-id="{{item.id}}"
-        >
-          <view class="album-cover">
+    </view>
+    <!-- empty -->
+    <view wx:elif="{{list.length === 0}}" class="empty-state">
+      <text class="empty-text">没有找到相关专辑</text>
+    </view>
+    <!-- real -->
+    <view wx:else class="album-list">
+      <view
+        wx:for="{{list}}"
+        wx:key="id"
+        class="album-row"
+        bindtap="onAlbumTap"
+        data-id="{{item.id}}"
+      >
+        <view class="album-disc">
+          <view class="disc-label">
             <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="disc-label-fallback" />
           </view>
-          <view class="album-info">
-            <text class="album-title">{{item.title}}</text>
-            <text class="album-artist">{{item.artist}} · {{item.year}}</text>
-            <view class="album-genres">
-              <text wx:for="{{item.genres}}" wx:for-item="g" wx:key="*this" class="genre-tag">{{g}}</text>
-            </view>
-          </view>
-          <view class="album-score-col">
-            <text class="album-score">{{item.score}}</text>
-            <view class="score-bar-mini">
-              <view class="score-bar-fill" style="width: {{item.scoreFill}}" />
-            </view>
+          <view class="disc-spindle" />
+        </view>
+        <view class="album-info">
+          <text class="album-title">{{item.title}}</text>
+          <text class="album-artist">{{item.artist}} · {{item.year}}</text>
+          <view class="album-genres">
+            <text wx:for="{{item.genres}}" wx:for-item="g" wx:key="*this" class="genre-tag">{{g}}</text>
           </view>
         </view>
+        <text class="album-score">{{item.score}}</text>
       </view>
     </view>
 

@@ -1,8 +1,8 @@
 <view class="page">
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <text class="topbar-title">收藏</text>
-    <text class="topbar-sub">COLLECTION</text>
+    <text class="topbar-title">COLLECTION</text>
+    <text class="topbar-sub">收藏</text>
   </view>
 
   <!-- LOGGED-OUT STATE -->
@@ -15,14 +15,14 @@
 
   <!-- LOADING STATE -->
   <scroll-view wx:elif="{{loading}}" class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <view class="shelf-header">
-      <view class="sk" style="width:120rpx;height:30rpx;" />
+    <view class="side-row">
+      <view class="sk" style="width:200rpx;height:24rpx;" />
+      <view class="side-rule" />
     </view>
     <view class="album-grid">
       <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="skel-cell">
-        <view class="sk" style="width:100%;aspect-ratio:1;margin-bottom:16rpx;" />
-        <view class="sk" style="width:80%;height:24rpx;margin-bottom:8rpx;" />
-        <view class="sk" style="width:60%;height:20rpx;" />
+        <view class="sk" style="width:240rpx;height:240rpx;border-radius:50%;" />
+        <view class="sk" style="width:80%;height:24rpx;margin-top:18rpx;" />
       </view>
     </view>
   </scroll-view>
@@ -37,8 +37,9 @@
 
   <!-- LOGGED-IN: SHELF -->
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <view class="shelf-header">
-      <text class="shelf-count">{{favorites.length}} 张专辑</text>
+    <view class="side-row">
+      <text class="side-text">SIDE A — 唱片墙 · {{favorites.length}} 张</text>
+      <view class="side-rule" />
     </view>
     <view class="album-grid">
       <view
@@ -48,22 +49,24 @@
         bindtap="onAlbumTap"
         data-id="{{item.id}}"
       >
-        <view class="grid-cover">
-          <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
-          <view wx:else class="cover-pat">
-            <view /><view />
-            <view /><view />
+        <view class="grid-disc">
+          <view class="disc-label">
+            <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="disc-label-fallback" />
           </view>
-          <view class="grid-score-badge">
-            <text>{{item.score}}</text>
-          </view>
+          <view class="disc-spindle" />
         </view>
-        <text class="grid-title">{{item.title}}</text>
-        <text class="grid-artist">{{item.artist}}</text>
-        <view class="grid-tag-row">
-          <text wx:for="{{item.genres}}" wx:for-item="g" wx:key="*this" class="grid-tag">{{g}}</text>
+        <view class="grid-foot">
+          <view class="grid-text">
+            <text class="grid-title">{{item.title}}</text>
+            <text class="grid-artist">{{item.artist}}</text>
+          </view>
+          <text class="grid-score-badge">{{item.score}}</text>
         </view>
       </view>
+    </view>
+    <view class="list-end">
+      <text class="list-end-text">— {{favorites.length}} RECORDS —</text>
     </view>
   </scroll-view>
 

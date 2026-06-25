@@ -23,7 +23,12 @@ IMPORT_FILE = os.path.join(BASE_DIR, "albums_import.json")
 CURRENT_YEAR = datetime.now().year
 
 
-def clean(raw_list: list) -> list:
+def clean(raw_list: list, skip_singles_filter: bool = False) -> list:
+    """
+    清洗专辑列表。
+    skip_singles_filter: 跳过「单曲/EP（曲目数<3）」过滤，
+                         用于「按专辑 ID」精确收录用户指定的单张专辑。
+    """
     cleaned = []
     seen: set = set()
 
@@ -43,7 +48,7 @@ def clean(raw_list: list) -> list:
 
         # 过滤单曲/EP（曲目数 < 3）
         track_count = int(a.get("trackCount") or 0)
-        if track_count > 0 and track_count < 3:
+        if not skip_singles_filter and track_count > 0 and track_count < 3:
             continue
 
         # title+artist 去重
@@ -53,17 +58,19 @@ def clean(raw_list: list) -> list:
         seen.add(key)
 
         cleaned.append({
-            "title":       title,
-            "artist":      artist,
-            "releaseYear": year,
-            "coverUrl":    cover,
-            "genres":      a.get("genres") or [],
-            "sourceId":    a.get("sourceId") or "",
-            "source":      a.get("source") or "netease",
-            "crawlSource": a.get("crawlSource") or "",
-            "avgScore":    0.0,
-            "reviewCount": 0,
-            "trackCount":  track_count,
+            "title":            title,
+            "artist":           artist,
+            "primaryArtist":    a.get("primaryArtist") or artist,
+            "neteaseArtistId":  a.get("neteaseArtistId") or "",
+            "releaseYear":      year,
+            "coverUrl":         cover,
+            "genres":           a.get("genres") or [],
+            "sourceId":         a.get("sourceId") or "",
+            "source":           a.get("source") or "netease",
+            "crawlSource":      a.get("crawlSource") or "",
+            "avgScore":         0.0,
+            "reviewCount":      0,
+            "trackCount":       track_count,
         })
 
     return cleaned

@@ -63,7 +63,8 @@ exports.main = async (event, context) => {
       genres:      a.genres,
       artist:      a.artist,
     }
-    if (a.primaryArtist !== undefined) fields.primaryArtist = a.primaryArtist
+    if (a.primaryArtist)   fields.primaryArtist   = a.primaryArtist
+    if (a.neteaseArtistId) fields.neteaseArtistId = a.neteaseArtistId
     return db.collection('albums').doc(existingMap[a.sourceId]).update({ data: fields })
   })
 

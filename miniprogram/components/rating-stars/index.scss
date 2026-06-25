@@ -1,23 +1,25 @@
 .score-picker {
   display: flex;
-  gap: 10rpx;
+  gap: 8rpx;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .score-btn {
-  width: 60rpx;
-  height: 60rpx;
-  line-height: 60rpx;
+  width: 64rpx;
+  height: 64rpx;
+  line-height: 64rpx;
   text-align: center;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #666;
-  border: 2rpx solid #333;
-  border-radius: 8rpx;
+  font-family: var(--font-bebas);
+  font-size: 32rpx;
+  color: var(--gray-mid);
+  border: 2rpx solid var(--gray-light);
+  border-radius: 0;
+  background: var(--off-white);
 }
 
 .score-btn.selected {
-  color: #000;
+  color: var(--black);
   background: var(--accent);
   border-color: var(--accent);
 }

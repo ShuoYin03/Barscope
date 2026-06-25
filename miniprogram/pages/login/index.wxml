@@ -1,7 +1,14 @@
 <view class="page" style="padding-top: {{statusBarHeight}}px">
   <view class="logo-area">
-    <text class="logo-zh">韵镜</text>
-    <text class="logo-en">Barscope</text>
+    <!-- Vinyl disc logo (spinning) -->
+    <view class="logo-vinyl-disc">
+      <view class="logo-vinyl-label">
+        <text class="logo-vinyl-text">韵</text>
+      </view>
+      <view class="logo-vinyl-spindle" />
+    </view>
+    <text class="logo-zh">BARSCOPE</text>
+    <text class="logo-en">韵镜</text>
     <text class="tagline">华语说唱最大评分社区</text>
   </view>
 

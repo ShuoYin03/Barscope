@@ -2,10 +2,11 @@
 
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <view class="topbar-logo">
-      <text class="logo-zh">韵镜</text>
-      <text class="logo-en">Barscope</text>
+    <view class="logo-col">
+      <text class="logo-main">BARSCOPE</text>
+      <text class="logo-sub">中文说唱</text>
     </view>
+    <text class="logo-search" bindtap="onSearchTap">⌕</text>
   </view>
 
   <!-- SCROLLABLE CONTENT -->
@@ -14,114 +15,63 @@
     <!-- TICKER -->
     <ticker songs="{{tickerSongs}}" />
 
-    <!-- ── HERO ─────────────────────────────────────────────────────── -->
-    <!-- skeleton -->
-    <view wx:if="{{loading}}" class="hero">
-      <view class="hero-eyebrow">
-        <view class="sk-dark" style="width:80rpx;height:28rpx;" />
-        <view class="eyebrow-line" />
-        <view class="sk-dark" style="width:70rpx;height:20rpx;" />
-      </view>
-      <view class="hero-content">
-        <view class="hero-cover sk-dark" />
-        <view class="hero-info">
-          <view class="sk-dark" style="width:200rpx;height:36rpx;margin-bottom:14rpx;" />
-          <view class="sk-dark" style="width:150rpx;height:22rpx;margin-bottom:24rpx;" />
-          <view class="sk-dark" style="width:90rpx;height:64rpx;" />
+    <!-- ── HERO — vinyl record, score on orange label (H-A) ─────────── -->
+    <view wx:if="{{loading}}" class="hero-banner hero-banner-sk" />
+    <view wx:elif="{{hero}}" class="hero-banner" bindtap="onHeroTap">
+      <view class="vinyl-hero-disc">
+        <view class="vinyl-hero-label">
+          <text class="vinyl-label-score-num">{{hero.score}}</text>
+          <text class="vinyl-label-score-sub">BARSCOPE</text>
         </view>
+        <view class="vinyl-hero-spindle" />
       </view>
-      <view class="hero-bar-row">
-        <view class="sk-dark" style="width:100%;height:10rpx;" />
-      </view>
-    </view>
-    <!-- real -->
-    <view wx:elif="{{hero}}" class="hero" bindtap="onHeroTap">
-      <view class="hero-eyebrow">
-        <view class="week-badge"><text>评分最高</text></view>
-        <view class="eyebrow-line" />
-        <text class="eyebrow-date">Barscope</text>
-      </view>
-      <view class="hero-content">
-        <view class="hero-cover">
-          <image wx:if="{{hero.coverUrl}}" class="cover-img" src="{{hero.coverUrl}}" mode="aspectFill" />
-          <view wx:else class="cover-grid">
-            <view class="cover-block b1" />
-            <view class="cover-block b2" />
-            <view class="cover-block b3" />
-            <view class="cover-block b4" />
-          </view>
-        </view>
-        <view class="hero-info">
-          <text class="hero-title">{{hero.title}}</text>
-          <text class="hero-artist">{{hero.artist}} · {{hero.year}}</text>
-          <view class="hero-score-row">
-            <text class="hero-score">{{hero.score}}</text>
-            <text class="hero-score-max">/5</text>
-            <text class="hero-score-label">TOP</text>
-          </view>
-        </view>
-      </view>
-      <view class="hero-bar-row">
-        <score-bar score="{{hero.score}}" maxScore="{{5}}" />
+      <view class="hero-info">
+        <text class="hero-title">{{hero.title}}</text>
+        <text class="hero-meta">{{hero.artist}} · {{hero.year}}</text>
       </view>
     </view>
 
-    <!-- ── SECTION 01: CHART TOP 5 ────────────────────────────────── -->
+    <!-- ── SIDE A — TOP CHARTS (H-A text rows) ────────────────────── -->
     <view class="section-block">
-      <section-header num="01" title="总榜 · TOP 10" bind:more="onChartMore" />
-      <!-- skeleton -->
-      <view wx:if="{{loading}}" class="chart-list">
-        <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="skel-row">
-          <view class="sk" style="width:40rpx;height:40rpx;flex-shrink:0;" />
-          <view class="sk" style="width:92rpx;height:92rpx;flex-shrink:0;" />
-          <view class="skel-info">
-            <view class="sk" style="width:65%;height:26rpx;" />
-            <view class="sk" style="width:50%;height:20rpx;" />
+      <view class="side-a-rule" />
+      <view class="side-a-head">
+        <text class="side-a-label">SIDE A — TOP CHARTS</text>
+      </view>
+      <view wx:if="{{loading}}" class="ca-list">
+        <view class="ca-rows">
+          <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
+            <view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" />
+            <view class="skel-info" style="flex:1;">
+              <view class="sk" style="width:60%;height:24rpx;" />
+            </view>
+            <view class="sk" style="width:56rpx;height:30rpx;flex-shrink:0;" />
           </view>
-          <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
         </view>
       </view>
-      <!-- real -->
-      <view wx:else class="chart-list">
-        <view
-          wx:for="{{chartItems}}"
-          wx:key="rank"
-          class="chart-item"
-          bindtap="onAlbumTap"
-          data-id="{{item.albumId}}"
-        >
-          <text class="chart-rank {{item.rank <= 3 ? 'top3' : ''}}">{{item.rank}}</text>
-          <view class="chart-cover">
-            <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
-            <view wx:else class="cover-pat">
-              <view /><view /><view />
-              <view /><view /><view />
-              <view /><view /><view />
+      <view wx:else class="ca-list">
+        <view class="ca-rows">
+          <view
+            wx:for="{{chartItems}}"
+            wx:key="rank"
+            class="ca-row"
+            bindtap="onAlbumTap"
+            data-id="{{item.albumId}}"
+          >
+            <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank <= 5 ? 'A' + item.rank : 'B' + (item.rank - 5)}}</text>
+            <view class="ca-info">
+              <text class="ca-title">{{item.title}}</text>
+              <text class="ca-artist">{{item.artist}}</text>
             </view>
-          </view>
-          <view class="chart-info">
-            <text class="chart-title">{{item.title}}</text>
-            <view class="chart-meta">
-              <text>{{item.artist}}</text>
-              <view class="meta-dot" />
-              <text>{{item.year}}</text>
-            </view>
-          </view>
-          <view class="chart-score-col">
-            <text class="chart-score">{{item.score}}</text>
-            <view class="mini-bar">
-              <view class="mini-bar-fill" style="width: {{item.scoreFill}}" />
-            </view>
-            <text class="chart-trend {{item.trend}}">{{item.trendText}}</text>
+            <text class="ca-score">{{item.scoreDisplay}}</text>
           </view>
         </view>
+        <view class="ca-more" bindtap="onChartMore"><text>更多 →</text></view>
       </view>
     </view>
 
     <!-- ── SECTION 02: NEW RELEASES ────────────────────────────────── -->
     <view class="section-block">
-      <section-header num="02" title="本月新碟" bind:more="onReleasesMore" />
-      <!-- skeleton -->
+      <section-header num="02" title="本月新碟" more="{{true}}" bind:more="onReleasesMore" />
       <view wx:if="{{loading}}" class="grid2">
         <view wx:for="{{[1,2]}}" wx:key="*this" class="skel-cell">
           <view class="sk" style="width:80rpx;height:56rpx;margin-bottom:12rpx;" />
@@ -130,7 +80,6 @@
           <view class="sk" style="width:60%;height:20rpx;" />
         </view>
       </view>
-      <!-- real -->
       <view wx:else class="grid2">
         <view
           wx:for="{{newReleases}}"
@@ -142,16 +91,12 @@
           <text class="g2-rank">{{item.rank}}</text>
           <view class="g2-cover">
             <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
-            <view wx:else class="g2-cover-lines">
-              <view class="g2-line l1" />
-              <view class="g2-line l2" />
-              <view class="g2-line l3" />
-            </view>
+            <view wx:else class="vinyl-cover-sq" />
           </view>
           <text class="g2-title">{{item.title}}</text>
           <text class="g2-artist">{{item.artist}} · {{item.year}}</text>
           <view class="g2-score-row">
-            <text class="g2-score">{{item.score}}</text>
+            <text class="g2-score">{{item.scoreDisplay}}</text>
             <view class="g2-bar">
               <view class="g2-bar-fill" style="width: {{item.scoreFill}}" />
             </view>
@@ -160,11 +105,14 @@
       </view>
     </view>
 
-    <!-- ── GENRE GRID (static, always shows) ─────────────────────── -->
+    <!-- ── GENRE GRID ─────────────────────────────────────────────── -->
     <view class="genre-section">
       <view class="genre-hd">
-        <text class="genre-hd-title">按风格浏览</text>
-        <text class="genre-hd-more" bindtap="onGenreMore">全部风格 →</text>
+        <view class="genre-hd-left">
+          <text class="genre-num">03</text>
+          <text class="genre-hd-title">按风格浏览</text>
+        </view>
+        <text class="genre-hd-more" bindtap="onGenreMore">全部 →</text>
       </view>
       <view class="genre-grid">
         <view
@@ -177,17 +125,20 @@
           <text class="genre-name">{{item.name}}</text>
           <text class="genre-count">{{item.count}}</text>
         </view>
+        <view class="genre-cell genre-all" bindtap="onGenreMore">
+          <text class="genre-name">全部 →</text>
+          <text class="genre-count">{{genres.length}} 类型</text>
+        </view>
       </view>
     </view>
 
-    <!-- ── SECTION 03: RECENT REVIEWS ─────────────────────────────── -->
+    <!-- ── SECTION 04: RECENT REVIEWS ─────────────────────────────── -->
     <view class="section-block">
-      <section-header num="03" title="最新评论" bind:more="onReviewMore" />
-      <!-- skeleton -->
+      <section-header num="04" title="最新评论" more="{{true}}" bind:more="onReviewMore" />
       <view wx:if="{{loading}}" class="reviews-list">
         <view wx:for="{{[1,2,3]}}" wx:key="*this" class="review-item">
           <view class="review-header">
-            <view class="sk" style="width:60rpx;height:60rpx;flex-shrink:0;" />
+            <view class="sk" style="width:60rpx;height:60rpx;border-radius:50%;flex-shrink:0;" />
             <view class="skel-info">
               <view class="sk" style="width:120rpx;height:24rpx;" />
               <view class="sk" style="width:80rpx;height:20rpx;" />
@@ -197,7 +148,6 @@
           <view class="sk" style="width:80%;height:22rpx;" />
         </view>
       </view>
-      <!-- real -->
       <view wx:else class="reviews-list">
         <view
           wx:for="{{reviews}}"

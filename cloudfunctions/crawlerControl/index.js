@@ -5,8 +5,8 @@ const _   = db.command
 const COL = 'crawlerStatus'
 const DOC = 'singleton'
 
-const ADMIN_ACTIONS  = new Set(['trigger', 'updateSchedule', 'clearLog'])
-const SERVER_ACTIONS = new Set(['claimRun', 'updateProgress', 'appendLog', 'completeRun', 'failRun'])
+const ADMIN_ACTIONS  = new Set(['trigger', 'updateSchedule', 'clearLog', 'abort'])
+const SERVER_ACTIONS = new Set(['claimRun', 'updateProgress', 'appendLog', 'completeRun', 'failRun', 'abortRun', 'isAborted'])
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
@@ -37,13 +37,36 @@ exports.main = async (event, context) => {
 
     // ── Admin: trigger a manual run ────────────────────────────────────────────
     if (action === 'trigger') {
+      const { mode = 'fission', param = '' } = event
       await upsertDoc({
         status:      'pending',
         triggeredAt: db.serverDate(),
         triggerType: 'manual',
+        mode,
+        param:       String(param || ''),
+        abort:       false,
         completedAt: null,
+        lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] },
       })
       return { success: true }
+    }
+
+    // ── Admin: abort current run ────────────────────────────────────────────────
+    if (action === 'abort') {
+      let cur
+      try { cur = (await db.collection(COL).doc(DOC).get()).data } catch { cur = null }
+      const st = cur && cur.status
+      if (st === 'pending') {
+        // 尚未被认领 → 直接取消
+        await upsertDoc({ status: 'aborted', abort: false, completedAt: db.serverDate() })
+        return { success: true, cancelled: 'pending' }
+      }
+      if (st === 'running') {
+        // 置中止标记，由运行方（云端分段 / 本地 pipeline）检测后收尾
+        await upsertDoc({ abort: true })
+        return { success: true, cancelled: 'running' }
+      }
+      return { success: true, noop: true }
     }
 
     // ── Admin: update schedule config ─────────────────────────────────────────
@@ -71,10 +94,15 @@ exports.main = async (event, context) => {
       await db.collection(COL).doc(DOC).update({
         data: {
           status: 'running',
+          abort:  false,
           progress: { totalArtists: 0, processedArtists: 0, albumsFound: 0, candidatesFound: 0 },
         },
       })
-      return { success: true }
+      return {
+        success: true,
+        mode:    current.mode  || 'fission',
+        param:   current.param || '',
+      }
     }
 
     // ── Pipeline: update progress ─────────────────────────────────────────────
@@ -122,6 +150,27 @@ exports.main = async (event, context) => {
       return { success: true }
     }
 
+    // ── Pipeline: query abort flag ────────────────────────────────────────────
+    if (action === 'isAborted') {
+      let cur
+      try { cur = (await db.collection(COL).doc(DOC).get()).data } catch { cur = null }
+      return { success: true, abort: !!(cur && cur.abort) }
+    }
+
+    // ── Pipeline: finalize an aborted run ─────────────────────────────────────
+    if (action === 'abortRun') {
+      const { newAlbums = 0, newCandidates = 0 } = event
+      await db.collection(COL).doc(DOC).update({
+        data: {
+          status:      'aborted',
+          abort:       false,
+          completedAt: db.serverDate(),
+          lastRunSummary: { newAlbums, newCandidates, errors: ['用户中止'] },
+        },
+      })
+      return { success: true }
+    }
+
     return { success: false, error: '未知 action' }
   } catch (err) {
     return { success: false, error: err.message }
@@ -145,6 +194,9 @@ function makeDefault() {
     triggeredAt:    null,
     completedAt:    null,
     triggerType:    'manual',
+    mode:           'fission',
+    param:          '',
+    abort:          false,
     progress:       { totalArtists: 0, processedArtists: 0, albumsFound: 0, candidatesFound: 0 },
     lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] },
     schedule:       { enabled: false, interval: 'weekly', nextRun: null },

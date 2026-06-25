@@ -1,15 +1,25 @@
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('assets/fonts/BebasNeue-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 page {
-  --black: #000000;
-  --white: #ffffff;
-  --off-white: #f4f3ee;
-  --gray-light: #e8e8e4;
-  --gray-mid: #999999;
-  --gray-dark: #444444;
-  --accent: #FFD600;
+  --black: #08060A;
+  --white: #F0E8D4;
+  --off-white: #1A1714;
+  --gray-light: #2A2420;
+  --gray-mid: #5A5044;
+  --gray-dark: #3A3028;
+  --accent: #C94E25;
+  --groove-a: #100A0E;
+  --groove-b: #1A1218;
   --tab-bar-height: 100rpx;
+  --font-bebas: 'Bebas Neue', impact, 'Arial Narrow', sans-serif;
   font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
-  background: var(--off-white);
-  color: var(--black);
+  background: var(--black);
+  color: var(--white);
 }
 
 /* ── SKELETON LOADING ─────────────────────────────────────────────────────────
@@ -25,7 +35,7 @@ page {
   background: linear-gradient(
     90deg,
     var(--gray-light) 25%,
-    #f2f2ee        50%,
+    #2e2b28           50%,
     var(--gray-light) 75%
   );
   background-size: 600rpx 100%;
@@ -52,7 +62,7 @@ page {
   gap: 24rpx;
   padding: 22rpx 32rpx;
   border-bottom: 2rpx solid var(--gray-light);
-  background: var(--white);
+  background: var(--black);
 }
 
 .skel-info {
@@ -64,6 +74,6 @@ page {
 
 /* Shared skeleton grid cell (new releases / favorites) */
 .skel-cell {
-  background: var(--white);
+  background: var(--off-white);
   padding: 28rpx 28rpx 24rpx;
 }

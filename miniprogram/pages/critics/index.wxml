@@ -1,0 +1,105 @@
+<view class="page">
+
+  <!-- TOPBAR -->
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="topbar-back" bindtap="onBack">
+      <text class="back-arrow">←</text>
+    </view>
+    <view class="topbar-titles">
+      <text class="topbar-title">CRITICS</text>
+      <text class="topbar-sub">MGMT</text>
+    </view>
+  </view>
+
+  <!-- SEARCH -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">⌕</text>
+      <input
+        class="search-input"
+        placeholder="搜索用户昵称…"
+        value="{{keyword}}"
+        bindinput="onSearch"
+        placeholder-style="color:#666"
+      />
+    </view>
+  </view>
+
+  <scroll-view
+    class="content"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    bindscrolltolower="onReachBottom"
+  >
+    <!-- SKELETON -->
+    <block wx:if="{{loading && list.length === 0}}">
+      <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="card-skeleton">
+        <view class="sk skel-pic"></view>
+        <view class="skel-body">
+          <view class="sk skel-name"></view>
+          <view class="sk skel-meta"></view>
+        </view>
+      </view>
+    </block>
+
+    <!-- EMPTY -->
+    <view wx:elif="{{list.length === 0}}" class="empty-state">
+      <text class="empty-icon">○</text>
+      <text class="empty-text">{{ keyword ? '没有匹配的用户' : '输入昵称搜索用户' }}</text>
+    </view>
+
+    <!-- USER CARDS -->
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="openId" class="card">
+        <view class="card-photo">
+          <image wx:if="{{item.avatarUrl}}" class="photo-img" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="photo-fallback">
+            <text class="photo-initial">{{item.nickName[0]}}</text>
+          </view>
+        </view>
+
+        <view class="card-body">
+          <view class="card-name-row">
+            <text class="card-name">{{item.nickName}}</text>
+            <view wx:if="{{item.type === 'critic'}}" class="status-chip critic-chip">乐评人</view>
+            <view wx:elif="{{item.type === 'admin'}}" class="status-chip admin-chip">管理员</view>
+          </view>
+          <view class="card-meta-row">
+            <text class="card-meta">{{item.reviewCount}} 条评论</text>
+            <block wx:if="{{item.joinedAt}}">
+              <view class="meta-dot"></view>
+              <text class="card-meta">{{item.joinedAt}}</text>
+            </block>
+          </view>
+
+          <view wx:if="{{item.type !== 'admin'}}" class="card-actions">
+            <view
+              wx:if="{{item.type !== 'critic'}}"
+              class="btn-grant {{operating[item.openId] ? 'btn-disabled' : ''}}"
+              bindtap="onGrantCritic"
+              data-openid="{{item.openId}}"
+            >
+              <text class="btn-icon">★</text><text class="btn-label">认证乐评人</text>
+            </view>
+            <view
+              wx:else
+              class="btn-revoke {{operating[item.openId] ? 'btn-disabled' : ''}}"
+              bindtap="onRevokeCritic"
+              data-openid="{{item.openId}}"
+            >
+              <text class="btn-icon">✗</text><text class="btn-label">撤销认证</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{loading}}" class="load-more">
+        <text class="load-more-text">加载中…</text>
+      </view>
+      <view wx:elif="{{!hasMore && list.length > 0}}" class="list-end">
+        <text class="list-end-text">── 已全部加载 ──</text>
+      </view>
+    </block>
+  </scroll-view>
+</view>

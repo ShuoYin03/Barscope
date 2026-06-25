@@ -1,14 +1,16 @@
 <view class="page">
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <text class="topbar-title">我的</text>
-    <text class="topbar-sub">PROFILE</text>
+    <text class="topbar-title">PROFILE</text>
+    <text wx:if="{{isLoggedIn}}" class="topbar-set" bindtap="onSettingsTap">⚙</text>
   </view>
 
   <!-- LOGGED-OUT STATE -->
   <view wx:if="{{!isLoggedIn}}" class="gate-content">
-    <view class="avatar-placeholder">
-      <text class="avatar-ph-icon">○</text>
+    <view class="vinyl-gate-disc">
+      <view class="vinyl-gate-label">
+        <text class="gate-disc-icon">○</text>
+      </view>
     </view>
     <text class="gate-title">登录查看个人主页</text>
     <text class="gate-sub">追踪你的评分记录，加入韵镜社区</text>
@@ -18,74 +20,87 @@
   <!-- LOGGED-IN STATE -->
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
 
-    <!-- USER CARD -->
+    <!-- USER CARD — vinyl avatar -->
     <view class="user-card">
-      <view class="user-avatar">
-        <text class="avatar-initial">{{userInfo.nickName[0]}}</text>
+      <view class="user-avatar vinyl-disc">
+        <view class="vinyl-disc-center">
+          <text class="avatar-initial">{{userInfo.nickName[0]}}</text>
+        </view>
+        <view class="vinyl-disc-spindle" />
       </view>
       <view class="user-info-col">
-        <view class="user-name-row">
-          <text class="user-name">{{userInfo.nickName}}</text>
-          <text wx:if="{{isCritic}}" class="critic-badge">乐评人</text>
+        <text class="user-name">{{userInfo.nickName}}</text>
+        <view wx:if="{{isCritic}}" class="critic-badge-wrap">
+          <text class="critic-badge">乐评人</text>
         </view>
         <text wx:if="{{userInfo.bio}}" class="user-bio">{{userInfo.bio}}</text>
-        <view class="user-stats">
-          <view class="stat-item">
-            <text class="stat-num">{{reviews.length}}</text>
-            <text class="stat-lbl">评论</text>
-          </view>
-        </view>
       </view>
     </view>
 
-    <!-- ADMIN ENTRY（仅管理员可见） -->
-    <view wx:if="{{isAdmin}}" class="admin-entry" bindtap="onAdminTap">
-      <view class="admin-entry-left">
-        <view class="admin-icon-wrap">
-          <text class="admin-icon">⚙</text>
-        </view>
-        <view class="admin-entry-text">
-          <text class="admin-entry-title">艺人候选审核</text>
-          <text class="admin-entry-sub">管理 BFS 发现的新艺人</text>
-        </view>
+    <!-- STAT STRIP -->
+    <view class="stat-strip">
+      <view class="stat-cell">
+        <text class="stat-num">{{reviews.length}}</text>
+        <text class="stat-lbl">评论</text>
       </view>
-      <view class="admin-entry-right">
-        <view wx:if="{{pendingCount > 0}}" class="pending-badge">
-          <text class="pending-num">{{pendingCount}}</text>
-        </view>
-        <text class="admin-arrow">→</text>
+      <view class="stat-cell">
+        <text class="stat-num">{{favCount}}</text>
+        <text class="stat-lbl">收藏</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-num">{{albumCount}}</text>
+        <text class="stat-lbl">专辑</text>
       </view>
     </view>
 
-    <!-- SECTION DIVIDER -->
-    <view class="section-head">
-      <text class="section-label">我的评论</text>
+    <!-- SIDE A — 我的 -->
+    <view class="side-row">
+      <text class="side-text">SIDE A — 我的</text>
     </view>
 
-    <!-- REVIEW HISTORY -->
-    <view class="review-history">
-      <view
-        wx:for="{{reviews}}"
-        wx:key="id"
-        class="history-item"
-        bindtap="onReviewTap"
-        data-id="{{item.id}}"
-      >
-        <view class="history-album-row">
-          <view class="history-cover" />
-          <view class="history-meta">
-            <text class="history-album-title">{{item.albumTitle}}</text>
-            <text class="history-artist">{{item.artist}}</text>
-          </view>
-          <text class="history-stars">{{item.ratingText}}</text>
-        </view>
-        <text class="history-content">{{item.content}}</text>
-        <view class="history-footer">
-          <text class="history-time">{{item.timeAgo}}</text>
-          <text class="history-likes">❤ {{item.likes}}</text>
-        </view>
-      </view>
+    <view class="menu-row" bindtap="onMyReviews">
+      <text class="menu-label">我的评论</text>
+      <text wx:if="{{reviews.length > 0}}" class="menu-count">{{reviews.length}}</text>
+      <text class="menu-arrow">→</text>
     </view>
+    <view class="menu-row" bindtap="onMyFavorites">
+      <text class="menu-label">我的收藏</text>
+      <text wx:if="{{favCount > 0}}" class="menu-count">{{favCount}}</text>
+      <text class="menu-arrow">→</text>
+    </view>
+    <view class="menu-row" bindtap="onSettingsTap">
+      <text class="menu-label">偏好设置</text>
+      <text class="menu-arrow">→</text>
+    </view>
+
+    <!-- SIDE B — ADMIN -->
+    <block wx:if="{{isAdmin}}">
+      <view class="side-row b">
+        <text class="side-text">SIDE B — ADMIN</text>
+      </view>
+
+      <view class="menu-row" bindtap="onAdminCandidates">
+        <text class="menu-icon">✦</text>
+        <text class="menu-label">艺人候选审核</text>
+        <view wx:if="{{pendingCount > 0}}" class="pending-badge"><text class="pending-num">{{pendingCount}}</text></view>
+        <text class="menu-arrow">→</text>
+      </view>
+      <view class="menu-row" bindtap="onAdminAlbums">
+        <text class="menu-icon">◉</text>
+        <text class="menu-label">专辑管理</text>
+        <text class="menu-arrow">→</text>
+      </view>
+      <view class="menu-row" bindtap="onAdminCrawler">
+        <text class="menu-icon">⟳</text>
+        <text class="menu-label">爬虫管理</text>
+        <text class="menu-arrow">→</text>
+      </view>
+      <view class="menu-row" bindtap="onAdminCritics">
+        <text class="menu-icon">★</text>
+        <text class="menu-label">乐评人认证</text>
+        <text class="menu-arrow">→</text>
+      </view>
+    </block>
 
   </scroll-view>
 

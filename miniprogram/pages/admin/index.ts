@@ -13,75 +13,58 @@ interface Candidate {
   addedAt:    string
 }
 
-interface CriticUser {
-  openId:      string
-  nickName:    string
-  avatarUrl:   string
-  type:        'critic' | 'normal' | 'admin'
-  reviewCount: number
-  joinedAt:    string
-}
-
 const formatFans = (n: number): string => {
   if (!n) return ''
   if (n >= 10000) return `${(n / 10000).toFixed(1)}万粉`
   return `${n} 粉`
 }
 
-type TabKey = 'pending' | 'approved' | 'declined' | 'critics' | 'crawler'
+type TabKey = 'pending' | 'approved' | 'declined'
 
-let _criticSearchTimer: any = null
-let _crawlerPollTimer:  any = null
+let _searchTimer: any = null
 
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
 
-    activeTab:  'pending' as TabKey,
+    activeTab: 'pending' as TabKey,
     tabs: [
       { key: 'pending',  label: '待审核', count: 0 },
       { key: 'approved', label: '已批准', count: 0 },
       { key: 'declined', label: '已拒绝', count: 0 },
-      { key: 'critics',  label: '乐评人', count: 0 },
-      { key: 'crawler',  label: '爬虫',   count: 0 },
     ],
 
-    // Candidate tabs state
-    list:    [] as Candidate[],
-    loading: false,
-    hasMore: false,
-    page:    1,
-    pageSize: 20,
+    list:       [] as Candidate[],
+    loading:    false,
+    hasMore:    false,
+    page:       1,
+    pageSize:   20,
     deciding:   {} as Record<string, boolean>,
     refreshing: {} as Record<string, boolean>,
 
-    // Critics tab state
-    criticList:     [] as CriticUser[],
-    criticKeyword:  '',
-    criticLoading:  false,
-    criticHasMore:  false,
-    criticPage:     1,
-    operating:      {} as Record<string, boolean>,
+    keyword:    '',
 
-    // Crawler tab state
-    crawlerStatus: null as any,
-    crawlerTriggering: false,
-    crawlerScheduleEnabled: false,
-    crawlerScheduleInterval: 'weekly' as 'daily' | 'weekly',
+    selectMode:    false,
+    selected:      {} as Record<string, boolean>,
+    batchDeciding: false,
   },
 
-  onLoad() {
+  onLoad(options: Record<string, string>) {
     const app = getApp<IAppOption>()
     this.setData({
       statusBarHeight: app.globalData.statusBarHeight,
       topbarHeight:    app.globalData.topbarHeight,
     })
     this._loadStats()
-    this._loadList('pending', 1)
+
+    const valid: TabKey[] = ['pending', 'approved', 'declined']
+    const tab = options && options.tab as TabKey
+    const initial: TabKey = valid.indexOf(tab) >= 0 ? tab : 'pending'
+    this.setData({ activeTab: initial })
+    this._loadList(initial, 1)
   },
 
-  // ── stats badge ─────────────────────────────────────────────────────────────
   _loadStats() {
     wx.cloud.callFunction({
       name: 'manageCandidates',
@@ -91,137 +74,111 @@ Page({
         if (!r.success) return
         const tabs = this.data.tabs.map((t: any) => ({
           ...t,
-          count: t.key === 'critics' ? 0 : (r[t.key] || 0),
+          count: r[t.key] || 0,
         }))
         this.setData({ tabs })
       },
     })
   },
 
-  // ── tab switch ──────────────────────────────────────────────────────────────
   onTabTap(e: WechatMiniprogram.TouchEvent) {
     const key = (e.currentTarget.dataset as { key: TabKey }).key
     if (key === this.data.activeTab) return
-    this.setData({ activeTab: key })
-
-    if (key === 'critics') {
-      this.setData({ criticList: [], criticPage: 1 })
-      this._loadCritics('', 1)
-    } else if (key === 'crawler') {
-      this._startCrawlerPoll()
-    } else {
-      this._stopCrawlerPoll()
-      this.setData({ list: [], page: 1 })
-      this._loadList(key as any, 1)
-    }
+    this.setData({ activeTab: key, list: [], page: 1, keyword: '', selectMode: false, selected: {} })
+    this._loadList(key, 1)
   },
 
-  // ── candidate list ──────────────────────────────────────────────────────────
-  _loadList(status: 'pending' | 'approved' | 'declined', page: number) {
+  _loadList(status: TabKey, page: number) {
     this.setData({ loading: true })
     wx.cloud.callFunction({
       name: 'manageCandidates',
-      data: { action: 'list', status, page, pageSize: this.data.pageSize },
+      data: { action: 'list', status, page, pageSize: this.data.pageSize, keyword: this.data.keyword },
       success: (res: any) => {
         const r = res.result
         if (!r.success) { this.setData({ loading: false }); return }
         const newList = (page === 1 ? r.list : [...this.data.list, ...r.list])
           .map((item: any) => ({ ...item, fansText: formatFans(item.fansSize || 0) }))
-        this.setData({
-          list:    newList,
-          page,
-          hasMore: r.list.length === this.data.pageSize,
-          loading: false,
-        })
+        this.setData({ list: newList, page, hasMore: r.list.length === this.data.pageSize, loading: false })
       },
       fail: () => this.setData({ loading: false }),
     })
   },
 
+  onSearch(e: WechatMiniprogram.Input) {
+    const keyword = e.detail.value || ''
+    this.setData({ keyword, list: [], page: 1 })
+    clearTimeout(_searchTimer)
+    _searchTimer = setTimeout(() => {
+      this._loadList(this.data.activeTab, 1)
+    }, 400)
+  },
+
+  onClearSearch() {
+    this.setData({ keyword: '', list: [], page: 1 })
+    this._loadList(this.data.activeTab, 1)
+  },
+
   onReachBottom() {
-    if (this.data.activeTab === 'critics') {
-      if (!this.data.criticHasMore || this.data.criticLoading) return
-      this._loadCritics(this.data.criticKeyword, this.data.criticPage + 1)
-    } else {
-      if (!this.data.hasMore || this.data.loading) return
-      this._loadList(this.data.activeTab as any, this.data.page + 1)
-    }
+    if (!this.data.hasMore || this.data.loading) return
+    this._loadList(this.data.activeTab, this.data.page + 1)
   },
 
   onPullDownRefresh() {
-    if (this.data.activeTab === 'critics') {
-      this._loadCritics(this.data.criticKeyword, 1)
-    } else {
-      this._loadStats()
-      this._loadList(this.data.activeTab as any, 1)
-    }
+    this._loadStats()
+    this.setData({ list: [], page: 1 })
+    this._loadList(this.data.activeTab, 1)
     wx.stopPullDownRefresh()
   },
 
-  onBack() {
-    wx.navigateBack()
-  },
+  onBack() { wx.navigateBack() },
 
-  // ── candidate actions ────────────────────────────────────────────────────────
+  // ── single-card actions ──────────────────────────────────────────────────────
   onApprove(e: WechatMiniprogram.TouchEvent) {
     const { id } = e.currentTarget.dataset as { id: string }
-    this._decide(id, 'approved')
+    this._decide([{ id, decision: 'approved' }])
   },
 
   onDecline(e: WechatMiniprogram.TouchEvent) {
     const { id } = e.currentTarget.dataset as { id: string }
-    this._decide(id, 'declined')
+    this._decide([{ id, decision: 'declined' }])
   },
 
   onRevoke(e: WechatMiniprogram.TouchEvent) {
     const { id } = e.currentTarget.dataset as { id: string }
-    this._decide(id, 'pending')
+    this._decide([{ id, decision: 'pending' }])
   },
 
   onRestore(e: WechatMiniprogram.TouchEvent) {
     const { id } = e.currentTarget.dataset as { id: string }
-    this._decide(id, 'pending')
+    this._decide([{ id, decision: 'pending' }])
   },
 
-  _decide(docId: string, decision: 'approved' | 'declined' | 'pending') {
-    const deciding = { ...this.data.deciding, [docId]: true }
-    this.setData({ deciding })
+  _decide(decisions: Array<{ id: string; decision: string }>) {
+    const ids = decisions.map(d => d.id)
+    const decidingPatch: Record<string, boolean> = {}
+    ids.forEach(id => { decidingPatch[id] = true })
+    this.setData({ deciding: { ...this.data.deciding, ...decidingPatch } })
 
     wx.cloud.callFunction({
       name: 'manageCandidates',
-      data: {
-        action:    'decide',
-        decisions: [{ id: docId, decision }],
-      },
+      data: { action: 'decide', decisions },
       success: (res: any) => {
         const r = res.result
+        const deciding = { ...this.data.deciding }
+        ids.forEach(id => delete deciding[id])
         if (r.success) {
-          const list = this.data.list.filter((c: Candidate) => c._id !== docId)
-          const currentTab = this.data.activeTab
-          const tabs = this.data.tabs.map((t: any) => {
-            if (t.key === 'critics') return t
-            if (decision === 'pending') {
-              if (t.key === currentTab) return { ...t, count: Math.max(0, t.count - 1) }
-              if (t.key === 'pending')  return { ...t, count: t.count + 1 }
-            } else {
-              if (t.key === 'pending')  return { ...t, count: Math.max(0, t.count - 1) }
-              if (t.key === decision)   return { ...t, count: t.count + 1 }
-            }
-            return t
-          })
-          const deciding = { ...this.data.deciding }
-          delete deciding[docId]
-          this.setData({ list, tabs, deciding })
+          const idsSet = new Set(ids)
+          const list = this.data.list.filter((c: Candidate) => !idsSet.has(c._id))
+          this.setData({ list, deciding })
+          this._loadStats()
         } else {
-          const deciding = { ...this.data.deciding }
-          delete deciding[docId]
           this.setData({ deciding })
           wx.showToast({ title: '操作失败', icon: 'error' })
         }
       },
       fail: () => {
         const deciding = { ...this.data.deciding }
-        delete deciding[docId]
+        ids.forEach(id => delete deciding[id])
         this.setData({ deciding })
         wx.showToast({ title: '网络错误', icon: 'error' })
       },
@@ -231,9 +188,7 @@ Page({
   onRefresh(e: WechatMiniprogram.TouchEvent) {
     const { id } = e.currentTarget.dataset as { id: string }
     if (this.data.refreshing[id]) return
-
-    const refreshing = { ...this.data.refreshing, [id]: true }
-    this.setData({ refreshing })
+    this.setData({ refreshing: { ...this.data.refreshing, [id]: true } })
 
     wx.cloud.callFunction({
       name: 'manageCandidates',
@@ -244,7 +199,10 @@ Page({
         delete refreshing[id]
         this.setData({ refreshing })
         if (r.success) {
-          wx.showToast({ title: `已新增 ${r.inserted} 张`, icon: 'success' })
+          const title = r.fetched === 0 ? '拉取0张·可能被风控'
+            : r.inserted > 0 ? `新增 ${r.inserted} 张`
+            : `已是最新·拉取${r.fetched}`
+          wx.showToast({ title, icon: 'none' })
         } else {
           wx.showToast({ title: '刷新失败', icon: 'error' })
         }
@@ -258,180 +216,60 @@ Page({
     })
   },
 
-  // ── critics tab ──────────────────────────────────────────────────────────────
-  _loadCritics(keyword: string, page: number) {
-    this.setData({ criticLoading: true })
+  // ── multi-select ─────────────────────────────────────────────────────────────
+  onToggleSelectMode() {
+    const selectMode = !this.data.selectMode
+    this.setData({ selectMode, selected: {} })
+  },
+
+  onCardTap(e: WechatMiniprogram.TouchEvent) {
+    if (!this.data.selectMode) return
+    const { id } = e.currentTarget.dataset as { id: string }
+    const selected = { ...this.data.selected }
+    if (selected[id]) delete selected[id]
+    else selected[id] = true
+    this.setData({ selected })
+  },
+
+  onSelectAll() {
+    const selected: Record<string, boolean> = {}
+    this.data.list.forEach((c: Candidate) => { selected[c._id] = true })
+    this.setData({ selected })
+  },
+
+  onDeselectAll() {
+    this.setData({ selected: {} })
+  },
+
+  onBatchApprove() { this._batchDecide('approved') },
+  onBatchDecline()  { this._batchDecide('declined') },
+  onBatchRestore()  { this._batchDecide('pending') },
+
+  _batchDecide(decision: string) {
+    const ids = Object.keys(this.data.selected)
+    if (!ids.length || this.data.batchDeciding) return
+    this.setData({ batchDeciding: true })
+
+    const decisions = ids.map(id => ({ id, decision }))
     wx.cloud.callFunction({
-      name: 'manageUsers',
-      data: { action: 'listUsers', keyword, page, pageSize: this.data.pageSize },
+      name: 'manageCandidates',
+      data: { action: 'decide', decisions },
       success: (res: any) => {
         const r = res.result
-        if (!r.success) { this.setData({ criticLoading: false }); return }
-        const newList = page === 1 ? r.list : [...this.data.criticList, ...r.list]
-        this.setData({
-          criticList:    newList,
-          criticPage:    page,
-          criticHasMore: r.list.length === this.data.pageSize,
-          criticLoading: false,
-        })
-      },
-      fail: () => this.setData({ criticLoading: false }),
-    })
-  },
-
-  onCriticKeyword(e: WechatMiniprogram.Input) {
-    const keyword = e.detail.value || ''
-    this.setData({ criticKeyword: keyword, criticList: [], criticPage: 1 })
-    clearTimeout(_criticSearchTimer)
-    _criticSearchTimer = setTimeout(() => {
-      this._loadCritics(keyword, 1)
-    }, 500)
-  },
-
-  onGrantCritic(e: WechatMiniprogram.TouchEvent) {
-    const { openid } = e.currentTarget.dataset as { openid: string }
-    this._toggleCritic(openid, 'grantCritic', 'critic')
-  },
-
-  onRevokeCritic(e: WechatMiniprogram.TouchEvent) {
-    const { openid } = e.currentTarget.dataset as { openid: string }
-    this._toggleCritic(openid, 'revokeCritic', 'normal')
-  },
-
-  _toggleCritic(openId: string, action: string, newType: 'critic' | 'normal') {
-    if (this.data.operating[openId]) return
-    const operating = { ...this.data.operating, [openId]: true }
-    this.setData({ operating })
-
-    wx.cloud.callFunction({
-      name: 'manageUsers',
-      data: { action, openId },
-      success: (res: any) => {
-        const r = res.result
-        const operating = { ...this.data.operating }
-        delete operating[openId]
         if (r.success) {
-          const criticList = this.data.criticList.map((u: CriticUser) =>
-            u.openId === openId ? { ...u, type: newType } : u
-          )
-          this.setData({ criticList, operating })
-          wx.showToast({ title: newType === 'critic' ? '已认证' : '已撤销', icon: 'success' })
+          const idsSet = new Set(ids)
+          const list = this.data.list.filter((c: Candidate) => !idsSet.has(c._id))
+          this.setData({ list, selected: {}, selectMode: false, batchDeciding: false })
+          this._loadStats()
+          wx.showToast({ title: `已处理 ${ids.length} 位`, icon: 'success' })
         } else {
-          this.setData({ operating })
+          this.setData({ batchDeciding: false })
           wx.showToast({ title: '操作失败', icon: 'error' })
         }
       },
       fail: () => {
-        const operating = { ...this.data.operating }
-        delete operating[openId]
-        this.setData({ operating })
+        this.setData({ batchDeciding: false })
         wx.showToast({ title: '网络错误', icon: 'error' })
-      },
-    })
-  },
-
-  onUnload() {
-    this._stopCrawlerPoll()
-    clearTimeout(_criticSearchTimer)
-  },
-
-  // ── crawler tab ──────────────────────────────────────────────────────────────
-  _startCrawlerPoll() {
-    this._fetchCrawlerStatus()
-    _crawlerPollTimer = setInterval(() => {
-      if (this.data.activeTab === 'crawler') {
-        this._fetchCrawlerStatus()
-      } else {
-        this._stopCrawlerPoll()
-      }
-    }, 3000)
-  },
-
-  _stopCrawlerPoll() {
-    if (_crawlerPollTimer) {
-      clearInterval(_crawlerPollTimer)
-      _crawlerPollTimer = null
-    }
-  },
-
-  _fetchCrawlerStatus() {
-    wx.cloud.callFunction({
-      name: 'crawlerControl',
-      data: { action: 'getStatus' },
-      success: (res: any) => {
-        const r = res.result
-        if (!r.success) return
-        const s = r.status || {}
-        const sched = s.schedule || {}
-        this.setData({
-          crawlerStatus:           s,
-          crawlerScheduleEnabled:  !!sched.enabled,
-          crawlerScheduleInterval: sched.interval || 'weekly',
-        })
-      },
-    })
-  },
-
-  onCrawlerTrigger() {
-    if (this.data.crawlerTriggering) return
-    const s = this.data.crawlerStatus
-    if (s && (s.status === 'running' || s.status === 'pending')) {
-      wx.showToast({ title: '爬虫正在运行中', icon: 'none' })
-      return
-    }
-    this.setData({ crawlerTriggering: true })
-    wx.cloud.callFunction({
-      name: 'crawlerControl',
-      data: { action: 'trigger' },
-      success: (res: any) => {
-        this.setData({ crawlerTriggering: false })
-        if (res.result?.success) {
-          wx.showToast({ title: '已触发，请等待', icon: 'success' })
-          this._fetchCrawlerStatus()
-        } else {
-          wx.showToast({ title: '触发失败', icon: 'error' })
-        }
-      },
-      fail: () => {
-        this.setData({ crawlerTriggering: false })
-        wx.showToast({ title: '网络错误', icon: 'error' })
-      },
-    })
-  },
-
-  onCrawlerClearLog() {
-    wx.cloud.callFunction({
-      name: 'crawlerControl',
-      data: { action: 'clearLog' },
-      success: () => {
-        this._fetchCrawlerStatus()
-        wx.showToast({ title: '日志已清除', icon: 'success' })
-      },
-    })
-  },
-
-  onScheduleToggle(e: WechatMiniprogram.SwitchChange) {
-    const enabled = e.detail.value
-    this.setData({ crawlerScheduleEnabled: enabled })
-    wx.cloud.callFunction({
-      name: 'crawlerControl',
-      data: {
-        action:   'updateSchedule',
-        enabled,
-        interval: this.data.crawlerScheduleInterval,
-      },
-    })
-  },
-
-  onScheduleInterval(e: WechatMiniprogram.TouchEvent) {
-    const interval = (e.currentTarget.dataset as { v: string }).v as 'daily' | 'weekly'
-    this.setData({ crawlerScheduleInterval: interval })
-    wx.cloud.callFunction({
-      name: 'crawlerControl',
-      data: {
-        action:   'updateSchedule',
-        enabled:  this.data.crawlerScheduleEnabled,
-        interval,
       },
     })
   },

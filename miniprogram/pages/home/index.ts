@@ -1,7 +1,6 @@
-// Static ticker songs (no DB concept for "hot songs" yet)
 const TICKER_SONGS = [
-  '光明 · GAI', 'SOUTH SIDE · VAVA', '轻描淡写 · 颜人中',
-  '无处不在 · Tizzy T', 'Intro · 艾福杰尼', '平凡之路 · 朴树',
+  '光明 · GAI', 'SOUTH SIDE · VAVA', '无处不在 · Tizzy T',
+  'Intro · 艾福杰尼', '野外 · 那吾克热', '病态 · GALI',
 ]
 
 const GENRES = [
@@ -15,6 +14,13 @@ const GENRES = [
 
 function scoreFill(score: number) {
   return Math.round(score / 10 * 100) + '%'
+}
+
+function fmtScore(n: number): string {
+  if (!n) return '—'
+  const r = Math.round(n * 10) / 10
+  if (r === 10) return '10'
+  return r.toFixed(1)
 }
 
 Page({
@@ -43,7 +49,7 @@ Page({
 
   onShow() {
     if (typeof this.getTabBar === 'function') {
-      this.getTabBar().setData({ selected: 0 })
+      this.getTabBar()?.setData({ selected: 0 })
     }
   },
 
@@ -67,34 +73,36 @@ Page({
       const chartItems = chartsRes.success
         ? (chartsRes.list || []).map((item: any) => ({
             ...item,
-            year: item.year || item.releaseYear,
+            year:         item.year || item.releaseYear,
+            scoreDisplay: fmtScore(item.score),
           }))
         : []
 
       // hero = top chart item
       const topItem = chartItems[0] || null
       const hero = topItem ? {
-        albumId:  topItem.albumId,
-        title:    topItem.title,
-        artist:   topItem.artist,
-        year:     topItem.year,
-        score:    topItem.score,
-        scoreFill: scoreFill(topItem.score),
-        coverUrl:  topItem.coverUrl || '',
-        genres:   [],
+        albumId:      topItem.albumId,
+        title:        topItem.title,
+        artist:       topItem.artist,
+        year:         topItem.year,
+        score:        fmtScore(topItem.score),
+        scoreFill:    scoreFill(topItem.score),
+        coverUrl:     topItem.coverUrl || '',
+        genres:       [],
       } : null
 
       // new releases
       const newReleases = releasesRes.success
         ? (releasesRes.list || []).slice(0, 4).map((a: any, i: number) => ({
-            albumId:   a._id,
-            rank:      String(i + 1).padStart(2, '0'),
-            title:     a.title,
-            artist:    a.artist,
-            year:      a.releaseYear,
-            score:     Math.round((a.avgScore || 0) * 10) / 10,
-            scoreFill: scoreFill(a.avgScore || 0),
-            coverUrl:  a.coverUrl || '',
+            albumId:      a._id,
+            rank:         String(i + 1).padStart(2, '0'),
+            title:        a.title,
+            artist:       a.artist,
+            year:         a.releaseYear,
+            scoreDisplay: fmtScore(a.avgScore || 0),
+            score:        a.avgScore || 0,
+            scoreFill:    scoreFill(a.avgScore || 0),
+            coverUrl:     a.coverUrl || '',
           }))
         : []
 
@@ -139,6 +147,10 @@ Page({
     if (id) {
       wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
     }
+  },
+
+  onSearchTap() {
+    wx.switchTab({ url: '/pages/discover/index' })
   },
 
   onHeroTap() {
