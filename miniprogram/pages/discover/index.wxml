@@ -21,26 +21,26 @@
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
 
-    <!-- GENRE STAMPS -->
+    <!-- YEAR STAMPS -->
     <view class="side-row">
-      <text class="side-text">SIDE A — 风格 GENRES</text>
+      <text class="side-text">SIDE A — 年份 YEAR</text>
       <view class="side-rule" />
     </view>
-    <view class="genre-stamps">
+    <view class="year-stamps">
       <view
-        wx:for="{{genres}}"
+        wx:for="{{years}}"
         wx:key="name"
-        class="genre-stamp {{activeGenre === item.name ? 'active' : ''}}"
-        bindtap="onGenreTap"
-        data-genre="{{item.name}}"
+        class="year-stamp {{activeYear === item.name ? 'active' : ''}}"
+        bindtap="onYearTap"
+        data-year="{{item.name}}"
       >
-        <text class="genre-name">{{item.name}}</text>
+        <text class="year-name">{{item.name}}</text>
       </view>
     </view>
 
     <!-- ALBUM LIST -->
     <view class="side-row">
-      <text class="side-text">SIDE B — {{activeGenre ? activeGenre : '全部'}} · {{loading ? '加载中' : list.length + ' 张'}}</text>
+      <text class="side-text">SIDE B — {{activeYear ? activeYear : '全部'}} · {{loading ? '加载中' : list.length + ' 张'}}</text>
       <view class="side-rule" />
     </view>
 
@@ -78,10 +78,12 @@
         </view>
         <view class="album-info">
           <text class="album-title">{{item.title}}</text>
-          <text class="album-artist">{{item.artist}} · {{item.year}}</text>
-          <view class="album-genres">
-            <text wx:for="{{item.genres}}" wx:for-item="g" wx:key="*this" class="genre-tag">{{g}}</text>
-          </view>
+          <text
+            class="album-artist"
+            catchtap="onArtistTap"
+            data-artist-id="{{item.neteaseArtistId}}"
+            data-artist="{{item.primaryArtist}}"
+          >{{item.artist}} · {{item.year}}</text>
         </view>
         <text class="album-score">{{item.score}}</text>
       </view>

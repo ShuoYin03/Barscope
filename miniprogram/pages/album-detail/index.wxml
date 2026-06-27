@@ -26,7 +26,11 @@
         <view class="disc-spindle" />
       </view>
       <text class="hero-title">{{album.title}}</text>
-      <text class="hero-meta">{{album.artist}} · {{album.year}}</text>
+      <view class="hero-meta-row">
+        <text class="hero-artist" bindtap="onArtistTap">{{album.artist}}</text>
+        <text class="hero-meta-sep"> · </text>
+        <text class="hero-meta-year">{{album.year}}</text>
+      </view>
 
       <!-- stat strip -->
       <view class="stat-strip">
@@ -41,22 +45,6 @@
         <view class="stat-cell">
           <text class="stat-num">{{album.year}}</text>
           <text class="stat-label">年份</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- INFO: genre chips + score bar -->
-    <view class="info-block">
-      <view wx:if="{{album.genres.length > 0}}" class="genre-chips">
-        <text
-          wx:for="{{album.genres}}"
-          wx:key="*this"
-          class="genre-chip {{index === 0 ? 'primary' : ''}}"
-        >{{item}}</text>
-      </view>
-      <view class="score-bar-wrap">
-        <view class="score-bar-track">
-          <view class="score-bar-fill" style="width: {{album.scoreFill}}" />
         </view>
       </view>
     </view>

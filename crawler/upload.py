@@ -48,7 +48,7 @@ def clean(raw_list: list, skip_singles_filter: bool = False) -> list:
 
         # 过滤单曲/EP（曲目数 < 3）
         track_count = int(a.get("trackCount") or 0)
-        if not skip_singles_filter and track_count > 0 and track_count < 3:
+        if not skip_singles_filter and track_count < 3:
             continue
 
         # title+artist 去重

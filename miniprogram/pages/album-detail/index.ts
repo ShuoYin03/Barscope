@@ -13,29 +13,33 @@ interface ReviewEntry {
 }
 
 interface AlbumData {
-  id:          string
-  title:       string
-  artist:      string
-  year:        number
-  genres:      string[]
-  avgScore:    number
-  reviewCount: number
-  scoreFill:   string
-  coverUrl:    string
+  id:              string
+  title:           string
+  artist:          string
+  primaryArtist:   string
+  neteaseArtistId: string
+  year:            number
+  genres:          string[]
+  avgScore:        number
+  reviewCount:     number
+  scoreFill:       string
+  coverUrl:        string
 }
 
 function mapAlbum(raw: any): AlbumData {
   const score = raw.avgScore || 0
   return {
-    id:          raw._id,
-    title:       raw.title       || '',
-    artist:      raw.artist      || '',
-    year:        raw.releaseYear || 0,
-    genres:      raw.genres      || [],
-    avgScore:    Math.round(score * 10) / 10,
-    reviewCount: raw.reviewCount || 0,
-    scoreFill:   Math.round(score / 10 * 100) + '%',
-    coverUrl:    raw.coverUrl    || '',
+    id:              raw._id,
+    title:           raw.title          || '',
+    artist:          raw.artist         || '',
+    primaryArtist:   raw.primaryArtist  || (raw.artist || '').split(/[,，&]/)[0].trim(),
+    neteaseArtistId: String(raw.neteaseArtistId || ''),
+    year:            raw.releaseYear    || 0,
+    genres:          raw.genres         || [],
+    avgScore:        Math.round(score * 10) / 10,
+    reviewCount:     raw.reviewCount    || 0,
+    scoreFill:       Math.round(score / 10 * 100) + '%',
+    coverUrl:        raw.coverUrl       || '',
   }
 }
 
@@ -103,6 +107,14 @@ Page({
 
   onBack() {
     wx.navigateBack()
+  },
+
+  onArtistTap() {
+    const album = this.data.album
+    if (!album?.neteaseArtistId) return
+    wx.navigateTo({
+      url: `/pages/artist/index?artistId=${album.neteaseArtistId}&artistName=${encodeURIComponent(album.primaryArtist)}`,
+    })
   },
 
   onWriteReview() {

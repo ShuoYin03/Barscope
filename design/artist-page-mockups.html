@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barscope — Artist Page · 5 Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root {
+  --B:  #08060A;
+  --C:  #1A1714;
+  --A:  #C94E25;
+  --GM: #5A5044;
+  --GL: #2A2420;
+  --W:  #FFFFFF;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.bb { font-family: 'Bebas Neue', sans-serif; }
+body { background: #0d0d0d; font-family: -apple-system, 'Segoe UI', sans-serif; color: #fff; }
+
+/* sticky nav */
+.vnav {
+  position: sticky; top: 0; z-index: 100;
+  background: #080808; border-bottom: 1px solid #1A1714;
+  display: flex; align-items: center; gap: 6px; padding: 10px 24px; overflow-x: auto;
+}
+.vnav-logo { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: var(--A); letter-spacing: 3px; margin-right: 20px; white-space: nowrap; }
+.vtab { text-decoration: none; padding: 5px 14px; border: 1px solid #2A2420; color: #5A5044; font-size: 11px; letter-spacing: 1px; white-space: nowrap; transition: all 0.1s; }
+.vtab:hover { border-color: var(--A); color: #fff; }
+
+/* section wrapper */
+.msec { padding: 56px 32px 72px; border-bottom: 1px solid #1A1714; }
+.mhead { margin-bottom: 36px; overflow: hidden; }
+.mnum { font-family: 'Bebas Neue', sans-serif; font-size: 88px; color: #1A1714; line-height: 1; float: left; margin-right: 16px; margin-top: -10px; }
+.mlabel { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--A); letter-spacing: 4px; display: block; }
+.mdesc { font-size: 13px; color: #555; line-height: 1.7; max-width: 480px; margin-top: 4px; }
+.mtags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.mtag { font-size: 9px; border: 1px solid #2A2420; color: #444; padding: 2px 8px; letter-spacing: 1px; }
+.mrow { display: flex; gap: 40px; align-items: flex-start; clear: both; }
+
+/* phone shell */
+.phone { width: 375px; flex-shrink: 0; background: var(--B); border: 1px solid var(--GL); overflow: hidden; display: flex; flex-direction: column; }
+
+/* notes panel */
+.notes { flex: 1; min-width: 220px; padding-top: 4px; }
+.notes h3 { font-family: 'Bebas Neue', sans-serif; font-size: 12px; color: var(--GM); letter-spacing: 3px; margin: 14px 0 4px; }
+.notes h3:first-child { margin-top: 0; }
+.notes ul { list-style: none; font-size: 12px; color: #555; line-height: 2.1; }
+.notes ul li::before { content: '→ '; color: var(--A); }
+
+/* ════ SHARED HERO HEADER ════ */
+/* Cover image banner + overlapping vinyl disc + artist name */
+
+.hero-wrap { position: relative; flex-shrink: 0; }
+
+.cover-banner {
+  width: 100%; height: 210px;
+  position: relative; overflow: hidden;
+}
+.cover-banner-inner {
+  width: 100%; height: 100%;
+  background: linear-gradient(160deg, #3A1209 0%, #1A0A06 55%, #0A0604 100%);
+  position: relative;
+}
+/* subtle grain lines */
+.cover-banner-inner::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(0,0,0,0.08) 5px, rgba(0,0,0,0.08) 6px);
+}
+/* bottom fade into black */
+.cover-banner::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 80px;
+  background: linear-gradient(to bottom, transparent, var(--B));
+}
+
+/* vinyl disc overlapping cover bottom */
+.hero-disc-wrap {
+  position: absolute; bottom: -52px; left: 50%; transform: translateX(-50%); z-index: 2;
+}
+.hero-disc {
+  width: 104px; height: 104px; border-radius: 50%;
+  background: radial-gradient(circle,
+    #C94E25 0 17%,
+    #100A0E 18%, #1A1218 20%, #100A0E 22%, #1A1218 24%,
+    #100A0E 26%, #1A1218 28%, #100A0E 30%, #1A1218 32%,
+    #100A0E 34%, #1A1218 36%, #100A0E 38%, #1A1218 40%,
+    #100A0E 42%, #1A1218 44%, #100A0E 100%
+  );
+  box-shadow: 0 0 0 4px var(--B), 0 0 0 6px var(--GL);
+  position: relative;
+}
+.hero-disc-lbl {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.hero-disc-pin {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 7px; height: 7px; border-radius: 50%; background: var(--B); z-index: 3;
+}
+
+/* artist name block (below hero disc overhang) */
+.artist-name-block {
+  padding: 64px 16px 0;
+  text-align: center;
+}
+
+/* back button */
+.back-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+  display: flex; align-items: center; gap: 8px; padding: 44px 16px 0;
+}
+.back-ch { color: var(--A); font-size: 17px; }
+.back-lbl { font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 2px; }
+
+/* ════ SHARED INNER COMPONENTS ════ */
+
+.divider { display: flex; align-items: center; gap: 8px; padding: 10px 16px 6px; }
+.div-lbl { font-size: 8px; font-weight: 700; letter-spacing: 3px; color: var(--GM); white-space: nowrap; }
+.div-line { flex: 1; height: 1px; background: var(--GL); }
+
+/* disc album row (56px) */
+.alb-row { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--GL); }
+.alb-row:last-child { border-bottom: none; }
+.alb-info { flex: 1; min-width: 0; }
+.alb-title { font-size: 14px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alb-meta { font-size: 10px; color: var(--GM); margin-top: 2px; }
+.alb-score { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--A); line-height: 1; flex-shrink: 0; }
+
+.disc {
+  width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; position: relative;
+  background: radial-gradient(circle,
+    #C94E25 0 17%, #100A0E 18%, #1A1218 20%, #100A0E 22%, #1A1218 24%,
+    #100A0E 26%, #1A1218 28%, #100A0E 30%, #1A1218 32%,
+    #100A0E 34%, #1A1218 36%, #100A0E 38%, #1A1218 40%,
+    #100A0E 42%, #1A1218 44%, #100A0E 100%
+  );
+  box-shadow: 0 0 0 2px var(--B), 0 0 0 3px var(--GL);
+}
+.disc-lbl { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px; border-radius: 50%; overflow: hidden; }
+.disc-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--B); z-index: 2; }
+
+/* stat bar */
+.stat-bar { display: flex; border: 1px solid var(--GL); margin: 12px 16px; }
+.stat-cell { flex: 1; padding: 10px 8px; text-align: center; border-right: 1px solid var(--GL); }
+.stat-cell:last-child { border-right: none; }
+.stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--A); line-height: 1; }
+.stat-lbl { font-size: 7px; color: var(--GM); letter-spacing: 2px; margin-top: 2px; }
+
+/* bottom nav */
+.bnav { display: flex; border-top: 1px solid var(--GL); background: var(--B); margin-top: auto; }
+.bn { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 0 14px; font-size: 7px; letter-spacing: 1px; color: var(--GM); }
+
+/* cover placeholder colors */
+.cv1 { background: #3A1209; }
+.cv2 { background: #091533; }
+.cv3 { background: #0A200A; }
+.cv4 { background: #222005; }
+.cv5 { background: #2A0808; }
+.cv6 { background: #1A0A24; }
+.cv7 { background: #080A1A; }
+.cv8 { background: #241014; }
+</style>
+</head>
+<body>
+
+<div class="vnav">
+  <span class="vnav-logo">BARSCOPE / ARTIST PAGE</span>
+  <a class="vtab" href="#v1">V1  STAT ROW</a>
+  <a class="vtab" href="#v2">V2  STAT GRID</a>
+  <a class="vtab" href="#v3">V3  TEXT LIST</a>
+  <a class="vtab" href="#v4">V4  ALBUM GRID</a>
+  <a class="vtab" href="#v5">V5  TIMELINE</a>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     V1  COVER + DISC · STAT ROW + DISC LIST
+     ════════════════════════════════════════════════════════════════ -->
+<section class="msec" id="v1">
+  <div class="mhead">
+    <div class="mnum">01</div>
+    <span class="mlabel">STAT ROW</span>
+    <p class="mdesc">封面图 + 叠出黑胶唱片头部。下方三格统计条 + 标准唱片行列表。最接近 Discover 页体验。</p>
+    <div class="mtags"><span class="mtag">COVER + DISC</span><span class="mtag">3-COL STATS</span><span class="mtag">DISC LIST</span></div>
+  </div>
+  <div class="mrow">
+    <div class="phone">
+
+      <!-- ── HERO ── -->
+      <div class="hero-wrap">
+        <div class="cover-banner">
+          <div class="cover-banner-inner"></div>
+        </div>
+        <div class="back-bar"><span class="back-ch">←</span><span class="back-lbl">DISCOVER</span></div>
+        <div class="hero-disc-wrap">
+          <div class="hero-disc">
+            <div class="hero-disc-lbl" style="background:#1A0808;">
+              <span class="bb" style="font-size:22px;color:var(--A);z-index:2;position:relative;">G</span>
+            </div>
+            <div class="hero-disc-pin"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- name -->
+      <div class="artist-name-block">
+        <div class="bb" style="font-size:50px;color:#fff;letter-spacing:5px;line-height:1;">GAI</div>
+        <div style="font-size:11px;color:var(--GM);letter-spacing:3px;margin-top:3px;">盖</div>
+      </div>
+
+      <!-- 3-col stat bar -->
+      <div class="stat-bar">
+        <div class="stat-cell"><div class="stat-val">8</div><div class="stat-lbl">ALBUMS</div></div>
+        <div class="stat-cell"><div class="stat-val">8.1</div><div class="stat-lbl">AVG</div></div>
+        <div class="stat-cell"><div class="stat-val" style="font-size:18px;margin-top:4px;">2016—24</div><div class="stat-lbl">ACTIVE</div></div>
+      </div>
+
+      <div class="divider"><span class="div-lbl">SIDE A — 全部专辑 · 8 张</span><div class="div-line"></div></div>
+
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv1"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">江湖十年</div><div class="alb-meta">2024 · 12首</div></div><div class="alb-score">8.4</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv2"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">EXILE</div><div class="alb-meta">2022 · 14首</div></div><div class="alb-score">9.1</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv3"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">无问西东</div><div class="alb-meta">2021 · 10首</div></div><div class="alb-score">7.8</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv4"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">重量</div><div class="alb-meta">2019 · 13首</div></div><div class="alb-score">8.6</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv5"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">耿人</div><div class="alb-meta">2018 · 11首</div></div><div class="alb-score">7.2</div></div>
+
+      <div class="bnav">
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">♪</div>HOME</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">★</div>RANK</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">⊞</div>FIND</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">◉</div>ADMIN</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>HEADER（所有版本共用）</h3>
+      <ul>
+        <li>210px 封面横幅（用歌手代表作封面色）</li>
+        <li>104px 黑胶唱片从封面底部叠出 52px</li>
+        <li>唱片中心标签 = 歌手头像占位</li>
+        <li>歌手名居中，英文 + 中文副标题</li>
+      </ul>
+      <h3>本版特点</h3>
+      <ul>
+        <li>三格统计条：专辑数 / 均分 / 活跃年</li>
+        <li>SIDE A 分割线 + 标准唱片行列表</li>
+        <li>体验与 Discover 最统一</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     V2  COVER + DISC · 2×2 STAT CARDS + DISC LIST
+     ════════════════════════════════════════════════════════════════ -->
+<section class="msec" id="v2">
+  <div class="mhead">
+    <div class="mnum">02</div>
+    <span class="mlabel">STAT GRID</span>
+    <p class="mdesc">封面 + 黑胶头部。名字下方展开 2×2 统计卡片格，信息密度更高，最高分单独高亮。</p>
+    <div class="mtags"><span class="mtag">COVER + DISC</span><span class="mtag">2×2 STAT CARDS</span><span class="mtag">DISC LIST</span></div>
+  </div>
+  <div class="mrow">
+    <div class="phone">
+
+      <div class="hero-wrap">
+        <div class="cover-banner">
+          <div class="cover-banner-inner" style="background:linear-gradient(160deg,#091533 0%,#06101F 55%,#030810 100%);"></div>
+        </div>
+        <div class="back-bar"><span class="back-ch">←</span><span class="back-lbl">DISCOVER</span></div>
+        <div class="hero-disc-wrap">
+          <div class="hero-disc">
+            <div class="hero-disc-lbl" style="background:#080D1A;">
+              <span class="bb" style="font-size:22px;color:var(--A);z-index:2;position:relative;">G</span>
+            </div>
+            <div class="hero-disc-pin"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="artist-name-block" style="padding-bottom:4px;">
+        <div class="bb" style="font-size:50px;color:#fff;letter-spacing:5px;line-height:1;">GAI</div>
+        <div style="font-size:11px;color:var(--GM);letter-spacing:3px;margin-top:3px;">盖 · 说唱 · 四川</div>
+      </div>
+
+      <!-- 2×2 stat cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--GL);margin:14px 16px;border:1px solid var(--GL);">
+        <div style="background:var(--C);padding:10px 12px;">
+          <div class="bb" style="font-size:30px;color:var(--A);line-height:1;">8</div>
+          <div style="font-size:7px;color:var(--GM);letter-spacing:2px;margin-top:2px;">ALBUMS</div>
+        </div>
+        <div style="background:var(--C);padding:10px 12px;">
+          <div class="bb" style="font-size:30px;color:var(--A);line-height:1;">8.1</div>
+          <div style="font-size:7px;color:var(--GM);letter-spacing:2px;margin-top:2px;">AVG SCORE</div>
+        </div>
+        <div style="background:var(--C);padding:10px 12px;">
+          <div class="bb" style="font-size:21px;color:var(--A);line-height:1;margin-top:3px;">2016—2024</div>
+          <div style="font-size:7px;color:var(--GM);letter-spacing:2px;margin-top:2px;">ACTIVE</div>
+        </div>
+        <div style="background:var(--C);padding:10px 12px;">
+          <div class="bb" style="font-size:30px;color:var(--A);line-height:1;">9.1</div>
+          <div style="font-size:7px;color:var(--GM);letter-spacing:2px;margin-top:2px;">BEST SCORE</div>
+        </div>
+      </div>
+
+      <div class="divider"><span class="div-lbl">SIDE A — 全部专辑 · 8 张</span><div class="div-line"></div></div>
+
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv1"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">江湖十年</div><div class="alb-meta">2024 · 12首</div></div><div class="alb-score">8.4</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv2"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">EXILE</div><div class="alb-meta">2022 · 14首</div></div><div class="alb-score">9.1</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv3"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">无问西东</div><div class="alb-meta">2021 · 10首</div></div><div class="alb-score">7.8</div></div>
+      <div class="alb-row"><div class="disc"><div class="disc-lbl cv4"></div><div class="disc-pin"></div></div><div class="alb-info"><div class="alb-title">重量</div><div class="alb-meta">2019 · 13首</div></div><div class="alb-score">8.6</div></div>
+
+      <div class="bnav">
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">♪</div>HOME</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">★</div>RANK</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">⊞</div>FIND</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">◉</div>ADMIN</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>本版特点</h3>
+      <ul>
+        <li>2×2 统计卡片（专辑数/均分/活跃年/最高分）</li>
+        <li>名字下方加风格+地区副标题</li>
+        <li>封面色调用蓝黑（对比 V1 暖色）</li>
+      </ul>
+      <h3>适合场景</h3>
+      <ul>
+        <li>歌手数据丰富，想展示更多维度</li>
+        <li>"最高分" 作为钩子，引发用户点进高分专辑</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     V3  COVER + DISC · INLINE STATS + TEXT-ONLY LIST
+     ════════════════════════════════════════════════════════════════ -->
+<section class="msec" id="v3">
+  <div class="mhead">
+    <div class="mnum">03</div>
+    <span class="mlabel">TEXT LIST</span>
+    <p class="mdesc">封面 + 黑胶头部。统计信息内嵌于名字行，专辑列表去除唱片图，改为带编号的纯文字行——最大信息密度。</p>
+    <div class="mtags"><span class="mtag">COVER + DISC</span><span class="mtag">INLINE STATS</span><span class="mtag">NUMBERED TEXT LIST</span></div>
+  </div>
+  <div class="mrow">
+    <div class="phone">
+
+      <div class="hero-wrap">
+        <div class="cover-banner">
+          <div class="cover-banner-inner" style="background:linear-gradient(160deg,#1A200A 0%,#0E130A 55%,#060806 100%);"></div>
+        </div>
+        <div class="back-bar"><span class="back-ch">←</span><span class="back-lbl">DISCOVER</span></div>
+        <div class="hero-disc-wrap">
+          <div class="hero-disc">
+            <div class="hero-disc-lbl" style="background:#0A100A;">
+              <span class="bb" style="font-size:22px;color:var(--A);z-index:2;position:relative;">G</span>
+            </div>
+            <div class="hero-disc-pin"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="artist-name-block" style="padding-bottom:0;">
+        <div class="bb" style="font-size:50px;color:#fff;letter-spacing:5px;line-height:1;">GAI</div>
+      </div>
+
+      <!-- inline stats under name -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:0;padding:8px 16px 0;">
+        <span class="bb" style="font-size:22px;color:var(--A);">8</span>
+        <span style="font-size:9px;color:var(--GM);letter-spacing:1px;margin:0 8px 0 4px;">ALBUMS</span>
+        <span style="color:var(--GL);margin-right:8px;">|</span>
+        <span class="bb" style="font-size:22px;color:var(--A);">8.1</span>
+        <span style="font-size:9px;color:var(--GM);letter-spacing:1px;margin:0 8px 0 4px;">AVG</span>
+        <span style="color:var(--GL);margin-right:8px;">|</span>
+        <span class="bb" style="font-size:15px;color:var(--GM);">2016—2024</span>
+      </div>
+
+      <!-- full-width orange rule -->
+      <div style="height:1px;background:var(--A);margin:14px 16px 0;"></div>
+
+      <div class="divider" style="padding-top:8px;"><span class="div-lbl">DISCOGRAPHY</span><div class="div-line"></div></div>
+
+      <!-- numbered text rows -->
+      <div style="padding:0 16px;">
+        <div style="display:flex;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--GL);gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">01</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">江湖十年</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2024</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">8.4</span>
+        </div>
+        <div style="display:flex;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--GL);gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">02</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">EXILE</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2022</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">9.1</span>
+        </div>
+        <div style="display:flex;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--GL);gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">03</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">无问西东</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2021</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">7.8</span>
+        </div>
+        <div style="display:flex;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--GL);gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">04</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">重量</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2019</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">8.6</span>
+        </div>
+        <div style="display:flex;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--GL);gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">05</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">耿人</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2018</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">7.2</span>
+        </div>
+        <div style="display:flex;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--GL);gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">06</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">九九八十一</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2017</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">8.0</span>
+        </div>
+        <div style="display:flex;align-items:baseline;padding:9px 0;gap:10px;">
+          <span class="bb" style="font-size:12px;color:var(--GL);min-width:24px;">07</span>
+          <span style="flex:1;font-size:14px;color:#fff;font-weight:600;">雄霸天下</span>
+          <span style="font-size:10px;color:var(--GM);margin-right:8px;">2017</span>
+          <span class="bb" style="font-size:22px;color:var(--A);">7.5</span>
+        </div>
+      </div>
+
+      <div class="bnav">
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">♪</div>HOME</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">★</div>RANK</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">⊞</div>FIND</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">◉</div>ADMIN</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>本版特点</h3>
+      <ul>
+        <li>统计内嵌在名字行，不占独立区块</li>
+        <li>专辑列表无唱片图，纯文字+序号</li>
+        <li>首屏可见 5-6 张专辑</li>
+        <li>封面色调用绿黑，区分三个版本</li>
+      </ul>
+      <h3>适合场景</h3>
+      <ul>
+        <li>用户已知歌手，不需要视觉引导</li>
+        <li>类比唱片店目录感，有收藏家气质</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     V4  COVER + DISC · STATS + 2-COL ALBUM GRID
+     ════════════════════════════════════════════════════════════════ -->
+<section class="msec" id="v4">
+  <div class="mhead">
+    <div class="mnum">04</div>
+    <span class="mlabel">ALBUM GRID</span>
+    <p class="mdesc">封面 + 黑胶头部。专辑列表改为 2 列方形封面网格，浏览感更强，适合收藏量多的歌手。</p>
+    <div class="mtags"><span class="mtag">COVER + DISC</span><span class="mtag">STAT ROW</span><span class="mtag">2-COL GRID</span></div>
+  </div>
+  <div class="mrow">
+    <div class="phone">
+
+      <div class="hero-wrap">
+        <div class="cover-banner">
+          <div class="cover-banner-inner" style="background:linear-gradient(160deg,#1A1009 0%,#0F0A06 55%,#060404 100%);"></div>
+        </div>
+        <div class="back-bar"><span class="back-ch">←</span><span class="back-lbl">DISCOVER</span></div>
+        <div class="hero-disc-wrap">
+          <div class="hero-disc">
+            <div class="hero-disc-lbl" style="background:#100A06;">
+              <span class="bb" style="font-size:22px;color:var(--A);z-index:2;position:relative;">G</span>
+            </div>
+            <div class="hero-disc-pin"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="artist-name-block">
+        <div class="bb" style="font-size:50px;color:#fff;letter-spacing:5px;line-height:1;">GAI</div>
+        <div style="font-size:11px;color:var(--GM);letter-spacing:3px;margin-top:3px;">盖</div>
+      </div>
+
+      <!-- inline stat row -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 16px 0;font-size:10px;color:var(--GM);letter-spacing:1px;">
+        <span><span class="bb" style="font-size:18px;color:var(--A);margin-right:3px;">8</span>专辑</span>
+        <span style="color:var(--GL);">·</span>
+        <span><span class="bb" style="font-size:18px;color:var(--A);margin-right:3px;">8.1</span>均分</span>
+        <span style="color:var(--GL);">·</span>
+        <span>2016—2024</span>
+      </div>
+
+      <div class="divider" style="margin-top:10px;"><span class="div-lbl">SIDE A — 全部专辑</span><div class="div-line"></div></div>
+
+      <!-- 2-column album grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--GL);padding-bottom:1px;margin:0 0 0 0;border-top:none;">
+
+        <div style="background:var(--B);padding:12px;">
+          <div style="width:100%;aspect-ratio:1;background:var(--cv1, #3A1209);margin-bottom:8px;position:relative;">
+            <div style="position:absolute;bottom:6px;right:6px;">
+              <span class="bb" style="font-size:18px;color:var(--A);">8.4</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">江湖十年</div>
+          <div style="font-size:10px;color:var(--GM);margin-top:1px;">2024</div>
+        </div>
+
+        <div style="background:var(--B);padding:12px;">
+          <div style="width:100%;aspect-ratio:1;background:#091533;margin-bottom:8px;position:relative;">
+            <div style="position:absolute;bottom:6px;right:6px;">
+              <span class="bb" style="font-size:18px;color:var(--A);">9.1</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:#fff;">EXILE</div>
+          <div style="font-size:10px;color:var(--GM);margin-top:1px;">2022</div>
+        </div>
+
+        <div style="background:var(--B);padding:12px;">
+          <div style="width:100%;aspect-ratio:1;background:#0A200A;margin-bottom:8px;position:relative;">
+            <div style="position:absolute;bottom:6px;right:6px;">
+              <span class="bb" style="font-size:18px;color:var(--A);">7.8</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">无问西东</div>
+          <div style="font-size:10px;color:var(--GM);margin-top:1px;">2021</div>
+        </div>
+
+        <div style="background:var(--B);padding:12px;">
+          <div style="width:100%;aspect-ratio:1;background:#222005;margin-bottom:8px;position:relative;">
+            <div style="position:absolute;bottom:6px;right:6px;">
+              <span class="bb" style="font-size:18px;color:var(--A);">8.6</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:#fff;">重量</div>
+          <div style="font-size:10px;color:var(--GM);margin-top:1px;">2019</div>
+        </div>
+
+        <div style="background:var(--B);padding:12px;">
+          <div style="width:100%;aspect-ratio:1;background:#2A0808;margin-bottom:8px;position:relative;">
+            <div style="position:absolute;bottom:6px;right:6px;">
+              <span class="bb" style="font-size:18px;color:var(--A);">7.2</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:#fff;">耿人</div>
+          <div style="font-size:10px;color:var(--GM);margin-top:1px;">2018</div>
+        </div>
+
+        <div style="background:var(--B);padding:12px;">
+          <div style="width:100%;aspect-ratio:1;background:#1A0A24;margin-bottom:8px;position:relative;">
+            <div style="position:absolute;bottom:6px;right:6px;">
+              <span class="bb" style="font-size:18px;color:var(--A);">8.0</span>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:#fff;">九九八十一</div>
+          <div style="font-size:10px;color:var(--GM);margin-top:1px;">2017</div>
+        </div>
+
+      </div>
+
+      <div class="bnav">
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">♪</div>HOME</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">★</div>RANK</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">⊞</div>FIND</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">◉</div>ADMIN</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>本版特点</h3>
+      <ul>
+        <li>2 列封面方格，评分叠加在封面右下角</li>
+        <li>浏览感强，一屏能看到 4-6 张</li>
+        <li>封面颜色即为视觉区分，不需要额外 label</li>
+      </ul>
+      <h3>适合场景</h3>
+      <ul>
+        <li>歌手专辑较多（8+），一列行列表太长</li>
+        <li>封面设计风格强，值得被展示</li>
+        <li>更接近 Apple Music / Spotify 歌手页惯例</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     V5  COVER + DISC · TIMELINE BY YEAR
+     ════════════════════════════════════════════════════════════════ -->
+<section class="msec" id="v5">
+  <div class="mhead">
+    <div class="mnum">05</div>
+    <span class="mlabel">TIMELINE</span>
+    <p class="mdesc">封面 + 黑胶头部。专辑按年份分组，年份大字竖于左侧轨道——脉络最清晰，适合多产歌手。</p>
+    <div class="mtags"><span class="mtag">COVER + DISC</span><span class="mtag">YEAR GROUPING</span><span class="mtag">TIMELINE</span></div>
+  </div>
+  <div class="mrow">
+    <div class="phone">
+
+      <div class="hero-wrap">
+        <div class="cover-banner">
+          <div class="cover-banner-inner" style="background:linear-gradient(160deg,#1A0A24 0%,#0D0615 55%,#060408 100%);"></div>
+        </div>
+        <div class="back-bar"><span class="back-ch">←</span><span class="back-lbl">DISCOVER</span></div>
+        <div class="hero-disc-wrap">
+          <div class="hero-disc">
+            <div class="hero-disc-lbl" style="background:#0E0518;">
+              <span class="bb" style="font-size:22px;color:var(--A);z-index:2;position:relative;">G</span>
+            </div>
+            <div class="hero-disc-pin"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="artist-name-block" style="padding-bottom:0;">
+        <div class="bb" style="font-size:50px;color:#fff;letter-spacing:5px;line-height:1;">GAI</div>
+        <div style="font-size:11px;color:var(--GM);letter-spacing:3px;margin-top:3px;">盖 · 8张 · 均分 8.1</div>
+      </div>
+
+      <!-- orange accent rule -->
+      <div style="height:1px;background:var(--GL);margin:12px 16px 0;"></div>
+
+      <!-- timeline groups -->
+      <div>
+        <!-- 2024 — orange (latest) -->
+        <div style="display:flex;border-bottom:1px solid var(--GL);">
+          <div style="width:48px;flex-shrink:0;padding:12px 0 12px 16px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-right:2px solid var(--A);">
+            <div class="bb" style="font-size:24px;color:var(--A);line-height:1;transform:rotate(180deg);writing-mode:vertical-rl;">2024</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="alb-row" style="border-bottom:none;padding-left:12px;">
+              <div class="disc"><div class="disc-lbl cv1"></div><div class="disc-pin"></div></div>
+              <div class="alb-info"><div class="alb-title">江湖十年</div><div class="alb-meta">12首</div></div>
+              <div class="alb-score">8.4</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2022 -->
+        <div style="display:flex;border-bottom:1px solid var(--GL);">
+          <div style="width:48px;flex-shrink:0;padding:12px 0 12px 16px;border-right:1px solid var(--GL);display:flex;align-items:center;justify-content:flex-start;">
+            <div class="bb" style="font-size:24px;color:var(--GM);line-height:1;transform:rotate(180deg);writing-mode:vertical-rl;">2022</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="alb-row" style="border-bottom:none;padding-left:12px;">
+              <div class="disc"><div class="disc-lbl cv2"></div><div class="disc-pin"></div></div>
+              <div class="alb-info"><div class="alb-title">EXILE</div><div class="alb-meta">14首</div></div>
+              <div class="alb-score">9.1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2021 -->
+        <div style="display:flex;border-bottom:1px solid var(--GL);">
+          <div style="width:48px;flex-shrink:0;padding:12px 0 12px 16px;border-right:1px solid var(--GL);display:flex;align-items:center;">
+            <div class="bb" style="font-size:24px;color:var(--GM);line-height:1;transform:rotate(180deg);writing-mode:vertical-rl;">2021</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="alb-row" style="border-bottom:none;padding-left:12px;">
+              <div class="disc"><div class="disc-lbl cv3"></div><div class="disc-pin"></div></div>
+              <div class="alb-info"><div class="alb-title">无问西东</div><div class="alb-meta">10首</div></div>
+              <div class="alb-score">7.8</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2019 -->
+        <div style="display:flex;border-bottom:1px solid var(--GL);">
+          <div style="width:48px;flex-shrink:0;padding:12px 0 12px 16px;border-right:1px solid var(--GL);display:flex;align-items:center;">
+            <div class="bb" style="font-size:24px;color:var(--GM);line-height:1;transform:rotate(180deg);writing-mode:vertical-rl;">2019</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="alb-row" style="border-bottom:none;padding-left:12px;">
+              <div class="disc"><div class="disc-lbl cv4"></div><div class="disc-pin"></div></div>
+              <div class="alb-info"><div class="alb-title">重量</div><div class="alb-meta">13首</div></div>
+              <div class="alb-score">8.6</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2017 — two albums -->
+        <div style="display:flex;border-bottom:1px solid var(--GL);">
+          <div style="width:48px;flex-shrink:0;padding:12px 0 12px 16px;border-right:1px solid var(--GL);display:flex;align-items:center;">
+            <div class="bb" style="font-size:24px;color:var(--GM);line-height:1;transform:rotate(180deg);writing-mode:vertical-rl;">2017</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="alb-row" style="padding-left:12px;">
+              <div class="disc"><div class="disc-lbl cv6"></div><div class="disc-pin"></div></div>
+              <div class="alb-info"><div class="alb-title">九九八十一</div><div class="alb-meta">9首</div></div>
+              <div class="alb-score">8.0</div>
+            </div>
+            <div class="alb-row" style="border-bottom:none;padding-left:12px;">
+              <div class="disc"><div class="disc-lbl cv7"></div><div class="disc-pin"></div></div>
+              <div class="alb-info"><div class="alb-title">雄霸天下</div><div class="alb-meta">10首</div></div>
+              <div class="alb-score">7.5</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bnav">
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">♪</div>HOME</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">★</div>RANK</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">⊞</div>FIND</div>
+        <div class="bn"><div style="font-size:16px;margin-bottom:2px;">◉</div>ADMIN</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>本版特点</h3>
+      <ul>
+        <li>统计内嵌到名字副标题行</li>
+        <li>最新年份用橙色轨道高亮</li>
+        <li>同年多专辑自然堆叠在右侧</li>
+        <li>封面用蓝紫色区分其他版本</li>
+      </ul>
+      <h3>适合场景</h3>
+      <ul>
+        <li>强调歌手创作脉络和年代感</li>
+        <li>年产量不均匀时，空格年份自动跳过</li>
+        <li>与 Discover 年份筛选器形成呼应</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div style="height:80px;"></div>
+</body>
+</html>

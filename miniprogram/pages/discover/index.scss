@@ -52,27 +52,27 @@
 .side-rule { flex: 1; height: 1px; background: var(--gray-light); }
 .side-row.b .side-rule { background: var(--accent); opacity: 0.4; }
 
-/* GENRE STAMPS */
-.genre-stamps {
+/* YEAR STAMPS */
+.year-stamps {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
   padding: 4rpx 32rpx 20rpx;
   background: var(--black);
 }
-.genre-stamp {
+.year-stamp {
   padding: 16rpx 32rpx;
   border: 2rpx solid var(--gray-light);
 }
-.genre-name {
+.year-name {
   font-family: var(--font-bebas);
   font-size: 36rpx;
   color: var(--white);
   letter-spacing: 2rpx;
   line-height: 1.1;
 }
-.genre-stamp.active { background: var(--accent); border-color: var(--accent); }
-.genre-stamp.active .genre-name { color: var(--black); }
+.year-stamp.active { background: var(--accent); border-color: var(--accent); }
+.year-stamp.active .year-name { color: var(--black); }
 
 /* ALBUM LIST */
 .album-list { background: var(--black); }
@@ -146,14 +146,6 @@
   text-overflow: ellipsis;
 }
 .album-artist { font-size: 22rpx; color: var(--gray-mid); display: block; margin-top: 4rpx; }
-.album-genres { display: flex; gap: 8rpx; margin-top: 8rpx; flex-wrap: wrap; }
-.genre-tag {
-  font-size: 18rpx;
-  letter-spacing: 1rpx;
-  background: var(--gray-light);
-  color: var(--white);
-  padding: 2rpx 10rpx;
-}
 
 .album-score {
   font-family: var(--font-bebas);

@@ -11,7 +11,8 @@
     "pages/admin/index",
     "pages/crawler/index",
     "pages/critics/index",
-    "pages/album-manager/index"
+    "pages/album-manager/index",
+    "pages/artist/index"
   ],
   "tabBar": {
     "custom": true,

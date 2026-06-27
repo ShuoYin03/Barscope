@@ -1,0 +1,103 @@
+<view class="page">
+
+  <!-- ── HERO ── -->
+  <view class="hero-wrap">
+    <view class="cover-banner">
+      <view class="banner-overlay" />
+    </view>
+
+    <!-- back button (absolute over banner) -->
+    <view
+      class="back-bar"
+      style="padding-top: {{statusBarHeight + 8}}px"
+      bindtap="onBack"
+    >
+      <text class="back-ch">←</text>
+      <text class="back-lbl">返回</text>
+    </view>
+
+    <!-- vinyl disc overlapping bottom of banner -->
+    <view class="hero-disc-wrap">
+      <view class="hero-disc">
+        <view class="hero-disc-lbl">
+          <text class="hero-disc-initial">{{initial}}</text>
+        </view>
+        <view class="hero-disc-pin" />
+      </view>
+    </view>
+  </view>
+
+  <!-- ── ARTIST NAME + INLINE STATS ── -->
+  <view class="artist-block">
+    <text class="artist-en">{{artistName}}</text>
+    <view class="artist-stats-row">
+      <text class="stat-num">{{total}}</text>
+      <text class="stat-unit">ALBUMS</text>
+      <view class="stat-sep" />
+      <text class="stat-num">{{avgScore}}</text>
+      <text class="stat-unit">AVG</text>
+      <view class="stat-sep" />
+      <text class="stat-year">{{yearRange}}</text>
+    </view>
+  </view>
+
+  <!-- orange rule -->
+  <view class="orange-rule" />
+
+  <!-- ── SCROLLABLE ALBUM LIST ── -->
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+
+    <view class="side-row">
+      <text class="side-text">SIDE A — 全部专辑 · {{total}} 张</text>
+      <view class="side-rule" />
+    </view>
+
+    <!-- skeleton -->
+    <view wx:if="{{loading}}" class="album-list">
+      <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="skel-row">
+        <view class="sk" style="width:128rpx;height:128rpx;border-radius:50%;flex-shrink:0;" />
+        <view class="skel-info">
+          <view class="sk" style="width:65%;height:28rpx;" />
+          <view class="sk" style="width:40%;height:22rpx;margin-top:10rpx;" />
+        </view>
+        <view class="sk" style="width:48rpx;height:40rpx;flex-shrink:0;" />
+      </view>
+    </view>
+
+    <!-- empty -->
+    <view wx:elif="{{list.length === 0}}" class="empty-state">
+      <text class="empty-text">暂无专辑</text>
+    </view>
+
+    <!-- album rows -->
+    <view wx:else class="album-list">
+      <view
+        wx:for="{{list}}"
+        wx:key="id"
+        class="album-row"
+        bindtap="onAlbumTap"
+        data-id="{{item.id}}"
+      >
+        <view class="album-disc">
+          <view class="disc-label">
+            <image
+              wx:if="{{item.coverUrl}}"
+              class="cover-img"
+              src="{{item.coverUrl}}"
+              mode="aspectFill"
+            />
+            <view wx:else class="disc-label-fallback" />
+          </view>
+          <view class="disc-spindle" />
+        </view>
+        <view class="album-info">
+          <text class="album-title">{{item.title}}</text>
+          <text class="album-meta">{{item.year}} · {{item.trackCount}}首</text>
+        </view>
+        <text class="album-score">{{item.score}}</text>
+      </view>
+    </view>
+
+  </scroll-view>
+
+</view>

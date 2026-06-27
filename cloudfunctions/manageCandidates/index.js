@@ -62,7 +62,7 @@ function normalizeAlbum(raw, fallbackArtist) {
   if (!(raw.name || '').trim())                        return null
   if (year < 1990 || year > now + 1)                   return null
   if (SKIP_KEYWORDS.some(kw => raw.name.includes(kw))) return null
-  if (trackCount > 0 && trackCount < 3)                return null
+  if (trackCount < 3)                                   return null
 
   return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
 }
@@ -92,11 +92,15 @@ async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
     await Promise.allSettled(
       needsBackfill.map(a => {
         const ex = existMap.get(a.sourceId)
+        // Backfill reveals this is a single/EP → delete it rather than update
+        if (!ex.trackCount && a.trackCount && a.trackCount < 3) {
+          return db.collection('albums').doc(ex._id).remove()
+        }
         const patch = {}
         if (!ex.neteaseArtistId && a.neteaseArtistId) patch.neteaseArtistId = a.neteaseArtistId
         if (!ex.primaryArtist   && a.primaryArtist)   patch.primaryArtist   = a.primaryArtist
         if (!ex.trackCount      && a.trackCount)       patch.trackCount      = a.trackCount
-        return db.collection('albums').doc(ex._id).update({ data: patch })
+        return Object.keys(patch).length ? db.collection('albums').doc(ex._id).update({ data: patch }) : Promise.resolve()
       })
     )
   }
@@ -385,11 +389,20 @@ async function refreshAlbums(candidateId) {
 // ── cleanup_singles ───────────────────────────────────────────────────────────
 async function cleanupSingles() {
   try {
-    const [r1, r2] = await Promise.all([
-      db.collection('albums').where({ trackCount: 1 }).remove(),
-      db.collection('albums').where({ trackCount: 2 }).remove(),
-    ])
-    return { success: true, removed: r1.stats.removed + r2.stats.removed }
+    // Step 1: 把没有 trackCount 字段的记录先回填为 0，让后面的循环统一处理
+    await db.collection('albums')
+      .where({ trackCount: _.exists(false) })
+      .update({ data: { trackCount: 0 } })
+
+    // Step 2: 循环删除 trackCount <= 2（含 0）直到全部清干净
+    let totalRemoved = 0
+    while (true) {
+      const r = await db.collection('albums').where({ trackCount: _.lte(2) }).remove()
+      const batch = r.stats.removed
+      totalRemoved += batch
+      if (batch === 0) break
+    }
+    return { success: true, removed: totalRemoved }
   } catch (e) {
     return { success: false, error: e.message }
   }

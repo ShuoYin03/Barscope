@@ -248,7 +248,7 @@ function normalizeAlbum(raw, fallbackArtist, opts) {
   if (!opts.skipFilters) {
     if (year < 1990 || year > now + 1) return null
     if (SKIP_KEYWORDS.some(kw => title.includes(kw))) return null
-    if (trackCount > 0 && trackCount < 3) return null
+    if (trackCount < 3) return null
   }
   return {
     title, artist, primaryArtist, neteaseArtistId, releaseYear: year, coverUrl: cover,
@@ -285,11 +285,15 @@ async function upsertAlbums(rawList, fallbackArtist, opts) {
     await Promise.allSettled(
       needsBackfill.map(a => {
         const ex = existMap.get(a.sourceId)
+        // Backfill reveals this is a single/EP → delete it rather than update
+        if (!ex.trackCount && a.trackCount && a.trackCount < 3) {
+          return db.collection('albums').doc(ex._id).remove()
+        }
         const patch = {}
         if (!ex.neteaseArtistId && a.neteaseArtistId) patch.neteaseArtistId = a.neteaseArtistId
         if (!ex.primaryArtist   && a.primaryArtist)   patch.primaryArtist   = a.primaryArtist
         if (!ex.trackCount      && a.trackCount)       patch.trackCount      = a.trackCount
-        return db.collection('albums').doc(ex._id).update({ data: patch })
+        return Object.keys(patch).length ? db.collection('albums').doc(ex._id).update({ data: patch }) : Promise.resolve()
       })
     )
   }

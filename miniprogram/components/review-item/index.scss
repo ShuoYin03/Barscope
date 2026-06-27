@@ -96,13 +96,11 @@
   font-family: var(--font-bebas);
   font-size: 40rpx;
   letter-spacing: 2rpx;
-  color: var(--gray-mid);
+  color: var(--accent);
   flex-shrink: 0;
   align-self: center;
   line-height: 1;
 }
-
-.review-item.is-critic .review-score { color: var(--accent); }
 
 .review-text {
   font-size: 24rpx;

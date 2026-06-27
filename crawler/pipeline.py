@@ -169,10 +169,12 @@ def main(from_scheduler: bool = False):
     parser = argparse.ArgumentParser(description="Barscope 爬虫")
     parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
     parser.add_argument("--skip-db-check", action="store_true", help="跳过 DB pending 检查（直接运行）")
-    parser.add_argument("--mode", choices=["search", "add-artist", "album", "fission"],
+    parser.add_argument("--mode", choices=["search", "add-artist", "album", "fission", "sync"],
                         default="fission",
                         help="运行模式（仅 --skip-db-check / --dry-run 时生效；正常由云端任务指定）")
     parser.add_argument("--param", default="", help="模式参数：艺人ID 或 专辑ID")
+    parser.add_argument("--max-rounds", type=int, default=2, help="裂变最大轮数（fission 模式，默认 2，深度 1 传 1）")
+    parser.add_argument("--workers", type=int, default=5, help="裂变并发线程数（默认 5）")
     args = parser.parse_args() if not from_scheduler else argparse.Namespace(
         dry_run=False, skip_db_check=False, mode="fission", param="")
 
@@ -235,6 +237,13 @@ def main(from_scheduler: bool = False):
             if db: db.append_log("Step 1: 同步审核结果")
             sync_decisions(token, env)
 
+            if mode == "sync":
+                print("\n✓ 同步完成，跳过爬取。")
+                if db:
+                    db.append_log("同步完成")
+                    db.complete_run(new_albums=0, new_candidates=0, errors=[])
+                return
+
         # ── Step 2: 爬取 ─────────────────────────────────────────────────────
         MODE_NAMES = {
             "search":     "全量爬取",
@@ -271,7 +280,7 @@ def main(from_scheduler: bool = False):
         elif mode == "album":
             raw_albums = run_album(int(param), dry_run=False)
         else:  # fission
-            raw_albums = run_fission(dry_run=False, should_abort=_should_abort)
+            raw_albums = run_fission(dry_run=False, should_abort=_should_abort, max_rounds=args.max_rounds, workers=args.workers)
 
         aborted      = _abort_state["aborted"] or bool(db and db.is_aborted())
         albums_found = len(raw_albums)

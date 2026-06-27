@@ -35,7 +35,7 @@ exports.main = async (event, context) => {
       return Object.assign({}, r, {
         initial: r.userNickName ? r.userNickName[0] : '?',
         userName: r.userNickName,
-        score: (r.rating || 0) + '/10',
+        score: String(r.rating || 0),
         timeAgo: formatTimeAgo(r.createdAt),
         replyCount: 0,
       })

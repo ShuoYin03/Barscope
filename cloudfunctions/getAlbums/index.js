@@ -5,6 +5,8 @@ const _ = db.command
 
 exports.main = async (event, context) => {
   var genre    = event.genre
+  var year     = event.year
+  var artistId = event.artistId
   var page     = event.page || 1
   var pageSize = event.pageSize || 20
   var id       = event.id
@@ -33,13 +35,36 @@ exports.main = async (event, context) => {
           return a.genres && a.genres.indexOf(genre) !== -1
         })
       }
+      if (year) {
+        merged = merged.filter(function(a) {
+          var y = a.releaseYear
+          if (year === '2010s') return y >= 2010 && y <= 2017
+          if (year === '2000s') return y >= 2000 && y <= 2009
+          return y === parseInt(year)
+        })
+      }
       return { success: true, list: merged, total: merged.length, page: 1, pageSize: merged.length }
     }
 
     // ── 分页列表 ──────────────────────────────────────────────────────────────
     var query = db.collection('albums')
-    if (genre) {
+    var yearFilter = null
+    if (year) {
+      if (year === '2010s') {
+        yearFilter = _.gte(2010).and(_.lte(2017))
+      } else if (year === '2000s') {
+        yearFilter = _.gte(2000).and(_.lte(2009))
+      } else {
+        var y = parseInt(year)
+        if (!isNaN(y)) yearFilter = _.eq(y)
+      }
+    }
+    if (artistId) {
+      query = query.where({ approved: true, neteaseArtistId: artistId })
+    } else if (genre) {
       query = query.where({ approved: true, genres: _.all([genre]) })
+    } else if (yearFilter) {
+      query = query.where({ approved: true, releaseYear: yearFilter })
     } else {
       query = query.where({ approved: true })
     }

@@ -51,8 +51,8 @@
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 144rpx;
-  height: 144rpx;
+  width: 264rpx;
+  height: 264rpx;
   border-radius: 50%;
   overflow: hidden;
   background: var(--accent);
@@ -106,11 +106,21 @@
   margin-top: 28rpx;
   text-align: center;
 }
-.hero-meta {
+.hero-meta-row {
+  display: flex;
+  align-items: center;
+  margin-top: 8rpx;
+}
+.hero-artist {
+  font-size: 24rpx;
+  color: var(--accent);
+  letter-spacing: 1rpx;
+  text-decoration: underline;
+}
+.hero-meta-sep,
+.hero-meta-year {
   font-size: 24rpx;
   color: var(--gray-mid);
-  display: block;
-  margin-top: 8rpx;
   letter-spacing: 1rpx;
 }
 
@@ -134,45 +144,6 @@
   margin-top: 6rpx;
 }
 
-/* INFO BLOCK */
-.info-block {
-  background: var(--off-white);
-  padding: 36rpx 44rpx;
-  border-bottom: 2rpx solid var(--gray-light);
-}
-
-.genre-chips {
-  display: flex;
-  gap: 12rpx;
-  flex-wrap: wrap;
-  margin-bottom: 28rpx;
-}
-
-.genre-chip {
-  font-size: 24rpx;
-  letter-spacing: 1rpx;
-  color: var(--gray-mid);
-  border: 2rpx solid var(--gray-light);
-  padding: 8rpx 18rpx;
-}
-
-.genre-chip.primary {
-  border-color: var(--accent);
-  color: var(--white);
-}
-
-.score-bar-wrap { margin-bottom: 20rpx; }
-
-.score-bar-track {
-  height: 3rpx;
-  background: var(--gray-light);
-  overflow: hidden;
-}
-
-.score-bar-fill {
-  height: 100%;
-  background: var(--accent);
-}
 
 /* FIXED BOTTOM BAR */
 .bottom-bar {
@@ -234,7 +205,7 @@
   gap: 16rpx;
   padding: 20rpx 44rpx;
   background: var(--black);
-  border-top: 2rpx solid var(--accent);
+  border-top: 2rpx solid var(--gray-light);
 }
 
 .reviews-label {

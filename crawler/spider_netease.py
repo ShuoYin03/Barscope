@@ -27,7 +27,9 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -188,6 +190,32 @@ def ne_get_playlist_tracks(playlist_id) -> list:
     return []
 
 
+def ne_get_artist_info(artist_id: int) -> dict:
+    """
+    获取艺人详情：picUrl / backgroundUrl / briefDesc / albumSize。
+    用于保存歌手页封面背景图。
+    """
+    try:
+        resp = requests.get(
+            f"https://music.163.com/api/v1/artist/{artist_id}",
+            headers=HEADERS,
+            timeout=12,
+        )
+        data = resp.json()
+        if data.get("code") == 200:
+            a = data.get("artist", {})
+            pic = a.get("picUrl") or ""
+            return {
+                "picUrl":        pic,
+                "backgroundUrl": pic,   # 网易无专属背景图字段，用 picUrl 代替
+                "briefDesc":     (a.get("briefDesc") or "").strip()[:300],
+                "albumSize":     a.get("albumSize") or 0,
+            }
+    except Exception as e:
+        print(f"  [!] artist info {artist_id}: {e}")
+    return {}
+
+
 def ne_get_album(album_id: int) -> Optional[dict]:
     """
     按专辑 ID 拉取专辑详情，返回专辑 raw dict（含 name/artist/artists/picUrl/size）。
@@ -237,7 +265,7 @@ def normalize_album(
     if not skip_filters:
         if any(kw in title for kw in SKIP_TITLE_KEYWORDS):
             return None
-        if track_count > 0 and track_count < 3:
+        if track_count < 3:
             return None
 
     artist_obj       = raw.get("artist") or {}
@@ -602,6 +630,7 @@ def run_fission(
     dry_run:      bool      = False,
     max_rounds:   int       = 2,
     should_abort=None,
+    workers:      int       = 5,
 ) -> List[dict]:
     """
     裂变爬虫：从种子艺人出发，通过专辑合作关系递归扩展。
@@ -663,49 +692,42 @@ def run_fission(
         # original_name → (resolved_id, netease_name) — 本轮需要回写的 ID/规范名更新
         fission_updates: Dict[str, tuple] = {}
 
-        for i, rapper in enumerate(seeds, 1):
-            if should_abort and should_abort():
-                print("\n  [中止] 收到中止信号，停止裂变")
-                aborted = True
-                break
+        _print_lock = threading.Lock()
+        total_seeds = len(seeds)
 
+        def _fetch_one(args):
+            i, rapper = args
             orig_name = rapper["name"]
             art_id    = rapper.get("id")
-
-            print(f"  [{i:02d}/{len(seeds):02d}] {orig_name} ...", end=" ", flush=True)
 
             if not art_id:
                 art_id, _ = ne_search_artist(orig_name)
                 if not art_id:
-                    print("✗  未找到艺人，跳过")
-                    continue
+                    with _print_lock:
+                        print(f"  [{i:03d}/{total_seeds:03d}] {orig_name} ... ✗  未找到，跳过")
+                    return None
                 known_ids.add(art_id)
-                time.sleep(0.3)
 
             found_name, raw_list = ne_get_artist_albums(art_id)
             display_name = found_name or orig_name
 
-            # 记录需回写到 rappers.json 的 ID 解析或名字规范化
+            local_update = None
             if rapper.get("id") is None or (display_name and display_name != orig_name):
-                fission_updates[orig_name] = (art_id, display_name)
+                local_update = (orig_name, art_id, display_name)
 
-            album_count  = 0
-            collab_count = 0
+            local_albums  = []
+            local_collabs = {}
 
             for raw in raw_list:
-                # ── 保存专辑（仅限已审批的 rapper，候选艺人不入库）─
                 if art_id in confirmed_ids:
                     album = normalize_album(
                         raw,
                         fallback_artist=display_name,
                         crawl_source=f"netease:fission:{display_name}",
                     )
-                    if album and album["sourceId"] not in seen_album_ids:
-                        seen_album_ids.add(album["sourceId"])
-                        all_new_albums.append(album)
-                        album_count += 1
+                    if album:
+                        local_albums.append(album)
 
-                # ── 提取合作艺人（album-level artists 字段）─────────
                 album_name = (raw.get("name") or "").strip()
                 for collab in (raw.get("artists") or []):
                     cid   = collab.get("id")
@@ -714,18 +736,45 @@ def run_fission(
                             and cid != art_id
                             and cid not in known_ids
                             and cname.lower() not in excluded_names
-                            and cid not in new_collab_map):
-                        new_collab_map[cid] = {
+                            and cid not in local_collabs):
+                        local_collabs[cid] = {
                             "name":      cname,
                             "from":      orig_name,
                             "fromAlbum": album_name,
                             "picUrl":    collab.get("picUrl") or collab.get("img1v1Url") or "",
                             "albumSize": collab.get("albumSize") or 0,
                         }
-                        collab_count += 1
 
-            print(f"✓  {len(raw_list)} 张  |  新合作 {collab_count} 位")
-            time.sleep(0.4)
+            with _print_lock:
+                print(f"  [{i:03d}/{total_seeds:03d}] {orig_name} ... ✓  {len(raw_list)} 张  |  新合作 {len(local_collabs)} 位")
+
+            return (art_id, local_albums, local_collabs, local_update)
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_fetch_one, (i, r)): i
+                       for i, r in enumerate(seeds, 1)}
+            for future in as_completed(futures):
+                if should_abort and should_abort():
+                    print("\n  [中止] 收到中止信号，停止裂变")
+                    aborted = True
+                    break
+                result = future.result()
+                if result is None:
+                    continue
+                art_id, local_albums, local_collabs, local_update = result
+
+                for album in local_albums:
+                    if album["sourceId"] not in seen_album_ids:
+                        seen_album_ids.add(album["sourceId"])
+                        all_new_albums.append(album)
+
+                for cid, info in local_collabs.items():
+                    if cid not in known_ids and cid not in new_collab_map:
+                        new_collab_map[cid] = info
+
+                if local_update:
+                    orig_name, resolved_id, netease_name = local_update
+                    fission_updates[orig_name] = (resolved_id, netease_name)
 
         # ── 回写本轮的 ID 解析 + 名字规范化 ───────────────────────────
         if fission_updates:
@@ -752,16 +801,17 @@ def run_fission(
             print(f"\n  第 {round_num} 轮无新合作艺人，裂变结束。")
             break
 
-        # ── 补充粉丝数（每位候选搜索一次）─────────────────────────
+        # ── 补充粉丝数（并发搜索）─────────────────────────────────
         n_cands = len(new_collab_map)
         print(f"\n  补充 {n_cands} 位候选的粉丝数...", end=" ", flush=True)
-        enriched = 0
-        for cid, info in new_collab_map.items():
-            _, fans = ne_search_artist(info["name"])
-            info["fansSize"] = fans
-            enriched += 1
-            time.sleep(0.25)
-        print(f"✓  ({enriched} 位)")
+        cid_list = list(new_collab_map.keys())
+        def _fetch_fans(cid):
+            _, fans = ne_search_artist(new_collab_map[cid]["name"])
+            return cid, fans
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for cid, fans in pool.map(_fetch_fans, cid_list):
+                new_collab_map[cid]["fansSize"] = fans
+        print(f"✓  ({n_cands} 位)")
 
         # ── 打印本轮新艺人 ─────────────────────────────────────────
         new_candidates = [
