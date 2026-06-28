@@ -38,7 +38,7 @@ exports.main = async (event) => {
 
     const patch = {
       description: cleanText(album.description || album.desc || album.briefDesc || ''),
-      company: album.company || album.subType || '',
+      company: album.company || '',
       trackCount: tracks.length || album.size || albumDoc.trackCount || 0,
       tracks,
       featuringGuests,
@@ -54,6 +54,7 @@ exports.main = async (event) => {
       trackCount: tracks.length,
       guestCount: featuringGuests.length,
       description: patch.description,
+      company: patch.company,
       tracks,
       featuringGuests,
     }
