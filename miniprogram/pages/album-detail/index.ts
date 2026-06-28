@@ -12,34 +12,81 @@ interface ReviewEntry {
   isPinned:   boolean
 }
 
+interface TrackArtist {
+  id:   number
+  name: string
+}
+
+interface AlbumTrack {
+  songId:   string
+  no:       number
+  name:     string
+  duration: number
+  artists:  TrackArtist[]
+  guests:   TrackArtist[]
+  artistText: string
+  guestText:  string
+}
+
+interface FeaturingGuest {
+  id:    number
+  name:  string
+  count: number
+}
+
 interface AlbumData {
   id:              string
   title:           string
   artist:          string
   primaryArtist:   string
   neteaseArtistId: string
+  sourceId:        string
   year:            number
   genres:          string[]
   avgScore:        number
   reviewCount:     number
   scoreFill:       string
   coverUrl:        string
+  description:     string
+  company:         string
+  tracks:          AlbumTrack[]
+  featuringGuests: FeaturingGuest[]
 }
 
 function mapAlbum(raw: any): AlbumData {
   const score = raw.avgScore || 0
+  const tracks: AlbumTrack[] = (raw.tracks || []).map((t: any, idx: number) => {
+    const artists = t.artists || []
+    const guests = t.guests || []
+    return {
+      songId:     String(t.songId || ''),
+      no:         t.no || idx + 1,
+      name:       t.name || '',
+      duration:   t.duration || 0,
+      artists,
+      guests,
+      artistText: artists.map((a: TrackArtist) => a.name).join(' / '),
+      guestText:  guests.map((a: TrackArtist) => a.name).join(' / '),
+    }
+  })
+
   return {
     id:              raw._id,
     title:           raw.title          || '',
     artist:          raw.artist         || '',
     primaryArtist:   raw.primaryArtist  || (raw.artist || '').split(/[,，&]/)[0].trim(),
     neteaseArtistId: String(raw.neteaseArtistId || ''),
+    sourceId:        String(raw.sourceId || ''),
     year:            raw.releaseYear    || 0,
     genres:          raw.genres         || [],
     avgScore:        Math.round(score * 10) / 10,
     reviewCount:     raw.reviewCount    || 0,
     scoreFill:       Math.round(score / 10 * 100) + '%',
     coverUrl:        raw.coverUrl       || '',
+    description:     raw.description    || '',
+    company:         raw.company        || '',
+    tracks,
+    featuringGuests: raw.featuringGuests || [],
   }
 }
 
@@ -52,6 +99,7 @@ Page({
     isLoggedIn:      false,
     isFavorited:     false,
     loading:         true,
+    trackSyncing:    false,
   },
 
   onLoad(options) {
@@ -86,6 +134,10 @@ Page({
         : []
 
       this.setData({ album, reviews, loading: false })
+
+      if (album && album.sourceId && (!album.tracks.length || !album.description)) {
+        this._syncAlbumTracks(album.id)
+      }
     }).catch(() => {
       this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'error' })
@@ -103,6 +155,40 @@ Page({
         },
       } as any)
     }
+  },
+
+  _syncAlbumTracks(albumId: string) {
+    if (this.data.trackSyncing) return
+    this.setData({ trackSyncing: true })
+    wx.cloud.callFunction({
+      name: 'syncAlbumTracks',
+      data: { albumId },
+      success: (res: any) => {
+        const result = res.result || {}
+        const album = this.data.album
+        if (album && result.success) {
+          const tracks = (result.tracks || []).map((t: any, idx: number) => {
+            const artists = t.artists || []
+            const guests = t.guests || []
+            return {
+              ...t,
+              no: t.no || idx + 1,
+              artistText: artists.map((a: TrackArtist) => a.name).join(' / '),
+              guestText: guests.map((a: TrackArtist) => a.name).join(' / '),
+            }
+          })
+          this.setData({
+            album: {
+              ...album,
+              description: result.description || album.description,
+              tracks,
+              featuringGuests: result.featuringGuests || [],
+            },
+          })
+        }
+      },
+      complete: () => this.setData({ trackSyncing: false }),
+    } as any)
   },
 
   onBack() {
