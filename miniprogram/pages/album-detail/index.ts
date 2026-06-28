@@ -181,6 +181,7 @@ Page({
             album: {
               ...album,
               description: result.description || album.description,
+              company: result.company || album.company,
               tracks,
               featuringGuests: result.featuringGuests || [],
             },
