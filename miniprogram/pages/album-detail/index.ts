@@ -196,6 +196,14 @@ Page({
     wx.navigateBack()
   },
 
+  onGuestTap(e: WechatMiniprogram.TouchEvent) {
+    const { id, name } = e.currentTarget.dataset as { id: number | string; name: string }
+    if (!id || !name) return
+    wx.navigateTo({
+      url: `/pages/artist/index?artistId=${id}&artistName=${encodeURIComponent(name)}`,
+    })
+  },
+
   onArtistTap() {
     const album = this.data.album
     if (!album?.neteaseArtistId) return
