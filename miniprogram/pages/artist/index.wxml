@@ -3,6 +3,12 @@
   <!-- ── HERO ── -->
   <view class="hero-wrap">
     <view class="cover-banner">
+      <image
+        wx:if="{{bannerUrl}}"
+        class="banner-img"
+        src="{{bannerUrl}}"
+        mode="aspectFill"
+      />
       <view class="banner-overlay" />
     </view>
 
@@ -20,7 +26,13 @@
     <view class="hero-disc-wrap">
       <view class="hero-disc">
         <view class="hero-disc-lbl">
-          <text class="hero-disc-initial">{{initial}}</text>
+          <image
+            wx:if="{{avatarUrl}}"
+            class="artist-avatar-img"
+            src="{{avatarUrl}}"
+            mode="aspectFill"
+          />
+          <text wx:else class="hero-disc-initial">{{initial}}</text>
         </view>
         <view class="hero-disc-pin" />
       </view>

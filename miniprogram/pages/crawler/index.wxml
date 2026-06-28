@@ -138,6 +138,9 @@
         <view class="btn-clear" style="flex:1" bindtap="onCleanupSingles">
           <text class="btn-text">清除单曲</text>
         </view>
+        <view class="btn-clear {{metadataSyncing ? 'btn-disabled' : ''}}" style="flex:1" bindtap="onSyncArtistMetadata">
+          <text class="btn-text">{{metadataSyncing ? '同步中' : '同步艺人资料'}}</text>
+        </view>
       </view>
     </view>
 

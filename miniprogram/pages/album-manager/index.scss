@@ -39,6 +39,106 @@
 
 .content { flex: 1; min-height: 0; }
 
+/* DUPLICATE CLEANUP */
+.cleanup-panel {
+  padding: 24rpx;
+  background: var(--black);
+  border-bottom: 2rpx solid var(--gray-light);
+}
+.cleanup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+.cleanup-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: var(--white);
+}
+.cleanup-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 21rpx;
+  line-height: 1.45;
+  color: var(--gray-mid);
+}
+.cleanup-btn,
+.cleanup-confirm-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14rpx 22rpx;
+  background: var(--accent);
+}
+.cleanup-btn-text,
+.cleanup-confirm-text {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: var(--black);
+  letter-spacing: 1rpx;
+}
+.cleanup-confirm-btn {
+  margin-top: 20rpx;
+  background: #dc2626;
+}
+.cleanup-confirm-text { color: var(--white); }
+.cleanup-result-card {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  background: var(--off-white);
+  border: 2rpx solid var(--gray-light);
+}
+.cleanup-stats {
+  display: flex;
+  gap: 12rpx;
+}
+.cleanup-stat {
+  flex: 1;
+  padding: 16rpx 8rpx;
+  background: var(--black);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.cleanup-stat-num {
+  font-family: var(--font-bebas);
+  font-size: 42rpx;
+  color: var(--accent);
+  line-height: 1;
+}
+.cleanup-stat-label {
+  font-size: 20rpx;
+  color: var(--gray-mid);
+}
+.cleanup-stat.danger .cleanup-stat-num { color: #ef4444; }
+.dup-sample {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx solid var(--gray-light);
+}
+.dup-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 800;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dup-keep,
+.dup-remove {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: var(--gray-mid);
+}
+.dup-remove { color: #ef4444; }
+.btn-disabled { opacity: 0.45; pointer-events: none; }
+
 /* SKELETON */
 .card-skeleton, .album-skeleton {
   display: flex;

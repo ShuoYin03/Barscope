@@ -13,6 +13,7 @@ Page({
     artistName:      '',
     initial:         '',
     bannerUrl:       '',
+    avatarUrl:       '',
     total:           0,
     avgScore:        '–',
     yearRange:       '',
@@ -42,9 +43,10 @@ Page({
       data: { artistId },
       success: (res: any) => {
         const artist = res.result?.artist
-        if (artist?.backgroundUrl) {
-          this.setData({ bannerUrl: artist.backgroundUrl })
-        }
+        if (!artist) return
+        const bannerUrl = artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
+        const avatarUrl = artist.picUrl || artist.avatarUrl || artist.backgroundUrl || artist.coverUrl || ''
+        this.setData({ bannerUrl, avatarUrl })
       },
     } as any)
   },

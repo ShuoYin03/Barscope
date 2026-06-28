@@ -7,11 +7,36 @@ exports.main = async (event) => {
   if (!artistId) return { success: false, error: 'missing artistId' }
 
   try {
-    const res = await db.collection('artists')
-      .where({ neteaseArtistId: String(artistId) })
-      .limit(1)
-      .get()
-    return { success: true, artist: res.data[0] || null }
+    // Newer artist profiles may live in artists; approved crawl candidates keep picUrl.
+    const [artistRes, candidateRes] = await Promise.all([
+      db.collection('artists')
+        .where({ neteaseArtistId: String(artistId) })
+        .limit(1)
+        .get()
+        .catch(() => ({ data: [] })),
+      db.collection('artist_candidates')
+        .where({ artistId: Number(artistId), status: 'approved' })
+        .limit(1)
+        .get()
+        .catch(() => ({ data: [] })),
+    ])
+
+    const artist = artistRes.data[0] || null
+    const candidate = candidateRes.data[0] || null
+
+    if (!artist && !candidate) return { success: true, artist: null }
+
+    return {
+      success: true,
+      artist: {
+        ...(candidate || {}),
+        ...(artist || {}),
+        artistId: artist?.artistId || candidate?.artistId || Number(artistId),
+        artistName: artist?.artistName || artist?.name || candidate?.artistName || '',
+        picUrl: artist?.picUrl || artist?.avatarUrl || candidate?.picUrl || '',
+        backgroundUrl: artist?.backgroundUrl || artist?.coverUrl || candidate?.backgroundUrl || candidate?.picUrl || '',
+      },
+    }
   } catch (e) {
     return { success: false, error: e.message }
   }

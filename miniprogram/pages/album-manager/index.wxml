@@ -33,6 +33,59 @@
       show-scrollbar="{{false}}"
       bindscrolltolower="onReachBottom"
     >
+      <view class="cleanup-panel">
+        <view class="cleanup-head">
+          <view>
+            <text class="cleanup-title">重复专辑清理</text>
+            <text class="cleanup-desc">按网易云 sourceId 识别重复，保留评论更多/已显示的版本</text>
+          </view>
+          <view
+            class="cleanup-btn {{cleanupLoading ? 'btn-disabled' : ''}}"
+            bindtap="onPreviewDuplicates"
+          >
+            <text class="cleanup-btn-text">{{cleanupLoading ? '扫描中' : '扫描'}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{cleanupPreview}}" class="cleanup-result-card">
+          <view class="cleanup-stats">
+            <view class="cleanup-stat">
+              <text class="cleanup-stat-num">{{cleanupPreview.scanned}}</text>
+              <text class="cleanup-stat-label">已扫描</text>
+            </view>
+            <view class="cleanup-stat">
+              <text class="cleanup-stat-num">{{cleanupPreview.duplicateGroups}}</text>
+              <text class="cleanup-stat-label">重复组</text>
+            </view>
+            <view class="cleanup-stat danger">
+              <text class="cleanup-stat-num">{{cleanupPreview.wouldRemove}}</text>
+              <text class="cleanup-stat-label">待删除</text>
+            </view>
+          </view>
+
+          <block wx:if="{{cleanupPreview.samples.length > 0}}">
+            <view wx:for="{{cleanupPreview.samples}}" wx:key="key" class="dup-sample">
+              <text class="dup-title">{{item.keep.title}}</text>
+              <text class="dup-keep">保留：{{item.keep.artist}} · {{item.keep.reviewCount}} 评</text>
+              <text class="dup-remove">删除 {{item.remove.length}} 张重复记录</text>
+            </view>
+          </block>
+
+          <view
+            wx:if="{{cleanupPreview.wouldRemove > 0}}"
+            class="cleanup-confirm-btn {{cleanupLoading ? 'btn-disabled' : ''}}"
+            bindtap="onRunDuplicateCleanup"
+          >
+            <text class="cleanup-confirm-text">确认清理 {{cleanupPreview.wouldRemove}} 张</text>
+          </view>
+        </view>
+
+        <view wx:if="{{cleanupResult}}" class="cleanup-result-card">
+          <text class="cleanup-title">清理完成</text>
+          <text class="cleanup-desc">已删除 {{cleanupResult.removed}} 张，迁移 {{cleanupResult.reviewsMoved}} 条评论 / {{cleanupResult.favoritesMoved}} 条收藏</text>
+        </view>
+      </view>
+
       <block wx:if="{{artistLoading && artistList.length === 0}}">
         <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="card-skeleton">
           <view class="sk skel-pic"></view>
