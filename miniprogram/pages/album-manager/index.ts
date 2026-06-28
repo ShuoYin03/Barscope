@@ -20,6 +20,31 @@ interface Album {
   trackCount:   number
 }
 
+interface DuplicateSample {
+  key: string
+  keep: {
+    _id: string
+    title: string
+    artist: string
+    approved: boolean
+    reviewCount: number
+  }
+  remove: Array<{
+    _id: string
+    title: string
+    artist: string
+    approved: boolean
+    reviewCount: number
+  }>
+}
+
+interface CleanupPreview {
+  scanned: number
+  duplicateGroups: number
+  wouldRemove: number
+  samples: DuplicateSample[]
+}
+
 const formatFans = (n: number): string => {
   if (!n) return ''
   if (n >= 10000) return `${(n / 10000).toFixed(1)}万粉`
@@ -41,6 +66,11 @@ Page({
     artistPage:    1,
     artistPageSize: 30,
     artistKeyword: '',
+
+    // duplicate cleanup
+    cleanupLoading: false,
+    cleanupPreview: null as CleanupPreview | null,
+    cleanupResult:  null as any,
 
     // album detail view
     selectedArtist:  null as Artist | null,
@@ -110,6 +140,7 @@ Page({
   onPullDownRefresh() {
     if (this.data.view === 'artists') {
       this._loadArtists(1)
+      this.setData({ cleanupPreview: null, cleanupResult: null })
     } else {
       this._loadAlbums(this.data.selectedArtist!)
     }
@@ -120,6 +151,72 @@ Page({
     const artist = (e.currentTarget.dataset as { artist: Artist }).artist
     this.setData({ view: 'albums', selectedArtist: artist, albumList: [] })
     this._loadAlbums(artist)
+  },
+
+  // ── Duplicate cleanup ────────────────────────────────────────────────────────
+  onPreviewDuplicates() {
+    if (this.data.cleanupLoading) return
+    this.setData({ cleanupLoading: true, cleanupResult: null })
+    wx.cloud.callFunction({
+      name: 'cleanupDuplicates',
+      data: { dryRun: true },
+      success: (res: any) => {
+        const r = res.result
+        this.setData({ cleanupLoading: false })
+        if (!r || !r.success) {
+          wx.showToast({ title: '扫描失败', icon: 'error' })
+          return
+        }
+        this.setData({
+          cleanupPreview: {
+            scanned: r.scanned || 0,
+            duplicateGroups: r.duplicateGroups || 0,
+            wouldRemove: r.wouldRemove || 0,
+            samples: r.samples || [],
+          },
+        })
+        wx.showToast({ title: r.wouldRemove ? '发现重复' : '暂无重复', icon: 'none' })
+      },
+      fail: () => {
+        this.setData({ cleanupLoading: false })
+        wx.showToast({ title: '网络错误', icon: 'error' })
+      },
+    })
+  },
+
+  onRunDuplicateCleanup() {
+    const preview = this.data.cleanupPreview
+    if (!preview || !preview.wouldRemove || this.data.cleanupLoading) return
+
+    wx.showModal({
+      title: '确认清理重复专辑？',
+      content: `将删除 ${preview.wouldRemove} 张重复专辑，并把评论/收藏迁移到保留专辑。该操作不可撤销。`,
+      confirmText: '确认清理',
+      confirmColor: '#dc2626',
+      success: (modalRes) => {
+        if (!modalRes.confirm) return
+        this.setData({ cleanupLoading: true })
+        wx.cloud.callFunction({
+          name: 'cleanupDuplicates',
+          data: { dryRun: false },
+          success: (res: any) => {
+            const r = res.result
+            this.setData({ cleanupLoading: false })
+            if (!r || !r.success) {
+              wx.showToast({ title: '清理失败', icon: 'error' })
+              return
+            }
+            this.setData({ cleanupResult: r, cleanupPreview: null })
+            wx.showToast({ title: `已删除 ${r.removed || 0} 张`, icon: 'success' })
+            this._loadArtists(1)
+          },
+          fail: () => {
+            this.setData({ cleanupLoading: false })
+            wx.showToast({ title: '网络错误', icon: 'error' })
+          },
+        })
+      },
+    })
   },
 
   // ── Album list ───────────────────────────────────────────────────────────────
