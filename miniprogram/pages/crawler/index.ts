@@ -10,6 +10,8 @@ Page({
     crawlerScheduleEnabled:  false,
     crawlerScheduleInterval: 'weekly' as 'daily' | 'weekly',
 
+    metadataSyncing: false,
+
     crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync',
     crawlerParam:       '',
     crawlerProgressPct: 0,
@@ -282,6 +284,44 @@ Page({
           },
           fail: () => {
             wx.hideLoading()
+            wx.showToast({ title: '网络错误', icon: 'error' })
+          },
+        })
+      },
+    })
+  },
+
+  onSyncArtistMetadata() {
+    if (this.data.metadataSyncing) return
+    wx.showModal({
+      title: '同步艺人资料',
+      content: '将根据已批准 rapper 的网易云 ID，同步头像、主页背景、粉丝数、专辑数和简介。',
+      confirmText: '开始同步',
+      confirmColor: '#C94E25',
+      success: (r) => {
+        if (!r.confirm) return
+        this.setData({ metadataSyncing: true })
+        wx.showLoading({ title: '同步中…', mask: true })
+        wx.cloud.callFunction({
+          name: 'syncArtistMetadata',
+          data: {},
+          success: (res: any) => {
+            wx.hideLoading()
+            this.setData({ metadataSyncing: false })
+            const result = res.result || {}
+            if (result.success) {
+              wx.showModal({
+                title: '同步完成',
+                content: `扫描 ${result.scanned || 0} 位，更新 ${result.updated || 0} 位，跳过 ${result.skipped || 0} 位，错误 ${result.errors || 0} 位。`,
+                showCancel: false,
+              })
+            } else {
+              wx.showToast({ title: result.error || '同步失败', icon: 'none' })
+            }
+          },
+          fail: () => {
+            wx.hideLoading()
+            this.setData({ metadataSyncing: false })
             wx.showToast({ title: '网络错误', icon: 'error' })
           },
         })
