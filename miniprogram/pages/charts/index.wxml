@@ -25,7 +25,7 @@
     <view wx:if="{{loading}}" class="chart-list">
       <view wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}" wx:key="*this" class="skel-row">
         <view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" />
-        <view class="sk" style="width:92rpx;height:92rpx;border-radius:50%;flex-shrink:0;" />
+        <view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" />
         <view class="skel-info">
           <view class="sk" style="width:65%;height:26rpx;" />
           <view class="sk" style="width:50%;height:20rpx;" />
@@ -49,9 +49,10 @@
           data-id="{{item.albumId}}"
         >
           <text class="chart-rank {{item.rank <= 5 ? 'aside' : 'bside'}}">{{item.rank <= 5 ? 'A' + item.rank : 'B' + (item.rank - 5)}}</text>
-          <view class="chart-cover">
-            <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
-            <view wx:else class="vinyl-cover-mini" />
+          <view class="vinyl-cover-wrap">
+            <view class="vinyl-disc-peek" />
+            <image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="cover-sq cover-sq-ph" />
           </view>
           <view class="chart-info">
             <text class="chart-title">{{item.title}}</text>

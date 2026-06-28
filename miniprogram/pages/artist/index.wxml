@@ -55,7 +55,7 @@
     <!-- skeleton -->
     <view wx:if="{{loading}}" class="album-list">
       <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="skel-row">
-        <view class="sk" style="width:128rpx;height:128rpx;border-radius:50%;flex-shrink:0;" />
+        <view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" />
         <view class="skel-info">
           <view class="sk" style="width:65%;height:28rpx;" />
           <view class="sk" style="width:40%;height:22rpx;margin-top:10rpx;" />
@@ -78,17 +78,10 @@
         bindtap="onAlbumTap"
         data-id="{{item.id}}"
       >
-        <view class="album-disc">
-          <view class="disc-label">
-            <image
-              wx:if="{{item.coverUrl}}"
-              class="cover-img"
-              src="{{item.coverUrl}}"
-              mode="aspectFill"
-            />
-            <view wx:else class="disc-label-fallback" />
-          </view>
-          <view class="disc-spindle" />
+        <view class="vinyl-cover-wrap">
+          <view class="vinyl-disc-peek" />
+          <image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="cover-sq cover-sq-ph" />
         </view>
         <view class="album-info">
           <text class="album-title">{{item.title}}</text>

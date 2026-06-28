@@ -26,9 +26,15 @@ exports.main = async (event, context) => {
       var res1 = await db.collection('albums').where({ approved: true, title: re }).limit(50).get()
       var res2 = await db.collection('albums').where({ approved: true, artist: re }).limit(50).get()
       var seen = {}
+      var seenKey = {}
       var merged = []
       res1.data.concat(res2.data).forEach(function(a) {
-        if (!seen[a._id]) { seen[a._id] = true; merged.push(a) }
+        if (seen[a._id]) return
+        var dupKey = (a.title || '').toLowerCase() + '|||' + (a.artist || '').toLowerCase()
+        if (seenKey[dupKey]) return
+        seen[a._id] = true
+        seenKey[dupKey] = true
+        merged.push(a)
       })
       if (genre) {
         merged = merged.filter(function(a) {
