@@ -28,17 +28,18 @@ exports.main = async (event) => {
     if (!neteaseAlbumId) return { success: false, error: 'missing sourceId' }
 
     const detail = await fetchAlbumDetail(neteaseAlbumId)
-    if (!detail || detail.code !== 200) return { success: false, error: 'netease album api failed' }
+    if (!detail) return { success: false, error: 'netease album api failed' }
 
-    const album = detail.album || {}
-    const songs = detail.songs || album.songs || []
+    const album = detail.album || detail.data?.album || {}
+    const songs = detail.songs || detail.data?.songs || album.songs || []
     const primaryArtistNames = getPrimaryArtistNames(albumDoc, album)
     const tracks = songs.map((song, idx) => normalizeTrack(song, idx, primaryArtistNames))
     const featuringGuests = collectGuests(tracks)
+    const description = extractDescription(detail, album, albumDoc)
 
     const patch = {
-      description: cleanText(album.description || album.desc || album.briefDesc || ''),
-      company: album.company || '',
+      description,
+      company: album.company || albumDoc.company || '',
       trackCount: tracks.length || album.size || albumDoc.trackCount || 0,
       tracks,
       featuringGuests,
@@ -57,6 +58,12 @@ exports.main = async (event) => {
       company: patch.company,
       tracks,
       featuringGuests,
+      debug: {
+        code: detail.code,
+        hasAlbum: !!detail.album || !!detail.data?.album,
+        albumKeys: Object.keys(album || {}).slice(0, 30),
+        rawDescriptionLength: String(description || '').length,
+      },
     }
   } catch (e) {
     return { success: false, error: e.message }
@@ -105,8 +112,34 @@ function collectGuests(tracks) {
   return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 }
 
-function fetchAlbumDetail(albumId) {
-  return httpsGetJson(`https://music.163.com/api/album/${albumId}`)
+function extractDescription(detail, album, albumDoc) {
+  const candidates = [
+    album.description,
+    album.desc,
+    album.briefDesc,
+    album.copywriter,
+    albumDoc.description,
+    detail.description,
+    detail.desc,
+    detail.data?.description,
+    detail.data?.desc,
+  ]
+  return cleanText(candidates.find(v => String(v || '').trim()) || '')
+}
+
+async function fetchAlbumDetail(albumId) {
+  const urls = [
+    `https://music.163.com/api/v1/album/${albumId}`,
+    `https://music.163.com/api/album/${albumId}`,
+  ]
+
+  for (const url of urls) {
+    try {
+      const json = await httpsGetJson(url)
+      if (json && (json.code === 200 || json.album || json.data?.album)) return json
+    } catch (e) {}
+  }
+  return null
 }
 
 function httpsGetJson(url) {
