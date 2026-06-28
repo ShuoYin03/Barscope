@@ -6,7 +6,7 @@
   background: var(--black);
 }
 
-.content { flex: 1; min-height: 0; }
+.content { flex: 1; min-height: 0; padding-bottom: 32rpx; }
 
 /* BACK BAR */
 .back-bar {
@@ -144,6 +144,112 @@
   margin-top: 6rpx;
 }
 
+/* ALBUM META SECTIONS */
+.album-section {
+  background: var(--black);
+  padding: 28rpx 44rpx;
+  border-top: 2rpx solid var(--gray-light);
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+.section-label {
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+  color: var(--accent);
+}
+.section-count {
+  font-size: 22rpx;
+  color: var(--gray-mid);
+}
+.desc-text {
+  display: block;
+  font-size: 26rpx;
+  color: var(--white);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  letter-spacing: 1rpx;
+}
+.placeholder-row {
+  padding: 28rpx 0;
+}
+.placeholder-text {
+  font-size: 24rpx;
+  color: var(--gray-mid);
+}
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid var(--off-white);
+}
+.track-row:last-child { border-bottom: none; }
+.track-no {
+  width: 48rpx;
+  flex-shrink: 0;
+  font-family: var(--font-bebas);
+  font-size: 30rpx;
+  color: var(--gray-mid);
+  letter-spacing: 2rpx;
+}
+.track-main {
+  flex: 1;
+  min-width: 0;
+}
+.track-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.track-artists {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--gray-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.track-guest {
+  flex-shrink: 0;
+  font-family: var(--font-bebas);
+  font-size: 24rpx;
+  color: var(--accent);
+  letter-spacing: 2rpx;
+}
+.guest-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+.guest-chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 18rpx;
+  background: var(--off-white);
+  border: 2rpx solid var(--gray-light);
+}
+.guest-name {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--white);
+}
+.guest-count {
+  font-family: var(--font-bebas);
+  font-size: 24rpx;
+  color: var(--accent);
+}
 
 /* FIXED BOTTOM BAR */
 .bottom-bar {
