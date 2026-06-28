@@ -204,6 +204,14 @@ Page({
     })
   },
 
+  onGuestTap(e: WechatMiniprogram.TouchEvent) {
+    const { id, name } = e.currentTarget.dataset as { id: number | string; name: string }
+    if (!id || !name) return
+    wx.navigateTo({
+      url: `/pages/artist/index?artistId=${id}&artistName=${encodeURIComponent(name)}`,
+    })
+  },
+
   onWriteReview() {
     if (!this.data.isLoggedIn) {
       wx.navigateTo({ url: '/pages/login/index' })
