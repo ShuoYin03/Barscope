@@ -1,6 +1,5 @@
-const TICKER_SONGS = [
-  '光明 · GAI', 'SOUTH SIDE · VAVA', '无处不在 · Tizzy T',
-  'Intro · 艾福杰尼', '野外 · 那吾克热', '病态 · GALI',
+const FALLBACK_TICKER_SONGS = [
+  'BARSCOPE · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
 const GENRES = [
@@ -27,7 +26,7 @@ Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
-    tickerSongs:     TICKER_SONGS,
+    tickerSongs:     FALLBACK_TICKER_SONGS,
     loading:         true,
     hero:            null as any,
     heroScoreFill:   '0%',
@@ -62,12 +61,15 @@ Page({
     const p3 = wx.cloud.callFunction({ name: 'getReviews', data: { recent: true, pageSize: 4 } })
     // total album count
     const p4 = wx.cloud.callFunction({ name: 'getAlbums', data: { pageSize: 1 } })
+    // latest releases ticker
+    const p5 = wx.cloud.callFunction({ name: 'getLatestAlbums', data: { limit: 12 } })
 
-    Promise.all([p1, p2, p3, p4]).then((results: any[]) => {
-      const chartsRes  = results[0].result
+    Promise.all([p1, p2, p3, p4, p5]).then((results: any[]) => {
+      const chartsRes   = results[0].result
       const releasesRes = results[1].result
-      const reviewsRes = results[2].result
-      const totalRes   = results[3].result
+      const reviewsRes  = results[2].result
+      const totalRes    = results[3].result
+      const latestRes   = results[4].result
 
       // chart items
       const chartItems = chartsRes.success
@@ -106,12 +108,18 @@ Page({
           }))
         : []
 
+      // latest ticker
+      const tickerSongs = latestRes && latestRes.success && latestRes.tickerSongs && latestRes.tickerSongs.length
+        ? latestRes.tickerSongs
+        : FALLBACK_TICKER_SONGS
+
       // recent reviews
       const reviews = reviewsRes.success ? (reviewsRes.list || []) : []
 
       const totalAlbums = totalRes.success ? (totalRes.total || 0) : 0
 
       this.setData({
+        tickerSongs,
         hero,
         heroScoreFill: hero ? hero.scoreFill : '0%',
         chartItems,
