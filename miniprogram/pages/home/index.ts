@@ -1,6 +1,5 @@
-const TICKER_SONGS = [
-  '光明 · GAI', 'SOUTH SIDE · VAVA', '无处不在 · Tizzy T',
-  'Intro · 艾福杰尼', '野外 · 那吾克热', '病态 · GALI',
+const FALLBACK_TICKER_SONGS = [
+  'BARSCOPE · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
 const GENRES = [
@@ -23,11 +22,20 @@ function fmtScore(n: number): string {
   return r.toFixed(1)
 }
 
+function safeCallFunction(name: string, data: Record<string, any>) {
+  return wx.cloud.callFunction({ name, data })
+    .then((res: any) => res.result || { success: false })
+    .catch((err: any) => {
+      console.warn(`${name} failed`, err)
+      return { success: false }
+    })
+}
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
-    tickerSongs:     TICKER_SONGS,
+    tickerSongs:     FALLBACK_TICKER_SONGS,
     loading:         true,
     hero:            null as any,
     heroScoreFill:   '0%',
@@ -54,22 +62,19 @@ Page({
   },
 
   _loadData() {
-    // charts top 5
-    const p1 = wx.cloud.callFunction({ name: 'getCharts', data: { limit: 5 } })
-    // new releases (by releaseYear)
-    const p2 = wx.cloud.callFunction({ name: 'getAlbums', data: { sortBy: 'releaseYear', pageSize: 4 } })
-    // recent reviews
-    const p3 = wx.cloud.callFunction({ name: 'getReviews', data: { recent: true, pageSize: 4 } })
-    // total album count
-    const p4 = wx.cloud.callFunction({ name: 'getAlbums', data: { pageSize: 1 } })
+    const p1 = safeCallFunction('getCharts', { limit: 5 })
+    const p2 = safeCallFunction('getAlbums', { sortBy: 'releaseYear', pageSize: 4 })
+    const p3 = safeCallFunction('getReviews', { recent: true, pageSize: 4 })
+    const p4 = safeCallFunction('getAlbums', { pageSize: 1 })
+    const p5 = safeCallFunction('getLatestAlbums', { limit: 12 })
 
-    Promise.all([p1, p2, p3, p4]).then((results: any[]) => {
-      const chartsRes  = results[0].result
-      const releasesRes = results[1].result
-      const reviewsRes = results[2].result
-      const totalRes   = results[3].result
+    Promise.all([p1, p2, p3, p4, p5]).then((results: any[]) => {
+      const chartsRes   = results[0]
+      const releasesRes = results[1]
+      const reviewsRes  = results[2]
+      const totalRes    = results[3]
+      const latestRes   = results[4]
 
-      // chart items
       const chartItems = chartsRes.success
         ? (chartsRes.list || []).map((item: any) => ({
             ...item,
@@ -78,7 +83,6 @@ Page({
           }))
         : []
 
-      // hero = top chart item
       const topItem = chartItems[0] || null
       const hero = topItem ? {
         albumId:      topItem.albumId,
@@ -91,7 +95,6 @@ Page({
         genres:       [],
       } : null
 
-      // new releases
       const newReleases = releasesRes.success
         ? (releasesRes.list || []).slice(0, 4).map((a: any, i: number) => ({
             albumId:      a._id,
@@ -106,12 +109,15 @@ Page({
           }))
         : []
 
-      // recent reviews
-      const reviews = reviewsRes.success ? (reviewsRes.list || []) : []
+      const tickerSongs = latestRes && latestRes.success && latestRes.tickerSongs && latestRes.tickerSongs.length
+        ? latestRes.tickerSongs
+        : FALLBACK_TICKER_SONGS
 
+      const reviews = reviewsRes.success ? (reviewsRes.list || []) : []
       const totalAlbums = totalRes.success ? (totalRes.total || 0) : 0
 
       this.setData({
+        tickerSongs,
         hero,
         heroScoreFill: hero ? hero.scoreFill : '0%',
         chartItems,
