@@ -111,6 +111,7 @@ async function fetchAllAlbums() {
         avgScore: true,
         reviewCount: true,
         trackCount: true,
+        neteaseArtistId: true,
       })
       .skip(skip)
       .limit(PAGE_SIZE)
@@ -143,14 +144,20 @@ function buildDuplicateGroups(albums) {
 
 function duplicateKey(album) {
   const sourceId = String(album.sourceId || '').trim()
-  if (sourceId) return `sourceId:${sourceId}`
+  const artistId = String(album.neteaseArtistId || '').trim()
+
+  if (sourceId) {
+    // Same sourceId + same neteaseArtistId = true duplicate (re-imported)
+    // Same sourceId + different neteaseArtistId = same album on two artists' pages, keep both
+    return `sourceId:${sourceId}|artistId:${artistId || '_'}`
+  }
 
   const title = normalizeTitle(album.title || '')
   const year = album.releaseYear || ''
   const coverKey = normalizeCover(album.coverUrl || '')
   if (!title || !year || !coverKey) return ''
 
-  return `legacy:${title}|${year}|${coverKey}`
+  return `legacy:${title}|${year}|${coverKey}|artistId:${artistId || '_'}`
 }
 
 function normalizeTitle(title) {

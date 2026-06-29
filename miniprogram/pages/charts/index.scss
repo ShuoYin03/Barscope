@@ -110,36 +110,6 @@
 .chart-rank.aside { color: var(--accent); }
 .chart-rank.bside { color: var(--gray-mid); }
 
-/* Circular vinyl thumbnail */
-.chart-cover {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-  background: var(--gray-light);
-}
-
-.cover-img {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.vinyl-cover-mini {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at 50% 50%,
-    var(--accent) 0, var(--accent) 17%,
-    var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
-    var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
-    var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
-  );
-}
 
 .chart-info { flex: 1; min-width: 0; }
 .chart-title {

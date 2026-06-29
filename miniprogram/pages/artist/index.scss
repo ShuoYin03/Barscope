@@ -199,42 +199,6 @@
 }
 .album-row:last-child { border-bottom: none; }
 
-/* vinyl disc thumbnail */
-.album-disc {
-  width: 128rpx; height: 128rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
-  position: relative;
-  background: radial-gradient(circle at 50% 50%,
-    var(--accent) 0, var(--accent) 17%,
-    var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
-    var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
-    var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
-  );
-  box-shadow: 0 0 0 4rpx var(--black), 0 0 0 6rpx var(--gray-light);
-}
-
-.disc-label {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 44rpx; height: 44rpx;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--accent);
-}
-.cover-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
-.disc-label-fallback { width: 100%; height: 100%; background: var(--accent); }
-.disc-spindle {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12rpx; height: 12rpx;
-  border-radius: 50%;
-  background: var(--black);
-  z-index: 3;
-}
 
 .album-info { flex: 1; min-width: 0; }
 .album-title { font-size: 28rpx; font-weight: 700; color: var(--white); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

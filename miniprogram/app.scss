@@ -77,3 +77,59 @@ page {
   background: var(--off-white);
   padding: 28rpx 28rpx 24rpx;
 }
+
+/* ── VINYL COVER CARD ──────────────────────────────────────────────────────────
+   Square album cover with vinyl disc peeking from the right.
+   Usage: <view class="vinyl-cover-wrap">
+            <view class="vinyl-disc-peek" />
+            <image class="cover-sq" ... />   ← or <view class="cover-sq cover-sq-ph" />
+          </view>
+── */
+.vinyl-cover-wrap {
+  position: relative;
+  width: 160rpx;
+  height: 120rpx;
+  flex-shrink: 0;
+}
+
+.cover-sq {
+  position: absolute;
+  left: 0; top: 0;
+  width: 120rpx; height: 120rpx;
+  z-index: 2;
+  display: block;
+}
+
+.cover-sq-ph {
+  background: var(--off-white);
+}
+
+.vinyl-disc-peek {
+  position: absolute;
+  right: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 112rpx; height: 112rpx;
+  border-radius: 50%;
+  z-index: 1;
+  box-shadow: 0 0 0 2rpx #3a3230;
+  background:
+    radial-gradient(ellipse 42% 58% at 36% 35%, rgba(255,255,255,0.11) 0%, transparent 58%),
+    radial-gradient(circle at 50% 50%,
+      #0e0b0d 0%, #0e0b0d 2%,
+      var(--accent) 2.1%, var(--accent) 38%,
+      #1c1618 39%,
+      #312b2e 40.5%, #1c1618 42%, #312b2e 43.5%, #1c1618 45%,
+      #312b2e 46.5%, #1c1618 48%, #312b2e 49.5%, #1c1618 51%,
+      #312b2e 28.5%, #1c1618 30%, #312b2e 31.5%, #1c1618 33%,
+      #312b2e 34.5%, #1c1618 36%, #312b2e 37.5%, #1c1618 39%,
+      #312b2e 40.5%, #1c1618 42%, #312b2e 43.5%, #1c1618 45%,
+      #312b2e 46.5%, #1c1618 48%, #312b2e 49.5%, #1c1618 51%,
+      #312b2e 52.5%, #1c1618 54%, #312b2e 55.5%, #1c1618 57%,
+      #312b2e 58.5%, #1c1618 60%, #312b2e 61.5%, #1c1618 63%,
+      #312b2e 64.5%, #1c1618 66%, #312b2e 67.5%, #1c1618 69%,
+      #312b2e 70.5%, #1c1618 72%, #312b2e 73.5%, #1c1618 75%,
+      #312b2e 76.5%, #1c1618 78%, #312b2e 79.5%, #1c1618 81%,
+      #312b2e 82.5%, #1c1618 84%,
+      #282224 85%, #1a1416 89%, #0e0b0d 100%
+    );
+}
