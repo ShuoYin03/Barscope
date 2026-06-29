@@ -36,6 +36,34 @@
 .search-input { flex: 1; font-size: 28rpx; color: var(--white); background: transparent; }
 .search-ph { color: var(--gray-mid); }
 
+/* VIEW SWITCH */
+.view-switch {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 32rpx 18rpx;
+  background: var(--black);
+  flex-shrink: 0;
+}
+.switch-chip {
+  flex: 1;
+  border: 2rpx solid var(--gray-light);
+  padding: 18rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.switch-chip text {
+  font-family: var(--font-bebas);
+  font-size: 28rpx;
+  color: var(--gray-mid);
+  letter-spacing: 4rpx;
+}
+.switch-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.switch-chip.active text { color: var(--black); }
+
 .content { flex: 1; min-height: 0; }
 
 /* SIDE A / SIDE B dividers */
@@ -155,3 +183,73 @@
   line-height: 1;
   flex-shrink: 0;
 }
+
+/* ARTIST DIRECTORY */
+.artist-list { background: var(--black); }
+.artist-group { background: var(--black); }
+.letter-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 32rpx 8rpx;
+}
+.letter-text {
+  font-family: var(--font-bebas);
+  font-size: 32rpx;
+  color: var(--accent);
+  letter-spacing: 4rpx;
+}
+.letter-rule { flex: 1; height: 1px; background: var(--gray-light); }
+.artist-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 22rpx 32rpx;
+  border-bottom: 2rpx solid var(--off-white);
+}
+.artist-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.artist-avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.artist-avatar-initial {
+  font-family: var(--font-bebas);
+  font-size: 36rpx;
+  color: var(--black);
+}
+.artist-info { flex: 1; min-width: 0; }
+.artist-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.artist-meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--gray-mid);
+}
+.artist-arrow {
+  font-size: 42rpx;
+  color: var(--gray-mid);
+  flex-shrink: 0;
+}
+
+.skel-row, .artist-row .skel-info { flex: 1; }
+.sk { background: var(--gray-light); animation: shimmer 1.2s infinite; }
+@keyframes shimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
