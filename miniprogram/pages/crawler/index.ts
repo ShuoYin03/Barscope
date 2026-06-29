@@ -295,36 +295,53 @@ Page({
     if (this.data.metadataSyncing) return
     wx.showModal({
       title: '同步艺人资料',
-      content: '将根据已批准 rapper 的网易云 ID，同步头像、主页背景、粉丝数、专辑数和简介。',
+      content: '将根据已批准 rapper 的网易云 ID，同步头像、粉丝数、专辑数和简介。每批 100 人，自动续跑直到全部完成。',
       confirmText: '开始同步',
       confirmColor: '#C94E25',
       success: (r) => {
         if (!r.confirm) return
         this.setData({ metadataSyncing: true })
-        wx.showLoading({ title: '同步中…', mask: true })
-        wx.cloud.callFunction({
-          name: 'syncArtistMetadata',
-          data: {},
-          success: (res: any) => {
-            wx.hideLoading()
-            this.setData({ metadataSyncing: false })
-            const result = res.result || {}
-            if (result.success) {
-              wx.showModal({
-                title: '同步完成',
-                content: `扫描 ${result.scanned || 0} 位，更新 ${result.updated || 0} 位，跳过 ${result.skipped || 0} 位，错误 ${result.errors || 0} 位。`,
-                showCancel: false,
-              })
-            } else {
-              wx.showToast({ title: result.error || '同步失败', icon: 'none' })
-            }
-          },
-          fail: () => {
-            wx.hideLoading()
-            this.setData({ metadataSyncing: false })
-            wx.showToast({ title: '网络错误', icon: 'error' })
-          },
-        })
+        this._syncBatch(0, { updated: 0, skipped: 0, errors: 0 })
+      },
+    })
+  },
+
+  _syncBatch(skip: number, acc: { updated: number; skipped: number; errors: number }) {
+    const total = acc.updated + acc.skipped + acc.errors
+    wx.showLoading({ title: `同步中…(${total}位)`, mask: true })
+    wx.cloud.callFunction({
+      name: 'syncArtistMetadata',
+      data: { skip, limit: 100 },
+      success: (res: any) => {
+        const result = res.result || {}
+        if (!result.success) {
+          wx.hideLoading()
+          this.setData({ metadataSyncing: false })
+          wx.showToast({ title: result.error || '同步失败', icon: 'none' })
+          return
+        }
+        const next = {
+          updated: acc.updated + (result.updated || 0),
+          skipped: acc.skipped + (result.skipped || 0),
+          errors:  acc.errors  + (result.errors  || 0),
+        }
+        if (result.hasMore) {
+          this._syncBatch(result.nextSkip, next)
+        } else {
+          wx.hideLoading()
+          this.setData({ metadataSyncing: false })
+          wx.showModal({
+            title: '同步完成',
+            content: `共 ${result.total || 0} 位：更新 ${next.updated}，跳过 ${next.skipped}，错误 ${next.errors}。`,
+            showCancel: false,
+          })
+        }
+      },
+      fail: (err: any) => {
+        wx.hideLoading()
+        this.setData({ metadataSyncing: false })
+        console.error('[syncArtistMetadata] fail', JSON.stringify(err))
+        wx.showToast({ title: '网络错误，请重试', icon: 'error' })
       },
     })
   },
