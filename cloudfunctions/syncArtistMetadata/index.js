@@ -6,12 +6,12 @@ const db = cloud.database()
 const _  = db.command
 
 const PAGE_SIZE = 100
-const WRITE_BATCH = 20
+const WRITE_BATCH = 10
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
   const limit = Number(event.limit || 0)
-  const force = !!event.force
+  const force = event.force !== false
 
   try {
     if (!(await checkAdmin(OPENID))) {
@@ -40,7 +40,7 @@ exports.main = async (event, context) => {
         }
       })
       if (i + WRITE_BATCH < candidates.length) {
-        await sleep(300)
+        await sleep(500)
       }
     }
 
@@ -108,17 +108,14 @@ async function syncOneArtist(candidate, force) {
   const artistId = Number(candidate.artistId)
   if (!artistId) return { updated: false }
 
-  if (!force && candidate.picUrl && candidate.heroImageUrl) {
+  if (!force && isRealImageUrl(candidate.avatarUrl || candidate.picUrl) && isRealImageUrl(candidate.heroImageUrl || candidate.backgroundUrl)) {
     return { updated: false }
   }
 
-  const detail = await fetchArtistDetail(artistId)
-  if (!detail) return { updated: false }
+  const details = await fetchArtistDetails(artistId)
+  if (!details.length) return { updated: false }
 
-  const artist = normalizeArtistPayload(detail)
-  const profile = detail.profile || detail.data?.profile || {}
-
-  const patch = buildPatch(candidate, artist, profile)
+  const patch = buildPatch(candidate, details)
   if (!patch.avatarUrl && !patch.heroImageUrl && !patch.artistName) {
     return { updated: false }
   }
@@ -137,34 +134,41 @@ async function syncOneArtist(candidate, force) {
   }
 }
 
-function normalizeArtistPayload(detail) {
-  if (detail.artist) return detail.artist
-  if (detail.data && detail.data.artist) return detail.data.artist
-  if (detail.data && detail.data.user) return detail.data.user
-  return detail.data || detail
-}
+function buildPatch(candidate, details) {
+  const sources = details.map(flattenArtistDetail)
+  const name = firstNonEmpty([
+    ...sources.map(s => s.name),
+    candidate.artistName,
+  ])
 
-function buildPatch(candidate, artist, profile) {
-  const name = artist.name || profile.nickname || candidate.artistName || ''
-  const avatarUrl = firstNonEmpty([
-    artist.picUrl,
-    artist.img1v1Url,
-    artist.avatarUrl,
-    profile.avatarUrl,
+  // Mobile artist homepage priority:
+  // avatarUrl = circular profile photo in mobile card
+  // heroImageUrl = large top background image on mobile artist homepage
+  const avatarUrl = firstRealImageUrl([
+    ...sources.map(s => s.avatarUrl),
+    ...sources.map(s => s.img1v1Url),
+    ...sources.map(s => s.picUrl),
     candidate.avatarUrl,
     candidate.picUrl,
   ])
-  const heroImageUrl = firstNonEmpty([
-    artist.cover,
-    artist.coverUrl,
-    artist.backgroundUrl,
-    profile.backgroundUrl,
+
+  const heroImageUrl = firstRealImageUrl([
+    ...sources.map(s => s.backgroundUrl),
+    ...sources.map(s => s.coverUrl),
+    ...sources.map(s => s.cover),
+    ...sources.map(s => s.avatarDetailBgUrl),
     candidate.heroImageUrl,
     candidate.backgroundUrl,
     candidate.coverUrl,
-    avatarUrl,
   ])
-  const alias = Array.isArray(artist.alias) ? artist.alias : []
+
+  const alias = firstArray(sources.map(s => s.alias))
+  const fansSize = firstNumber([
+    ...sources.map(s => s.followedCount),
+    ...sources.map(s => s.fansCount),
+    ...sources.map(s => s.fansSize),
+    candidate.fansSize,
+  ])
 
   return {
     artistName: name,
@@ -173,12 +177,48 @@ function buildPatch(candidate, artist, profile) {
     coverUrl: heroImageUrl,
     backgroundUrl: heroImageUrl,
     heroImageUrl,
-    fansSize: Number(artist.followedCount || artist.fansCount || artist.fansSize || candidate.fansSize || 0),
-    albumSize: Number(artist.albumSize || candidate.albumSize || 0),
-    musicSize: Number(artist.musicSize || candidate.musicSize || 0),
+    fansSize,
+    albumSize: firstNumber([...sources.map(s => s.albumSize), candidate.albumSize]),
+    musicSize: firstNumber([...sources.map(s => s.musicSize), candidate.musicSize]),
     alias,
-    briefDesc: artist.briefDesc || artist.trans || profile.signature || '',
+    briefDesc: firstNonEmpty([...sources.map(s => s.briefDesc), ...sources.map(s => s.signature), ...sources.map(s => s.trans)]),
     syncedAt: db.serverDate(),
+  }
+}
+
+function flattenArtistDetail(detail) {
+  const data = detail.data || {}
+  const artist = detail.artist || data.artist || data.artistInfo || {}
+  const user = detail.user || data.user || data.userInfo || data.profile || detail.profile || {}
+  const profile = detail.profile || data.profile || {}
+  const home = data.homePage || data.homepage || detail.homePage || {}
+  const card = data.artistCard || data.card || detail.artistCard || {}
+
+  return {
+    ...detail,
+    ...data,
+    ...artist,
+    ...user,
+    ...profile,
+    ...home,
+    ...card,
+    name: artist.name || data.name || user.nickname || profile.nickname || detail.name,
+    avatarUrl: user.avatarUrl || profile.avatarUrl || data.avatarUrl || artist.avatarUrl || artist.picUrl || artist.img1v1Url,
+    picUrl: artist.picUrl || data.picUrl || profile.avatarUrl || user.avatarUrl,
+    img1v1Url: artist.img1v1Url || data.img1v1Url,
+    backgroundUrl: user.backgroundUrl || profile.backgroundUrl || data.backgroundUrl || artist.backgroundUrl || artist.cover || artist.coverUrl,
+    coverUrl: artist.coverUrl || data.coverUrl || user.backgroundUrl || profile.backgroundUrl,
+    cover: artist.cover || data.cover || user.backgroundUrl || profile.backgroundUrl,
+    avatarDetailBgUrl: user.avatarDetail?.identityIconUrl || user.avatarDetailBgUrl || data.avatarDetailBgUrl,
+    followedCount: user.followeds || user.followedCount || profile.followeds || artist.followedCount || data.followedCount,
+    fansCount: user.fansCount || artist.fansCount || data.fansCount,
+    fansSize: user.fansSize || artist.fansSize || data.fansSize,
+    albumSize: artist.albumSize || data.albumSize,
+    musicSize: artist.musicSize || data.musicSize,
+    alias: artist.alias || data.alias,
+    briefDesc: artist.briefDesc || data.briefDesc,
+    signature: user.signature || profile.signature || data.signature,
+    trans: artist.trans || data.trans,
   }
 }
 
@@ -213,24 +253,32 @@ async function upsertArtistProfile(artistId, patch) {
   }
 }
 
-function fetchArtistDetail(artistId) {
+async function fetchArtistDetails(artistId) {
   const urls = [
+    `https://interface.music.163.com/api/artist/head/info/get?id=${artistId}`,
     `https://music.163.com/api/artist/head/info/get?id=${artistId}`,
+    `https://interface.music.163.com/api/v1/artist/${artistId}`,
     `https://music.163.com/api/v1/artist/${artistId}`,
+    `https://interface.music.163.com/api/artist/${artistId}`,
     `https://music.163.com/api/artist/${artistId}`,
   ]
 
-  return urls.reduce((promise, url) => {
-    return promise.then(result => result || httpsGetJson(url).catch(() => null))
-  }, Promise.resolve(null))
+  const results = []
+  for (const url of urls) {
+    const json = await httpsGetJson(url).catch(() => null)
+    if (json && Number(json.code || 200) !== 404) results.push(json)
+    await sleep(120)
+  }
+  return results
 }
 
 function httpsGetJson(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://music.163.com/',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 NeteaseMusic/9.0.0',
+        'Referer': 'https://y.music.163.com/',
+        'Origin': 'https://y.music.163.com',
         'Accept': 'application/json,text/plain,*/*',
       },
     }, res => {
@@ -255,6 +303,27 @@ function httpsGetJson(url) {
 
 function firstNonEmpty(values) {
   return values.find(v => String(v || '').trim()) || ''
+}
+
+function firstRealImageUrl(values) {
+  return values.find(isRealImageUrl) || ''
+}
+
+function isRealImageUrl(v) {
+  const s = String(v || '').trim()
+  if (!s) return false
+  if (!/^https?:\/\//.test(s)) return false
+  if (/default_avatar|anonymous|1900y1900|109951163563|5639395138885805/.test(s)) return false
+  return true
+}
+
+function firstNumber(values) {
+  const found = values.find(v => Number(v) > 0)
+  return Number(found || 0)
+}
+
+function firstArray(values) {
+  return values.find(v => Array.isArray(v) && v.length) || []
 }
 
 function sleep(ms) {
