@@ -29,7 +29,7 @@
     </view>
   </view>
 
-  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{artistScrollIntoView}}" scroll-with-animation="{{true}}">
 
     <block wx:if="{{viewMode === 'albums'}}">
       <!-- YEAR STAMPS -->
@@ -122,8 +122,8 @@
         <text class="empty-text">没有找到相关歌手</text>
       </view>
 
-      <view wx:else class="artist-list">
-        <view wx:for="{{artistGroups}}" wx:key="letter" class="artist-group">
+      <view wx:else class="artist-list with-index">
+        <view wx:for="{{artistGroups}}" wx:key="letter" class="artist-group" id="artist-letter-{{item.letter === '#' ? 'num' : item.letter}}">
           <view class="letter-row">
             <text class="letter-text">{{item.letter}}</text>
             <view class="letter-rule" />
@@ -152,6 +152,18 @@
     </block>
 
   </scroll-view>
+
+  <view wx:if="{{viewMode === 'artists' && artistLetters.length > 1}}" class="alphabet-index">
+    <view
+      wx:for="{{artistLetters}}"
+      wx:key="*this"
+      class="alphabet-index-item {{activeLetter === item ? 'active' : ''}}"
+      bindtap="onLetterTap"
+      data-letter="{{item}}"
+    >
+      <text>{{item}}</text>
+    </view>
+  </view>
 
   <bottom-nav selected="{{2}}" />
 </view>
