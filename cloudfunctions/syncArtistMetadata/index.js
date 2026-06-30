@@ -11,6 +11,7 @@ const WRITE_BATCH = 20
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
   const limit = Number(event.limit || 0)
+  const force = !!event.force
 
   try {
     if (!(await checkAdmin(OPENID))) {
@@ -25,7 +26,7 @@ exports.main = async (event, context) => {
 
     for (let i = 0; i < candidates.length; i += WRITE_BATCH) {
       const batch = candidates.slice(i, i + WRITE_BATCH)
-      const results = await Promise.allSettled(batch.map(syncOneArtist))
+      const results = await Promise.allSettled(batch.map(candidate => syncOneArtist(candidate, force)))
       results.forEach((r) => {
         if (r.status === 'fulfilled') {
           if (r.value.updated) {
@@ -83,8 +84,10 @@ async function fetchApprovedCandidates(limit) {
         artistId: true,
         artistName: true,
         picUrl: true,
+        avatarUrl: true,
         coverUrl: true,
         backgroundUrl: true,
+        heroImageUrl: true,
         fansSize: true,
         albumSize: true,
         musicSize: true,
@@ -101,18 +104,22 @@ async function fetchApprovedCandidates(limit) {
   return list
 }
 
-async function syncOneArtist(candidate) {
+async function syncOneArtist(candidate, force) {
   const artistId = Number(candidate.artistId)
   if (!artistId) return { updated: false }
+
+  if (!force && candidate.picUrl && candidate.heroImageUrl) {
+    return { updated: false }
+  }
 
   const detail = await fetchArtistDetail(artistId)
   if (!detail) return { updated: false }
 
-  const artist = detail.artist || detail.data?.artist || detail
+  const artist = normalizeArtistPayload(detail)
   const profile = detail.profile || detail.data?.profile || {}
 
   const patch = buildPatch(candidate, artist, profile)
-  if (!patch.picUrl && !patch.backgroundUrl && !patch.artistName) {
+  if (!patch.avatarUrl && !patch.heroImageUrl && !patch.artistName) {
     return { updated: false }
   }
 
@@ -124,23 +131,48 @@ async function syncOneArtist(candidate) {
     sample: {
       artistId,
       artistName: patch.artistName || candidate.artistName,
-      picUrl: patch.picUrl || '',
+      avatarUrl: patch.avatarUrl || '',
+      heroImageUrl: patch.heroImageUrl || '',
     },
   }
 }
 
+function normalizeArtistPayload(detail) {
+  if (detail.artist) return detail.artist
+  if (detail.data && detail.data.artist) return detail.data.artist
+  if (detail.data && detail.data.user) return detail.data.user
+  return detail.data || detail
+}
+
 function buildPatch(candidate, artist, profile) {
   const name = artist.name || profile.nickname || candidate.artistName || ''
-  const picUrl = artist.picUrl || artist.img1v1Url || artist.avatarUrl || profile.avatarUrl || candidate.picUrl || ''
-  const backgroundUrl = artist.cover || artist.coverUrl || artist.picUrl || profile.backgroundUrl || candidate.backgroundUrl || candidate.coverUrl || picUrl || ''
+  const avatarUrl = firstNonEmpty([
+    artist.picUrl,
+    artist.img1v1Url,
+    artist.avatarUrl,
+    profile.avatarUrl,
+    candidate.avatarUrl,
+    candidate.picUrl,
+  ])
+  const heroImageUrl = firstNonEmpty([
+    artist.cover,
+    artist.coverUrl,
+    artist.backgroundUrl,
+    profile.backgroundUrl,
+    candidate.heroImageUrl,
+    candidate.backgroundUrl,
+    candidate.coverUrl,
+    avatarUrl,
+  ])
   const alias = Array.isArray(artist.alias) ? artist.alias : []
 
   return {
     artistName: name,
-    picUrl,
-    avatarUrl: picUrl,
-    coverUrl: backgroundUrl,
-    backgroundUrl,
+    picUrl: avatarUrl,
+    avatarUrl,
+    coverUrl: heroImageUrl,
+    backgroundUrl: heroImageUrl,
+    heroImageUrl,
     fansSize: Number(artist.followedCount || artist.fansCount || artist.fansSize || candidate.fansSize || 0),
     albumSize: Number(artist.albumSize || candidate.albumSize || 0),
     musicSize: Number(artist.musicSize || candidate.musicSize || 0),
@@ -160,6 +192,7 @@ async function upsertArtistProfile(artistId, patch) {
     avatarUrl: patch.avatarUrl,
     coverUrl: patch.coverUrl,
     backgroundUrl: patch.backgroundUrl,
+    heroImageUrl: patch.heroImageUrl,
     fansSize: patch.fansSize,
     albumSize: patch.albumSize,
     musicSize: patch.musicSize,
@@ -183,6 +216,7 @@ async function upsertArtistProfile(artistId, patch) {
 function fetchArtistDetail(artistId) {
   const urls = [
     `https://music.163.com/api/artist/head/info/get?id=${artistId}`,
+    `https://music.163.com/api/v1/artist/${artistId}`,
     `https://music.163.com/api/artist/${artistId}`,
   ]
 
@@ -217,6 +251,10 @@ function httpsGetJson(url) {
       reject(new Error('timeout'))
     })
   })
+}
+
+function firstNonEmpty(values) {
+  return values.find(v => String(v || '').trim()) || ''
 }
 
 function sleep(ms) {
