@@ -30,6 +30,7 @@ exports.main = async (event) => {
         artistName: true,
         picUrl: true,
         avatarUrl: true,
+        heroImageUrl: true,
         backgroundUrl: true,
         coverUrl: true,
         fansSize: true,
@@ -39,16 +40,22 @@ exports.main = async (event) => {
 
     const baseList = res.data
       .filter(a => a.artistId && a.artistName)
-      .map(a => ({
-        id: a._id,
-        artistId: String(a.artistId),
-        artistName: a.artistName || '',
-        picUrl: a.picUrl || a.avatarUrl || '',
-        backgroundUrl: a.backgroundUrl || a.coverUrl || a.picUrl || '',
-        albumSize: 0,
-        fansSize: a.fansSize || 0,
-        letter: firstLetter(a.artistName || ''),
-      }))
+      .map(a => {
+        const avatarUrl = firstNonEmpty([a.avatarUrl, a.picUrl, a.heroImageUrl, a.backgroundUrl, a.coverUrl])
+        const heroImageUrl = firstNonEmpty([a.heroImageUrl, a.backgroundUrl, a.coverUrl, a.picUrl, a.avatarUrl])
+        return {
+          id: a._id,
+          artistId: String(a.artistId),
+          artistName: a.artistName || '',
+          picUrl: avatarUrl,
+          avatarUrl,
+          heroImageUrl,
+          backgroundUrl: heroImageUrl,
+          albumSize: 0,
+          fansSize: a.fansSize || 0,
+          letter: firstLetter(a.artistName || ''),
+        }
+      })
 
     const listWithCounts = await attachInAppAlbumCounts(baseList)
 
@@ -141,4 +148,8 @@ function pinyinInitial(ch) {
     }
   }
   return letter
+}
+
+function firstNonEmpty(values) {
+  return values.find(v => String(v || '').trim()) || ''
 }
