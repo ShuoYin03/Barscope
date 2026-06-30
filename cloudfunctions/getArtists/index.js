@@ -3,6 +3,15 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+const PINYIN_STARTS = [
+  ['A', '阿'], ['B', '芭'], ['C', '嚓'], ['D', '搭'], ['E', '蛾'], ['F', '发'],
+  ['G', '噶'], ['H', '哈'], ['J', '击'], ['K', '喀'], ['L', '垃'], ['M', '妈'],
+  ['N', '拿'], ['O', '哦'], ['P', '啪'], ['Q', '期'], ['R', '然'], ['S', '撒'],
+  ['T', '塌'], ['W', '挖'], ['X', '昔'], ['Y', '压'], ['Z', '匝'],
+]
+
+const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
+
 exports.main = async (event) => {
   const keyword = String(event.keyword || '').trim()
   const limit = Math.min(Number(event.limit || 500), 500)
@@ -44,8 +53,10 @@ exports.main = async (event) => {
     const listWithCounts = await attachInAppAlbumCounts(baseList)
 
     const list = listWithCounts.sort((a, b) => {
-      if (a.letter !== b.letter) return a.letter.localeCompare(b.letter)
-      return a.artistName.localeCompare(b.artistName, 'en', { sensitivity: 'base' })
+      const la = LETTER_ORDER.indexOf(a.letter) >= 0 ? LETTER_ORDER.indexOf(a.letter) : 26
+      const lb = LETTER_ORDER.indexOf(b.letter) >= 0 ? LETTER_ORDER.indexOf(b.letter) : 26
+      if (la !== lb) return la - lb
+      return a.artistName.localeCompare(b.artistName, 'zh-Hans-CN-u-co-pinyin', { sensitivity: 'base', numeric: true })
     })
 
     return { success: true, list, total: list.length }
@@ -107,8 +118,27 @@ async function attachInAppAlbumCounts(artists) {
 }
 
 function firstLetter(name) {
-  const trimmed = String(name || '').trim()
-  const match = trimmed.match(/[A-Za-z]/)
-  if (!match) return '#'
-  return match[0].toUpperCase()
+  const chars = Array.from(String(name || '').trim())
+  for (const ch of chars) {
+    if (/[A-Za-z]/.test(ch)) return ch.toUpperCase()
+    if (isChinese(ch)) return pinyinInitial(ch)
+  }
+  return '#'
+}
+
+function isChinese(ch) {
+  return /[\u4e00-\u9fff]/.test(ch)
+}
+
+function pinyinInitial(ch) {
+  let letter = '#'
+  for (const item of PINYIN_STARTS) {
+    const [initial, startChar] = item
+    if (ch.localeCompare(startChar, 'zh-Hans-CN-u-co-pinyin') >= 0) {
+      letter = initial
+    } else {
+      break
+    }
+  }
+  return letter
 }
