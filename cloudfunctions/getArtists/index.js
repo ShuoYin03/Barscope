@@ -59,16 +59,19 @@ async function attachInAppAlbumCounts(artists) {
 
   const artistIds = artists.map(a => String(a.artistId)).filter(Boolean)
   const names = artists.map(a => a.artistName).filter(Boolean)
-  const countMap = new Map()
-  const seenAlbumByArtist = new Map()
+  const albumsByArtistId = new Map()
+  const artistIdByName = new Map()
 
-  function addCount(artistKey, albumId) {
-    if (!artistKey || !albumId) return
-    if (!seenAlbumByArtist.has(artistKey)) seenAlbumByArtist.set(artistKey, new Set())
-    const seen = seenAlbumByArtist.get(artistKey)
-    if (seen.has(albumId)) return
-    seen.add(albumId)
-    countMap.set(artistKey, (countMap.get(artistKey) || 0) + 1)
+  artists.forEach(artist => {
+    albumsByArtistId.set(String(artist.artistId), new Set())
+    artistIdByName.set(artist.artistName, String(artist.artistId))
+  })
+
+  function addAlbumToArtist(artistId, albumId) {
+    const key = String(artistId || '')
+    if (!key || !albumId) return
+    if (!albumsByArtistId.has(key)) albumsByArtistId.set(key, new Set())
+    albumsByArtistId.get(key).add(albumId)
   }
 
   // 1) Most reliable: albums.neteaseArtistId matches artist_candidates.artistId.
@@ -79,10 +82,11 @@ async function attachInAppAlbumCounts(artists) {
       .field({ _id: true, neteaseArtistId: true })
       .limit(1000)
       .get()
-    ;(r.data || []).forEach(album => addCount(String(album.neteaseArtistId), album._id))
+    ;(r.data || []).forEach(album => addAlbumToArtist(album.neteaseArtistId, album._id))
   }
 
   // 2) Legacy fallback: albums.primaryArtist matches artist name.
+  // Important: add into the same artistId Set, so albums matched by both strategies are not double-counted.
   for (let i = 0; i < names.length; i += 100) {
     const chunk = names.slice(i, i + 100)
     const r = await db.collection('albums')
@@ -90,12 +94,15 @@ async function attachInAppAlbumCounts(artists) {
       .field({ _id: true, primaryArtist: true })
       .limit(1000)
       .get()
-    ;(r.data || []).forEach(album => addCount(`name:${album.primaryArtist}`, album._id))
+    ;(r.data || []).forEach(album => {
+      const artistId = artistIdByName.get(album.primaryArtist)
+      addAlbumToArtist(artistId, album._id)
+    })
   }
 
   return artists.map(artist => ({
     ...artist,
-    albumSize: (countMap.get(String(artist.artistId)) || 0) + (countMap.get(`name:${artist.artistName}`) || 0),
+    albumSize: (albumsByArtistId.get(String(artist.artistId)) || new Set()).size,
   }))
 }
 
