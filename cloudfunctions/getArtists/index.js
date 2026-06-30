@@ -38,24 +38,50 @@ exports.main = async (event) => {
       .limit(limit)
       .get()
 
-    const baseList = res.data
-      .filter(a => a.artistId && a.artistName)
-      .map(a => {
-        const avatarUrl = firstNonEmpty([a.avatarUrl, a.picUrl, a.heroImageUrl, a.backgroundUrl, a.coverUrl])
-        const heroImageUrl = firstNonEmpty([a.heroImageUrl, a.backgroundUrl, a.coverUrl, a.picUrl, a.avatarUrl])
-        return {
-          id: a._id,
-          artistId: String(a.artistId),
-          artistName: a.artistName || '',
-          picUrl: avatarUrl,
-          avatarUrl,
-          heroImageUrl,
-          backgroundUrl: heroImageUrl,
-          albumSize: 0,
-          fansSize: a.fansSize || 0,
-          letter: firstLetter(a.artistName || ''),
-        }
-      })
+    const candidates = res.data.filter(a => a.artistId && a.artistName)
+    const artistIds = candidates.map(a => String(a.artistId))
+    const profileMap = await fetchArtistProfiles(artistIds)
+
+    const baseList = candidates.map(a => {
+      const profile = profileMap.get(String(a.artistId)) || {}
+      const avatarUrl = firstNonEmpty([
+        profile.avatarUrl,
+        profile.picUrl,
+        a.avatarUrl,
+        a.picUrl,
+        profile.heroImageUrl,
+        profile.backgroundUrl,
+        profile.coverUrl,
+        a.heroImageUrl,
+        a.backgroundUrl,
+        a.coverUrl,
+      ])
+      const heroImageUrl = firstNonEmpty([
+        profile.heroImageUrl,
+        profile.backgroundUrl,
+        profile.coverUrl,
+        a.heroImageUrl,
+        a.backgroundUrl,
+        a.coverUrl,
+        profile.picUrl,
+        profile.avatarUrl,
+        a.picUrl,
+        a.avatarUrl,
+      ])
+      const artistName = profile.artistName || profile.name || a.artistName || ''
+      return {
+        id: a._id,
+        artistId: String(a.artistId),
+        artistName,
+        picUrl: avatarUrl,
+        avatarUrl,
+        heroImageUrl,
+        backgroundUrl: heroImageUrl,
+        albumSize: 0,
+        fansSize: profile.fansSize || a.fansSize || 0,
+        letter: firstLetter(artistName),
+      }
+    })
 
     const listWithCounts = await attachInAppAlbumCounts(baseList)
 
@@ -70,6 +96,36 @@ exports.main = async (event) => {
   } catch (e) {
     return { success: false, error: e.message }
   }
+}
+
+async function fetchArtistProfiles(artistIds) {
+  const map = new Map()
+  for (let i = 0; i < artistIds.length; i += 100) {
+    const chunk = artistIds.slice(i, i + 100)
+    const r = await db.collection('artists')
+      .where({ neteaseArtistId: _.in(chunk) })
+      .field({
+        neteaseArtistId: true,
+        artistId: true,
+        name: true,
+        artistName: true,
+        picUrl: true,
+        avatarUrl: true,
+        heroImageUrl: true,
+        backgroundUrl: true,
+        coverUrl: true,
+        fansSize: true,
+      })
+      .limit(1000)
+      .get()
+      .catch(() => ({ data: [] }))
+
+    ;(r.data || []).forEach(item => {
+      const key = String(item.neteaseArtistId || item.artistId || '')
+      if (key) map.set(key, item)
+    })
+  }
+  return map
 }
 
 async function attachInAppAlbumCounts(artists) {
@@ -92,7 +148,6 @@ async function attachInAppAlbumCounts(artists) {
     albumsByArtistId.get(key).add(albumId)
   }
 
-  // 1) Most reliable: albums.neteaseArtistId matches artist_candidates.artistId.
   for (let i = 0; i < artistIds.length; i += 100) {
     const chunk = artistIds.slice(i, i + 100)
     const r = await db.collection('albums')
@@ -103,8 +158,6 @@ async function attachInAppAlbumCounts(artists) {
     ;(r.data || []).forEach(album => addAlbumToArtist(album.neteaseArtistId, album._id))
   }
 
-  // 2) Legacy fallback: albums.primaryArtist matches artist name.
-  // Important: add into the same artistId Set, so albums matched by both strategies are not double-counted.
   for (let i = 0; i < names.length; i += 100) {
     const chunk = names.slice(i, i + 100)
     const r = await db.collection('albums')
