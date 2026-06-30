@@ -44,8 +44,8 @@ Page({
       success: (res: any) => {
         const artist = res.result?.artist
         if (!artist) return
-        const bannerUrl = artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
-        const avatarUrl = artist.picUrl || artist.avatarUrl || artist.backgroundUrl || artist.coverUrl || ''
+        const bannerUrl = artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
+        const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         this.setData({ bannerUrl, avatarUrl })
       },
     } as any)
