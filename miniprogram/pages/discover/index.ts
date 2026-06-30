@@ -39,6 +39,8 @@ const YEARS = [
   { name: '2000s' },
 ]
 
+const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
+
 function mapAlbum(a: any): AlbumCard {
   const score = a.avgScore || 0
   return {
@@ -55,6 +57,11 @@ function mapAlbum(a: any): AlbumCard {
   }
 }
 
+function letterRank(letter: string) {
+  const idx = LETTER_ORDER.indexOf(letter || '#')
+  return idx >= 0 ? idx : LETTER_ORDER.length - 1
+}
+
 function groupArtists(list: ArtistCard[]): ArtistGroup[] {
   const map: Record<string, ArtistCard[]> = {}
   list.forEach((artist) => {
@@ -62,7 +69,9 @@ function groupArtists(list: ArtistCard[]): ArtistGroup[] {
     if (!map[key]) map[key] = []
     map[key].push(artist)
   })
-  return Object.keys(map).sort().map((letter) => ({ letter, list: map[letter] }))
+  return Object.keys(map)
+    .sort((a, b) => letterRank(a) - letterRank(b))
+    .map((letter) => ({ letter, list: map[letter] }))
 }
 
 let _searchTimer: any = null
@@ -80,8 +89,11 @@ Page({
     loading:         false,
     artistList:      [] as ArtistCard[],
     artistGroups:    [] as ArtistGroup[],
+    artistLetters:   [] as string[],
     artistTotal:     0,
     artistLoading:   false,
+    artistScrollIntoView: '',
+    activeLetter:    '',
   },
 
   onLoad() {
@@ -124,9 +136,11 @@ Page({
         const result = res.result || {}
         if (!result.success) { this.setData({ artistLoading: false }); return }
         const artistList = (result.list || []) as ArtistCard[]
+        const artistGroups = groupArtists(artistList)
         this.setData({
           artistList,
-          artistGroups: groupArtists(artistList),
+          artistGroups,
+          artistLetters: artistGroups.map(g => g.letter),
           artistTotal: result.total || artistList.length,
           artistLoading: false,
         })
@@ -172,6 +186,15 @@ Page({
     } else {
       this._fetchAlbums({ year: active || undefined, pageSize: 30 })
     }
+  },
+
+  onLetterTap(e: WechatMiniprogram.TouchEvent) {
+    const letter = (e.currentTarget.dataset as { letter: string }).letter
+    if (!letter) return
+    this.setData({
+      activeLetter: letter,
+      artistScrollIntoView: `artist-letter-${letter === '#' ? 'num' : letter}`,
+    })
   },
 
   onAlbumTap(e: WechatMiniprogram.TouchEvent) {
