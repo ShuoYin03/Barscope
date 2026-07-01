@@ -6,17 +6,15 @@ const db = cloud.database()
 const _  = db.command
 
 const PAGE_SIZE = 100
-const WRITE_BATCH = 10
+const WRITE_BATCH = 8
 
-exports.main = async (event, context) => {
+exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const limit = Number(event.limit || 0)
   const force = event.force !== false
 
   try {
-    if (!(await checkAdmin(OPENID))) {
-      return { success: false, error: 'unauthorized' }
-    }
+    if (!(await checkAdmin(OPENID))) return { success: false, error: 'unauthorized' }
 
     const candidates = await fetchApprovedCandidates(limit)
     let updated = 0
@@ -39,19 +37,10 @@ exports.main = async (event, context) => {
           errors += 1
         }
       })
-      if (i + WRITE_BATCH < candidates.length) {
-        await sleep(500)
-      }
+      if (i + WRITE_BATCH < candidates.length) await sleep(700)
     }
 
-    return {
-      success: true,
-      scanned: candidates.length,
-      updated,
-      skipped,
-      errors,
-      samples,
-    }
+    return { success: true, scanned: candidates.length, updated, skipped, errors, samples }
   } catch (e) {
     return { success: false, error: e.message }
   }
@@ -60,10 +49,7 @@ exports.main = async (event, context) => {
 async function checkAdmin(openId) {
   if (!openId) return false
   try {
-    const r = await db.collection('users')
-      .where({ openId, type: 'admin' })
-      .limit(1)
-      .get()
+    const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
     return r.data.length > 0
   } catch {
     return false
@@ -76,7 +62,6 @@ async function fetchApprovedCandidates(limit) {
   while (true) {
     const pageLimit = limit ? Math.min(PAGE_SIZE, limit - list.length) : PAGE_SIZE
     if (pageLimit <= 0) break
-
     const r = await db.collection('artist_candidates')
       .where({ status: 'approved' })
       .field({
@@ -112,13 +97,11 @@ async function syncOneArtist(candidate, force) {
     return { updated: false }
   }
 
-  const details = await fetchArtistDetails(artistId)
-  if (!details.length) return { updated: false }
+  const payloads = await fetchArtistPayloads(artistId)
+  const mobileImages = await fetchMobileArtistImages(artistId)
+  const patch = buildPatch(candidate, payloads, mobileImages)
 
-  const patch = buildPatch(candidate, details)
-  if (!patch.avatarUrl && !patch.heroImageUrl && !patch.artistName) {
-    return { updated: false }
-  }
+  if (!patch.avatarUrl && !patch.heroImageUrl && !patch.artistName) return { updated: false }
 
   await db.collection('artist_candidates').doc(candidate._id).update({ data: patch })
   await upsertArtistProfile(artistId, patch)
@@ -130,21 +113,17 @@ async function syncOneArtist(candidate, force) {
       artistName: patch.artistName || candidate.artistName,
       avatarUrl: patch.avatarUrl || '',
       heroImageUrl: patch.heroImageUrl || '',
+      source: patch.imageSource || '',
     },
   }
 }
 
-function buildPatch(candidate, details) {
-  const sources = details.map(flattenArtistDetail)
-  const name = firstNonEmpty([
-    ...sources.map(s => s.name),
-    candidate.artistName,
-  ])
+function buildPatch(candidate, payloads, mobileImages) {
+  const sources = payloads.map(flattenArtistDetail)
+  const name = firstNonEmpty([...sources.map(s => s.name), candidate.artistName])
 
-  // Mobile artist homepage priority:
-  // avatarUrl = circular profile photo in mobile card
-  // heroImageUrl = large top background image on mobile artist homepage
   const avatarUrl = firstRealImageUrl([
+    mobileImages.avatarUrl,
     ...sources.map(s => s.avatarUrl),
     ...sources.map(s => s.img1v1Url),
     ...sources.map(s => s.picUrl),
@@ -153,21 +132,13 @@ function buildPatch(candidate, details) {
   ])
 
   const heroImageUrl = firstRealImageUrl([
+    mobileImages.heroImageUrl,
     ...sources.map(s => s.backgroundUrl),
     ...sources.map(s => s.coverUrl),
     ...sources.map(s => s.cover),
-    ...sources.map(s => s.avatarDetailBgUrl),
     candidate.heroImageUrl,
     candidate.backgroundUrl,
     candidate.coverUrl,
-  ])
-
-  const alias = firstArray(sources.map(s => s.alias))
-  const fansSize = firstNumber([
-    ...sources.map(s => s.followedCount),
-    ...sources.map(s => s.fansCount),
-    ...sources.map(s => s.fansSize),
-    candidate.fansSize,
   ])
 
   return {
@@ -177,11 +148,12 @@ function buildPatch(candidate, details) {
     coverUrl: heroImageUrl,
     backgroundUrl: heroImageUrl,
     heroImageUrl,
-    fansSize,
+    fansSize: firstNumber([...sources.map(s => s.followedCount), ...sources.map(s => s.fansCount), ...sources.map(s => s.fansSize), candidate.fansSize]),
     albumSize: firstNumber([...sources.map(s => s.albumSize), candidate.albumSize]),
     musicSize: firstNumber([...sources.map(s => s.musicSize), candidate.musicSize]),
-    alias,
+    alias: firstArray(sources.map(s => s.alias)),
     briefDesc: firstNonEmpty([...sources.map(s => s.briefDesc), ...sources.map(s => s.signature), ...sources.map(s => s.trans)]),
+    imageSource: mobileImages.source || 'netease-api',
     syncedAt: db.serverDate(),
   }
 }
@@ -191,17 +163,12 @@ function flattenArtistDetail(detail) {
   const artist = detail.artist || data.artist || data.artistInfo || {}
   const user = detail.user || data.user || data.userInfo || data.profile || detail.profile || {}
   const profile = detail.profile || data.profile || {}
-  const home = data.homePage || data.homepage || detail.homePage || {}
-  const card = data.artistCard || data.card || detail.artistCard || {}
-
   return {
     ...detail,
     ...data,
     ...artist,
     ...user,
     ...profile,
-    ...home,
-    ...card,
     name: artist.name || data.name || user.nickname || profile.nickname || detail.name,
     avatarUrl: user.avatarUrl || profile.avatarUrl || data.avatarUrl || artist.avatarUrl || artist.picUrl || artist.img1v1Url,
     picUrl: artist.picUrl || data.picUrl || profile.avatarUrl || user.avatarUrl,
@@ -209,7 +176,6 @@ function flattenArtistDetail(detail) {
     backgroundUrl: user.backgroundUrl || profile.backgroundUrl || data.backgroundUrl || artist.backgroundUrl || artist.cover || artist.coverUrl,
     coverUrl: artist.coverUrl || data.coverUrl || user.backgroundUrl || profile.backgroundUrl,
     cover: artist.cover || data.cover || user.backgroundUrl || profile.backgroundUrl,
-    avatarDetailBgUrl: user.avatarDetail?.identityIconUrl || user.avatarDetailBgUrl || data.avatarDetailBgUrl,
     followedCount: user.followeds || user.followedCount || profile.followeds || artist.followedCount || data.followedCount,
     fansCount: user.fansCount || artist.fansCount || data.fansCount,
     fansSize: user.fansSize || artist.fansSize || data.fansSize,
@@ -238,22 +204,15 @@ async function upsertArtistProfile(artistId, patch) {
     musicSize: patch.musicSize,
     alias: patch.alias,
     briefDesc: patch.briefDesc,
+    imageSource: patch.imageSource,
     syncedAt: db.serverDate(),
   }
-
-  const existing = await db.collection('artists')
-    .where({ neteaseArtistId: String(artistId) })
-    .limit(1)
-    .get()
-
-  if (existing.data.length > 0) {
-    await db.collection('artists').doc(existing.data[0]._id).update({ data })
-  } else {
-    await db.collection('artists').add({ data })
-  }
+  const existing = await db.collection('artists').where({ neteaseArtistId: String(artistId) }).limit(1).get()
+  if (existing.data.length > 0) await db.collection('artists').doc(existing.data[0]._id).update({ data })
+  else await db.collection('artists').add({ data })
 }
 
-async function fetchArtistDetails(artistId) {
+async function fetchArtistPayloads(artistId) {
   const urls = [
     `https://interface.music.163.com/api/artist/head/info/get?id=${artistId}`,
     `https://music.163.com/api/artist/head/info/get?id=${artistId}`,
@@ -262,7 +221,6 @@ async function fetchArtistDetails(artistId) {
     `https://interface.music.163.com/api/artist/${artistId}`,
     `https://music.163.com/api/artist/${artistId}`,
   ]
-
   const results = []
   for (const url of urls) {
     const json = await httpsGetJson(url).catch(() => null)
@@ -272,26 +230,67 @@ async function fetchArtistDetails(artistId) {
   return results
 }
 
+async function fetchMobileArtistImages(artistId) {
+  const urls = [
+    `https://y.music.163.com/m/artist?id=${artistId}`,
+    `https://music.163.com/m/artist?id=${artistId}`,
+    `https://y.music.163.com/m/artist/${artistId}`,
+    `https://music.163.com/m/artist/${artistId}`,
+  ]
+  for (const url of urls) {
+    const html = await httpsGetText(url).catch(() => '')
+    if (!html) continue
+    const images = extractMusicImages(html)
+    if (images.length) {
+      const avatarUrl = normalizeImageUrl(images[0])
+      const heroImageUrl = normalizeImageUrl(images.find(i => i !== images[0]) || images[0], '1200y800')
+      return { avatarUrl, heroImageUrl, source: url }
+    }
+    await sleep(120)
+  }
+  return { avatarUrl: '', heroImageUrl: '', source: '' }
+}
+
+function extractMusicImages(text) {
+  const raw = decodeHtml(String(text || '')).replace(/\\\//g, '/')
+  const results = []
+  const marker = 'music.126.net/'
+  let pos = raw.indexOf(marker)
+  while (pos >= 0) {
+    let start = pos
+    while (start > 0 && raw[start - 1] !== '"' && raw[start - 1] !== "'" && raw[start - 1] !== '(' && raw[start - 1] !== ' ') start--
+    let end = pos + marker.length
+    while (end < raw.length && raw[end] !== '"' && raw[end] !== "'" && raw[end] !== ')' && raw[end] !== ' ' && raw[end] !== '<') end++
+    let url = raw.slice(start, end)
+    if (url.startsWith('//')) url = 'https:' + url
+    if (url.startsWith('http://')) url = url.replace('http://', 'https://')
+    if (isRealImageUrl(url)) results.push(cleanUrl(url))
+    pos = raw.indexOf(marker, end)
+  }
+  return unique(results)
+}
+
+function normalizeImageUrl(url, param = '800y800') {
+  const u = cleanUrl(url).split('?')[0]
+  return u ? `${u}?param=${param}` : ''
+}
+
 function httpsGetJson(url) {
+  return httpsGetText(url).then(text => JSON.parse(text))
+}
+
+function httpsGetText(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 NeteaseMusic/9.0.0',
         'Referer': 'https://y.music.163.com/',
-        'Origin': 'https://y.music.163.com',
-        'Accept': 'application/json,text/plain,*/*',
+        'Accept': 'text/html,application/json,text/plain,*/*',
       },
     }, res => {
       let buf = ''
       res.on('data', c => { buf += c })
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(buf)
-          resolve(json)
-        } catch (e) {
-          reject(e)
-        }
-      })
+      res.on('end', () => resolve(buf))
     })
     req.on('error', reject)
     req.setTimeout(12000, () => {
@@ -299,6 +298,22 @@ function httpsGetJson(url) {
       reject(new Error('timeout'))
     })
   })
+}
+
+function cleanUrl(url) {
+  return String(url || '').replace(/&amp;/g, '&').trim()
+}
+
+function decodeHtml(s) {
+  return String(s || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&#x2F;/g, '/')
+}
+
+function unique(arr) {
+  return Array.from(new Set(arr.filter(Boolean)))
 }
 
 function firstNonEmpty(values) {
@@ -312,8 +327,9 @@ function firstRealImageUrl(values) {
 function isRealImageUrl(v) {
   const s = String(v || '').trim()
   if (!s) return false
-  if (!/^https?:\/\//.test(s)) return false
-  if (/default_avatar|anonymous|1900y1900|109951163563|5639395138885805/.test(s)) return false
+  if (!s.startsWith('http')) return false
+  if (!s.includes('music.126.net')) return false
+  if (s.includes('default_avatar') || s.includes('anonymous') || s.includes('5639395138885805') || s.includes('109951163563')) return false
   return true
 }
 
