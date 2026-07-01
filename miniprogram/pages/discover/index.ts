@@ -11,6 +11,21 @@ interface AlbumCard {
   coverUrl:        string
 }
 
+interface ArtistCard {
+  id:         string
+  artistId:   string
+  artistName: string
+  picUrl:     string
+  albumSize:  number
+  fansSize:   number
+  letter:     string
+}
+
+interface ArtistGroup {
+  letter: string
+  list:   ArtistCard[]
+}
+
 const YEARS = [
   { name: '2025' },
   { name: '2024' },
@@ -23,6 +38,8 @@ const YEARS = [
   { name: '2010s' },
   { name: '2000s' },
 ]
+
+const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
 
 function mapAlbum(a: any): AlbumCard {
   const score = a.avgScore || 0
@@ -40,6 +57,23 @@ function mapAlbum(a: any): AlbumCard {
   }
 }
 
+function letterRank(letter: string) {
+  const idx = LETTER_ORDER.indexOf(letter || '#')
+  return idx >= 0 ? idx : LETTER_ORDER.length - 1
+}
+
+function groupArtists(list: ArtistCard[]): ArtistGroup[] {
+  const map: Record<string, ArtistCard[]> = {}
+  list.forEach((artist) => {
+    const key = artist.letter || '#'
+    if (!map[key]) map[key] = []
+    map[key].push(artist)
+  })
+  return Object.keys(map)
+    .sort((a, b) => letterRank(a) - letterRank(b))
+    .map((letter) => ({ letter, list: map[letter] }))
+}
+
 let _searchTimer: any = null
 
 Page({
@@ -47,11 +81,19 @@ Page({
     statusBarHeight: 20,
     topbarHeight:    64,
     keyword:         '',
+    viewMode:        'albums' as 'albums' | 'artists',
     years:           YEARS,
     activeYear:      '',
     list:            [] as AlbumCard[],
     total:           0,
     loading:         false,
+    artistList:      [] as ArtistCard[],
+    artistGroups:    [] as ArtistGroup[],
+    artistLetters:   [] as string[],
+    artistTotal:     0,
+    artistLoading:   false,
+    artistScrollIntoView: '',
+    activeLetter:    '',
   },
 
   onLoad() {
@@ -61,6 +103,7 @@ Page({
       topbarHeight:    app.globalData.topbarHeight,
     })
     this._fetchAlbums({ pageSize: 30 })
+    this._fetchArtists()
   },
 
   onShow() {
@@ -80,10 +123,36 @@ Page({
         const list = (result.list || []).map(mapAlbum)
         this.setData({ list, total: result.total || list.length, loading: false })
       },
-      fail: () => {
-        this.setData({ loading: false })
-      },
+      fail: () => this.setData({ loading: false }),
     } as any)
+  },
+
+  _fetchArtists(keyword = '') {
+    this.setData({ artistLoading: true })
+    wx.cloud.callFunction({
+      name: 'getArtists',
+      data: { keyword, limit: 500 },
+      success: (res: any) => {
+        const result = res.result || {}
+        if (!result.success) { this.setData({ artistLoading: false }); return }
+        const artistList = (result.list || []) as ArtistCard[]
+        const artistGroups = groupArtists(artistList)
+        this.setData({
+          artistList,
+          artistGroups,
+          artistLetters: artistGroups.map(g => g.letter),
+          artistTotal: result.total || artistList.length,
+          artistLoading: false,
+        })
+      },
+      fail: () => this.setData({ artistLoading: false }),
+    } as any)
+  },
+
+  onViewModeTap(e: WechatMiniprogram.TouchEvent) {
+    const mode = (e.currentTarget.dataset as { mode: 'albums' | 'artists' }).mode
+    if (mode === this.data.viewMode) return
+    this.setData({ viewMode: mode })
   },
 
   onSearch(e: WechatMiniprogram.Input) {
@@ -92,9 +161,14 @@ Page({
 
     if (_searchTimer) clearTimeout(_searchTimer)
     _searchTimer = setTimeout(() => {
+      const kw = keyword.trim()
+      if (this.data.viewMode === 'artists') {
+        this._fetchArtists(kw)
+        return
+      }
       const year = this.data.activeYear
-      if (keyword.trim()) {
-        this._fetchAlbums({ keyword: keyword.trim(), year: year || undefined })
+      if (kw) {
+        this._fetchAlbums({ keyword: kw, year: year || undefined })
       } else {
         this._fetchAlbums({ year: year || undefined, pageSize: 30 })
       }
@@ -112,6 +186,15 @@ Page({
     } else {
       this._fetchAlbums({ year: active || undefined, pageSize: 30 })
     }
+  },
+
+  onLetterTap(e: WechatMiniprogram.TouchEvent) {
+    const letter = (e.currentTarget.dataset as { letter: string }).letter
+    if (!letter) return
+    this.setData({
+      activeLetter: letter,
+      artistScrollIntoView: `artist-letter-${letter === '#' ? 'num' : letter}`,
+    })
   },
 
   onAlbumTap(e: WechatMiniprogram.TouchEvent) {
