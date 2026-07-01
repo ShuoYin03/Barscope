@@ -7,208 +7,81 @@
 }
 
 /* ── HERO ─────────────────────────────────────────────────────────── */
-
-.hero-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
+.hero-wrap { position: relative; flex-shrink: 0; }
 .cover-banner {
-  width: 100%;
-  height: 420rpx;
-  position: relative;
-  overflow: hidden;
+  width: 100%; height: 420rpx; position: relative; overflow: hidden;
   background: linear-gradient(160deg, #3A1209 0%, #1A0A06 55%, #0A0604 100%);
 }
-
 .banner-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
   filter: saturate(0.9) contrast(1.08);
 }
-
 .banner-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background:
-    linear-gradient(to bottom, rgba(0,0,0,0.18), rgba(0,0,0,0.72)),
-    linear-gradient(to bottom, transparent 58%, var(--black));
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.18), rgba(0,0,0,0.72)), linear-gradient(to bottom, transparent 58%, var(--black));
 }
-
 .back-bar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding-left: 32rpx;
-  padding-right: 32rpx;
-  padding-bottom: 0;
+  position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+  display: flex; align-items: center; gap: 12rpx;
+  padding-left: 32rpx; padding-right: 32rpx; padding-bottom: 0;
 }
-.back-ch  { color: var(--accent); font-size: 40rpx; line-height: 1; }
+.back-ch { color: var(--accent); font-size: 40rpx; line-height: 1; }
 .back-lbl { font-size: 22rpx; color: rgba(255,255,255,0.5); letter-spacing: 4rpx; }
 
-/* vinyl disc overlapping cover bottom */
+/* vinyl disc overlapping the cover bottom */
 .hero-disc-wrap {
-  position: absolute;
-  bottom: -104rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
+  position: absolute; bottom: -104rpx; left: 50%; transform: translateX(-50%); z-index: 2;
 }
-
 .hero-disc {
-  width: 208rpx;
-  height: 208rpx;
-  border-radius: 50%;
-  position: relative;
-  background: radial-gradient(circle at 50% 50%,
-    var(--accent) 0, var(--accent) 17%,
-    var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
-    var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
-    var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
-  );
+  width: 208rpx; height: 208rpx; border-radius: 50%; position: relative; overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, var(--groove-b) 0, var(--groove-a) 66%, var(--black) 100%);
   box-shadow: 0 0 0 8rpx var(--black), 0 0 0 12rpx var(--gray-light);
 }
-
+/* The portrait is intentionally nearly full-bleed: it should read as the record label,
+   rather than as a small icon sitting inside a large empty disc. */
 .hero-disc-lbl {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 88rpx; height: 88rpx;
-  border-radius: 50%;
-  background: var(--groove-a);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  position: absolute; inset: 8rpx; border-radius: 50%; overflow: hidden;
+  background: var(--groove-a); display: flex; align-items: center; justify-content: center;
 }
-
-.artist-avatar-img {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.hero-disc-initial {
-  font-family: var(--font-bebas);
-  font-size: 44rpx;
-  color: var(--accent);
-  line-height: 1;
-}
-
+.artist-avatar-img { width: 100%; height: 100%; display: block; }
+.hero-disc-initial { font-family: var(--font-bebas); font-size: 72rpx; color: var(--accent); line-height: 1; }
 .hero-disc-pin {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 14rpx; height: 14rpx;
-  border-radius: 50%;
-  background: var(--black);
-  z-index: 3;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 10rpx; height: 10rpx; border-radius: 50%;
+  background: rgba(8, 6, 6, 0.84); box-shadow: 0 0 0 2rpx rgba(255,255,255,0.14); z-index: 3;
 }
 
 /* ── ARTIST NAME BLOCK ─────────────────────────────────────────────── */
-
-.artist-block {
-  padding: 128rpx 32rpx 0;  /* 104rpx disc overhang + 24rpx gap */
-  text-align: center;
-  flex-shrink: 0;
-}
-
+.artist-block { padding: 128rpx 32rpx 0; text-align: center; flex-shrink: 0; }
 .artist-en {
-  font-family: var(--font-bebas);
-  font-size: 100rpx;
-  color: var(--white);
-  letter-spacing: 10rpx;
-  line-height: 1;
-  display: block;
+  font-family: var(--font-bebas); font-size: 100rpx; color: var(--white);
+  letter-spacing: 10rpx; line-height: 1; display: block;
 }
-
 .artist-stats-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  margin-top: 14rpx;
-  padding-bottom: 4rpx;
+  display: flex; align-items: center; justify-content: center; gap: 0;
+  margin-top: 14rpx; padding-bottom: 4rpx;
 }
+.stat-num { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); line-height: 1; }
+.stat-unit { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 2rpx; margin: 0 16rpx 0 6rpx; }
+.stat-sep { width: 2rpx; height: 28rpx; background: var(--gray-light); margin-right: 16rpx; }
+.stat-year { font-family: var(--font-bebas); font-size: 32rpx; color: var(--gray-mid); letter-spacing: 2rpx; }
+.orange-rule { height: 2rpx; background: var(--accent); margin: 20rpx 32rpx 0; flex-shrink: 0; }
 
-.stat-num {
-  font-family: var(--font-bebas);
-  font-size: 44rpx;
-  color: var(--accent);
-  line-height: 1;
-}
-
-.stat-unit {
-  font-size: 18rpx;
-  color: var(--gray-mid);
-  letter-spacing: 2rpx;
-  margin: 0 16rpx 0 6rpx;
-}
-
-.stat-sep {
-  width: 2rpx;
-  height: 28rpx;
-  background: var(--gray-light);
-  margin-right: 16rpx;
-}
-
-.stat-year {
-  font-family: var(--font-bebas);
-  font-size: 32rpx;
-  color: var(--gray-mid);
-  letter-spacing: 2rpx;
-}
-
-.orange-rule {
-  height: 2rpx;
-  background: var(--accent);
-  margin: 20rpx 32rpx 0;
-  flex-shrink: 0;
-}
-
-/* ── SIDE DIVIDER ──────────────────────────────────────────────────── */
-
-.side-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 28rpx 32rpx 14rpx;
-}
-.side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); }
-.side-rule { flex: 1; height: 1px; background: var(--gray-light); }
-
-/* ── ALBUM LIST ────────────────────────────────────────────────────── */
-
+/* ── SIDE DIVIDER + ALBUM LIST ─────────────────────────────────────── */
 .content { flex: 1; min-height: 0; }
 .album-list { background: var(--black); }
-
-.album-row {
-  display: flex;
-  align-items: center;
-  gap: 32rpx;
-  padding: 24rpx 32rpx;
-  border-bottom: 2rpx solid var(--off-white);
-}
+.side-row { display: flex; align-items: center; gap: 16rpx; padding: 28rpx 32rpx 14rpx; }
+.side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); }
+.side-rule { flex: 1; height: 1px; background: var(--gray-light); }
+.album-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
 .album-row:last-child { border-bottom: none; }
-
-
 .album-info { flex: 1; min-width: 0; }
 .album-title { font-size: 28rpx; font-weight: 700; color: var(--white); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .album-meta { font-size: 22rpx; color: var(--gray-mid); margin-top: 8rpx; display: block; }
 .album-score { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); flex-shrink: 0; }
-
 .skel-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 32rpx; }
 .skel-info { flex: 1; }
 .sk { background: var(--gray-light); animation: shimmer 1.2s infinite; }
 @keyframes shimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-
 .empty-state { display: flex; justify-content: center; padding: 120rpx 32rpx; }
 .empty-text { font-size: 26rpx; color: var(--gray-mid); }

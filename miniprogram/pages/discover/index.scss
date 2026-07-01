@@ -4,6 +4,7 @@
   height: 100vh;
   overflow: hidden;
   background: var(--black);
+  position: relative;
 }
 
 .topbar {
@@ -140,6 +141,7 @@
 
 /* ARTIST DIRECTORY */
 .artist-list { background: var(--black); }
+.artist-list.with-index { padding-right: 48rpx; }
 .artist-group { background: var(--black); }
 .letter-row {
   display: flex;
@@ -203,6 +205,41 @@
   color: var(--gray-mid);
   flex-shrink: 0;
 }
+
+/* RIGHT ALPHABET INDEX */
+.alphabet-index {
+  position: absolute;
+  right: 10rpx;
+  top: 320rpx;
+  bottom: 150rpx;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+  padding: 8rpx 4rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.2);
+}
+.alphabet-index-item {
+  width: 36rpx;
+  min-height: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.alphabet-index-item text {
+  font-family: var(--font-bebas);
+  font-size: 22rpx;
+  color: var(--gray-mid);
+  line-height: 1;
+}
+.alphabet-index-item.active {
+  background: var(--accent);
+  border-radius: 50%;
+}
+.alphabet-index-item.active text { color: var(--black); }
 
 .skel-row, .artist-row .skel-info { flex: 1; }
 .sk { background: var(--gray-light); animation: shimmer 1.2s infinite; }

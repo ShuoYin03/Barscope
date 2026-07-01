@@ -3,110 +3,83 @@ const https = require('https')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-const _  = db.command
 
 const WRITE_BATCH = 20
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
   const limit = Number(event.limit || 100)
-  const skip  = Number(event.skip  || 0)
+  const skip = Number(event.skip || 0)
 
   try {
-    if (!(await checkAdmin(OPENID))) {
-      return { success: false, error: 'unauthorized' }
-    }
+    if (!(await checkAdmin(OPENID))) return { success: false, error: 'unauthorized' }
 
     const { candidates, total } = await fetchApprovedCandidates(skip, limit)
     let updated = 0
     let skipped = 0
-    let errors  = 0
-    const samples      = []
+    let errors = 0
+    const samples = []
     const errorSamples = []
 
     for (let i = 0; i < candidates.length; i += WRITE_BATCH) {
-      const batch   = candidates.slice(i, i + WRITE_BATCH)
+      const batch = candidates.slice(i, i + WRITE_BATCH)
       const results = await Promise.allSettled(batch.map(syncOneArtist))
-      results.forEach((r, idx) => {
-        if (r.status === 'fulfilled') {
-          if (r.value.updated) {
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          if (result.value.updated) {
             updated += 1
-            if (samples.length < 10) samples.push(r.value.sample)
+            if (samples.length < 10) samples.push(result.value.sample)
           } else {
             skipped += 1
           }
         } else {
           errors += 1
           if (errorSamples.length < 3) {
-            const c = batch[idx]
-            console.error(`[sync] error artistId=${c && c.artistId}`, r.reason && r.reason.message)
-            errorSamples.push({ artistId: c && c.artistId, err: r.reason && r.reason.message })
+            const candidate = batch[index]
+            errorSamples.push({ artistId: candidate && candidate.artistId, err: result.reason && result.reason.message })
           }
         }
       })
-      if (i + WRITE_BATCH < candidates.length) {
-        await sleep(200)
-      }
+      if (i + WRITE_BATCH < candidates.length) await sleep(200)
     }
 
     const nextSkip = skip + candidates.length
-    const hasMore  = nextSkip < total
-
     return {
       success: true,
-      scanned:  candidates.length,
+      scanned: candidates.length,
       updated,
       skipped,
       errors,
       total,
       nextSkip,
-      hasMore,
+      hasMore: nextSkip < total,
       samples,
       errorSamples,
     }
-  } catch (e) {
-    return { success: false, error: e.message }
+  } catch (error) {
+    return { success: false, error: error.message }
   }
 }
 
 async function checkAdmin(openId) {
   if (!openId) return false
   try {
-    const r = await db.collection('users')
-      .where({ openId, type: 'admin' })
-      .limit(1)
-      .get()
-    return r.data.length > 0
+    const result = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
+    return result.data.length > 0
   } catch {
     return false
   }
 }
 
 async function fetchApprovedCandidates(skip, limit) {
-  // get total count first
-  const countRes = await db.collection('artist_candidates')
+  const countRes = await db.collection('artist_candidates').where({ status: 'approved' }).count()
+  const result = await db.collection('artist_candidates')
     .where({ status: 'approved' })
-    .count()
-  const total = countRes.total
-
-  const r = await db.collection('artist_candidates')
-    .where({ status: 'approved' })
-    .field({
-      _id: true,
-      artistId: true,
-      artistName: true,
-      picUrl: true,
-      coverUrl: true,
-      backgroundUrl: true,
-      fansSize: true,
-      albumSize: true,
-      musicSize: true,
-    })
+    .field({ _id: true, artistId: true, artistName: true, picUrl: true, coverUrl: true, backgroundUrl: true, fansSize: true, albumSize: true, musicSize: true })
     .skip(skip)
     .limit(limit)
     .get()
-
-  return { candidates: r.data.filter(a => a.artistId), total }
+  return { candidates: result.data.filter(item => item.artistId), total: countRes.total }
 }
 
 async function syncOneArtist(candidate) {
@@ -116,13 +89,8 @@ async function syncOneArtist(candidate) {
   const detail = await fetchArtistDetail(artistId)
   if (!detail) return { updated: false }
 
-  const artist  = detail.artist || (detail.data && detail.data.artist) || detail
-  const profile = detail.profile || (detail.data && detail.data.profile) || {}
-
-  const patch = buildPatch(candidate, artist, profile)
-  if (!patch.picUrl && !patch.backgroundUrl && !patch.artistName) {
-    return { updated: false }
-  }
+  const patch = buildPatch(candidate, detail)
+  if (!patch.picUrl && !patch.backgroundUrl && !patch.artistName) return { updated: false }
 
   await db.collection('artist_candidates').doc(candidate._id).update({ data: patch })
   await upsertArtistProfile(artistId, patch)
@@ -133,54 +101,74 @@ async function syncOneArtist(candidate) {
       artistId,
       artistName: patch.artistName || candidate.artistName,
       picUrl: patch.picUrl || '',
+      backgroundUrl: patch.backgroundUrl || '',
     },
   }
 }
 
-function buildPatch(candidate, artist, profile) {
-  const name          = artist.name        || profile.nickname  || candidate.artistName || ''
-  const picUrl        = artist.picUrl      || artist.img1v1Url  || artist.avatarUrl     || profile.avatarUrl    || candidate.picUrl        || ''
-  const backgroundUrl = artist.cover       || artist.coverUrl   || artist.picUrl        || profile.backgroundUrl || candidate.backgroundUrl || candidate.coverUrl || picUrl || ''
-  const alias         = Array.isArray(artist.alias) ? artist.alias : []
+function buildPatch(candidate, detail) {
+  const artist = detail.artist || {}
+  const profile = detail.profile || {}
+  const head = detail.head || {}
+
+  // Keep avatar and backdrop independent. The old implementation stopped after the
+  // lightweight head endpoint, which often lacks the mobile profile's cover image.
+  const picUrl = firstUrl(
+    profile.avatarUrl,
+    artist.picUrl,
+    artist.img1v1Url,
+    artist.avatarUrl,
+    head.picUrl,
+    candidate.picUrl
+  )
+  const backgroundUrl = firstUrl(
+    profile.backgroundUrl,
+    artist.cover,
+    artist.coverUrl,
+    head.cover,
+    candidate.backgroundUrl,
+    candidate.coverUrl,
+    picUrl
+  )
 
   return {
-    artistName:  name,
+    artistName: artist.name || profile.nickname || head.name || candidate.artistName || '',
     picUrl,
-    avatarUrl:   picUrl,
-    coverUrl:    backgroundUrl,
+    avatarUrl: picUrl,
+    coverUrl: backgroundUrl,
     backgroundUrl,
-    fansSize:    Number(artist.followedCount || artist.fansCount  || artist.fansSize  || candidate.fansSize  || 0),
-    albumSize:   Number(artist.albumSize     || candidate.albumSize || 0),
-    musicSize:   Number(artist.musicSize     || candidate.musicSize || 0),
-    alias,
-    briefDesc:   artist.briefDesc || artist.trans || profile.signature || '',
-    syncedAt:    db.serverDate(),
+    fansSize: Number(artist.followedCount || artist.fansCount || profile.followeds || candidate.fansSize || 0),
+    albumSize: Number(artist.albumSize || head.albumSize || candidate.albumSize || 0),
+    musicSize: Number(artist.musicSize || head.musicSize || candidate.musicSize || 0),
+    alias: Array.isArray(artist.alias) ? artist.alias : [],
+    briefDesc: artist.briefDesc || artist.trans || profile.signature || '',
+    syncedAt: db.serverDate(),
   }
+}
+
+function firstUrl(...values) {
+  return values.find(value => typeof value === 'string' && value.trim()) || ''
 }
 
 async function upsertArtistProfile(artistId, patch) {
   const data = {
     neteaseArtistId: String(artistId),
     artistId,
-    name:            patch.artistName,
-    artistName:      patch.artistName,
-    picUrl:          patch.picUrl,
-    avatarUrl:       patch.avatarUrl,
-    coverUrl:        patch.coverUrl,
-    backgroundUrl:   patch.backgroundUrl,
-    fansSize:        patch.fansSize,
-    albumSize:       patch.albumSize,
-    musicSize:       patch.musicSize,
-    alias:           patch.alias,
-    briefDesc:       patch.briefDesc,
-    syncedAt:        db.serverDate(),
+    name: patch.artistName,
+    artistName: patch.artistName,
+    picUrl: patch.picUrl,
+    avatarUrl: patch.avatarUrl,
+    coverUrl: patch.coverUrl,
+    backgroundUrl: patch.backgroundUrl,
+    fansSize: patch.fansSize,
+    albumSize: patch.albumSize,
+    musicSize: patch.musicSize,
+    alias: patch.alias,
+    briefDesc: patch.briefDesc,
+    syncedAt: db.serverDate(),
   }
 
-  const existing = await db.collection('artists')
-    .where({ neteaseArtistId: String(artistId) })
-    .limit(1)
-    .get()
-
+  const existing = await db.collection('artists').where({ neteaseArtistId: String(artistId) }).limit(1).get()
   if (existing.data.length > 0) {
     await db.collection('artists').doc(existing.data[0]._id).update({ data })
   } else {
@@ -188,33 +176,36 @@ async function upsertArtistProfile(artistId, patch) {
   }
 }
 
-function fetchArtistDetail(artistId) {
-  const urls = [
-    `https://music.163.com/api/artist/head/info/get?id=${artistId}`,
-    `https://music.163.com/api/artist/${artistId}`,
-  ]
+async function fetchArtistDetail(artistId) {
+  // Fetch both payloads instead of treating the first non-error response as complete.
+  // /api/v1/artist is the source used by the mobile artist page for picUrl and cover.
+  const [mobile, head] = await Promise.all([
+    httpsGetJson(`https://music.163.com/api/v1/artist/${artistId}`).catch(() => null),
+    httpsGetJson(`https://music.163.com/api/artist/head/info/get?id=${artistId}`).catch(() => null),
+  ])
 
-  return urls.reduce((promise, url) => {
-    return promise.then(function(result) {
-      return result || httpsGetJson(url).catch(function() { return null })
-    })
-  }, Promise.resolve(null))
+  const mobileArtist = mobile && (mobile.artist || (mobile.data && mobile.data.artist)) || {}
+  const mobileProfile = mobile && (mobile.profile || (mobile.data && mobile.data.profile)) || {}
+  const headArtist = head && (head.artist || (head.data && head.data.artist)) || {}
+
+  if (!Object.keys(mobileArtist).length && !Object.keys(mobileProfile).length && !Object.keys(headArtist).length) return null
+  return { artist: { ...headArtist, ...mobileArtist }, profile: mobileProfile, head: headArtist }
 }
 
 function httpsGetJson(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer':    'https://music.163.com/',
-        'Accept':     'application/json,text/plain,*/*',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+        'Referer': 'https://music.163.com/',
+        'Accept': 'application/json,text/plain,*/*',
       },
     }, res => {
-      let buf = ''
-      res.on('data', c => { buf += c })
+      let buffer = ''
+      res.on('data', chunk => { buffer += chunk })
       res.on('end', () => {
-        try   { resolve(JSON.parse(buf)) }
-        catch (e) { reject(e) }
+        if (res.statusCode && res.statusCode >= 400) return reject(new Error(`HTTP ${res.statusCode}`))
+        try { resolve(JSON.parse(buffer)) } catch (error) { reject(error) }
       })
     })
     req.on('error', reject)
