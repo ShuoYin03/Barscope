@@ -26,6 +26,9 @@ exports.main = async (event) => {
 
     if (!artist && !candidate) return { success: true, artist: null }
 
+    const avatarUrl = artist?.avatarUrl || artist?.picUrl || candidate?.avatarUrl || candidate?.picUrl || ''
+    const heroImageUrl = artist?.heroImageUrl || artist?.backgroundUrl || artist?.coverUrl || candidate?.heroImageUrl || candidate?.backgroundUrl || candidate?.coverUrl || avatarUrl || ''
+
     return {
       success: true,
       artist: {
@@ -33,8 +36,11 @@ exports.main = async (event) => {
         ...(artist || {}),
         artistId: artist?.artistId || candidate?.artistId || Number(artistId),
         artistName: artist?.artistName || artist?.name || candidate?.artistName || '',
-        picUrl: artist?.picUrl || artist?.avatarUrl || candidate?.picUrl || '',
-        backgroundUrl: artist?.backgroundUrl || artist?.coverUrl || candidate?.backgroundUrl || candidate?.picUrl || '',
+        picUrl: avatarUrl,
+        avatarUrl,
+        backgroundUrl: heroImageUrl,
+        coverUrl: heroImageUrl,
+        heroImageUrl,
       },
     }
   } catch (e) {

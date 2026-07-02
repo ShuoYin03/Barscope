@@ -7,6 +7,18 @@ interface ArtistAlbum {
   coverUrl:   string
 }
 
+const BIO_PREVIEW_LENGTH = 150
+
+function buildBioState(value: string) {
+  const bio = String(value || '').trim()
+  const hasLongBio = bio.length > BIO_PREVIEW_LENGTH
+  return {
+    briefDesc: bio,
+    briefDescPreview: hasLongBio ? `${bio.slice(0, BIO_PREVIEW_LENGTH).trimEnd()}…` : bio,
+    hasLongBio,
+  }
+}
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -14,6 +26,10 @@ Page({
     initial:         '',
     bannerUrl:       '',
     avatarUrl:       '',
+    briefDesc:       '',
+    briefDescPreview:'',
+    hasLongBio:      false,
+    bioExpanded:     false,
     total:           0,
     avgScore:        '–',
     yearRange:       '',
@@ -44,11 +60,17 @@ Page({
       success: (res: any) => {
         const artist = res.result?.artist
         if (!artist) return
-        const bannerUrl = artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
-        const avatarUrl = artist.picUrl || artist.avatarUrl || artist.backgroundUrl || artist.coverUrl || ''
-        this.setData({ bannerUrl, avatarUrl })
+        const bannerUrl = artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
+        const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
+        const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
+        this.setData({ bannerUrl, avatarUrl, bioExpanded: false, ...bioState })
       },
     } as any)
+  },
+
+  onBioToggle() {
+    if (!this.data.hasLongBio) return
+    this.setData({ bioExpanded: !this.data.bioExpanded })
   },
 
   _loadAlbums(artistId: string) {
@@ -83,9 +105,7 @@ Page({
 
         this.setData({ list, total: list.length, avgScore, yearRange, loading: false })
       },
-      fail: () => {
-        this.setData({ loading: false })
-      },
+      fail: () => this.setData({ loading: false }),
     } as any)
   },
 

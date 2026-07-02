@@ -12,7 +12,6 @@
       <view class="banner-overlay" />
     </view>
 
-    <!-- back button (absolute over banner) -->
     <view
       class="back-bar"
       style="padding-top: {{statusBarHeight + 8}}px"
@@ -22,7 +21,6 @@
       <text class="back-lbl">返回</text>
     </view>
 
-    <!-- vinyl disc overlapping bottom of banner -->
     <view class="hero-disc-wrap">
       <view class="hero-disc">
         <view class="hero-disc-lbl">
@@ -51,9 +49,16 @@
       <view class="stat-sep" />
       <text class="stat-year">{{yearRange}}</text>
     </view>
+
+    <view wx:if="{{briefDesc}}" class="artist-bio">
+      <text class="artist-bio-text">{{bioExpanded ? briefDesc : briefDescPreview}}</text>
+      <view wx:if="{{hasLongBio}}" class="bio-toggle" bindtap="onBioToggle">
+        <text>{{bioExpanded ? '收起' : '展开简介'}}</text>
+        <text class="bio-toggle-arrow">{{bioExpanded ? '↑' : '↓'}}</text>
+      </view>
+    </view>
   </view>
 
-  <!-- orange rule -->
   <view class="orange-rule" />
 
   <!-- ── SCROLLABLE ALBUM LIST ── -->
@@ -64,7 +69,6 @@
       <view class="side-rule" />
     </view>
 
-    <!-- skeleton -->
     <view wx:if="{{loading}}" class="album-list">
       <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="skel-row">
         <view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" />
@@ -76,12 +80,10 @@
       </view>
     </view>
 
-    <!-- empty -->
     <view wx:elif="{{list.length === 0}}" class="empty-state">
       <text class="empty-text">暂无专辑</text>
     </view>
 
-    <!-- album rows -->
     <view wx:else class="album-list">
       <view
         wx:for="{{list}}"
