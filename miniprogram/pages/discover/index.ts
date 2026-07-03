@@ -5,6 +5,8 @@ interface AlbumCard {
   primaryArtist: string
   neteaseArtistId: string
   year: number
+  releaseDate: string
+  releaseDisplay: string
   score: number
   genres: string[]
   scoreFill: string
@@ -15,23 +17,30 @@ interface ArtistCard { id: string; artistId: string; artistName: string; picUrl:
 interface ArtistGroup { letter: string; list: ArtistCard[] }
 
 const YEARS = [
-  { name: '2026' },
-  { name: '2025' },
-  { name: '2024' },
-  { name: '2023' },
-  { name: '2022' },
-  { name: '2021' },
-  { name: '2020' },
-  { name: '2019' },
-  { name: '2018' },
-  { name: '2010s' },
-  { name: '2000s' },
+  { name: '2026' }, { name: '2025' }, { name: '2024' }, { name: '2023' }, { name: '2022' },
+  { name: '2021' }, { name: '2020' }, { name: '2019' }, { name: '2018' }, { name: '2010s' }, { name: '2000s' },
 ]
 const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
 
+function formatReleaseDate(value: any, year: number): string {
+  if (!value) return year ? String(year) : ''
+  const raw = typeof value === 'string' ? value : new Date(value).toISOString()
+  const match = raw.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})/)
+  if (match) return `${match[1]}.${match[2]}.${match[3]}`
+  return year ? String(year) : ''
+}
+
 function mapAlbum(a: any): AlbumCard {
   const score = a.avgScore || 0
-  return { id: a._id, title: a.title || '', artist: a.artist || '', primaryArtist: a.primaryArtist || (a.artist || '').split(/[,，&]/)[0].trim(), neteaseArtistId: String(a.neteaseArtistId || ''), year: a.releaseYear || 0, score: Math.round(score * 10) / 10, genres: a.genres || [], scoreFill: Math.round(score / 10 * 100) + '%', coverUrl: a.coverUrl || '' }
+  const year = a.releaseYear || 0
+  return {
+    id: a._id, title: a.title || '', artist: a.artist || '',
+    primaryArtist: a.primaryArtist || (a.artist || '').split(/[,，&]/)[0].trim(),
+    neteaseArtistId: String(a.neteaseArtistId || ''), year,
+    releaseDate: a.releaseDate || '', releaseDisplay: formatReleaseDate(a.releaseDate, year),
+    score: Math.round(score * 10) / 10, genres: a.genres || [],
+    scoreFill: Math.round(score / 10 * 100) + '%', coverUrl: a.coverUrl || '',
+  }
 }
 function letterRank(letter: string) { const idx = LETTER_ORDER.indexOf(letter || '#'); return idx >= 0 ? idx : LETTER_ORDER.length - 1 }
 function groupArtists(list: ArtistCard[]): ArtistGroup[] {
@@ -46,7 +55,6 @@ Page({
   onLoad() {
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
-    // Discover opens on the complete 2026 catalogue by default, rather than a mixed historic feed.
     this._fetchAlbums({ year: '2026', pageSize: 100, sortBy: 'releaseYear' })
     this._fetchArtists()
   },
