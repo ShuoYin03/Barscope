@@ -14,12 +14,16 @@ exports.main = async (event) => {
     if (!users.length) return { success: false, error: '请先登录' }
     const user = users[0]
 
-    // A user may post more than one review for the same album.
+    // The existing database has a legacy UNIQUE index on { albumId, userId }.
+    // Keep authorOpenId as the true account identifier, while assigning each review
+    // its own unique userId so users can publish multiple reviews on one album.
+    const reviewUserId = `${OPENID}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     await db.collection('reviews').add({
       data: {
         albumId,
         albumTitle: albumTitle || '',
-        userId: OPENID,
+        userId: reviewUserId,
+        authorOpenId: OPENID,
         userType: user.type || 'normal',
         userNickName: user.nickName || '匿名用户',
         userAvatarUrl: user.avatarUrl || '',
@@ -35,8 +39,7 @@ exports.main = async (event) => {
     const { data: allReviews } = await db.collection('reviews').where({ albumId }).field({ rating: true }).get()
     const sum = allReviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0)
     const count = allReviews.length
-    const avgScore = count ? Math.round(sum / count * 10) / 10 : 0
-    await db.collection('albums').doc(albumId).update({ data: { avgScore, reviewCount: count } })
+    await db.collection('albums').doc(albumId).update({ data: { avgScore: count ? Math.round(sum / count * 10) / 10 : 0, reviewCount: count } })
     await db.collection('users').where({ openId: OPENID }).update({ data: { reviewCount: _.inc(1) } })
     return { success: true }
   } catch (err) { return { success: false, error: err.message } }
