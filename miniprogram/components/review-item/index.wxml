@@ -6,7 +6,7 @@
   </view>
   <text class="review-text">{{review.content}}</text>
   <view class="review-footer">
-    <view class="like-btn {{review.likedByMe ? 'liked' : ''}}" catchtap="onLike"><text>{{review.likedByMe ? '♥' : '♡'}} {{review.likes}}</text></view>
+    <view class="like-btn {{(localLiked || review.likedByMe) ? 'liked' : ''}}" catchtap="onLike"><text>{{(localLiked || review.likedByMe) ? '♥' : '♡'}} {{review.likes}}</text></view>
     <text class="sep"> | </text>
     <view class="reply-btn" catchtap="onReply"><text>💬 {{review.replyCount}}条 · 回复</text></view>
   </view>
