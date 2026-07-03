@@ -4,7 +4,9 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
-const BATCH_SIZE = 8
+// Aggressive mode: each call starts 20 NetEase album-detail requests in parallel.
+// 80 worked for database-only crawls; 80 external HTTP calls at once is likely to be rate-limited.
+const BATCH_SIZE = 20
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
@@ -14,7 +16,7 @@ function httpsGet(url) {
       res.on('end', () => { try { resolve(JSON.parse(body)) } catch { resolve(null) } })
     })
     req.on('error', reject)
-    req.setTimeout(1400, () => { req.destroy(); reject(new Error('timeout')) })
+    req.setTimeout(1500, () => { req.destroy(); reject(new Error('timeout')) })
   })
 }
 
