@@ -4,7 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
-const BATCH_SIZE = 5
+const BATCH_SIZE = 8
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ function httpsGet(url) {
       res.on('end', () => { try { resolve(JSON.parse(body)) } catch { resolve(null) } })
     })
     req.on('error', reject)
-    req.setTimeout(1600, () => { req.destroy(); reject(new Error('timeout')) })
+    req.setTimeout(1400, () => { req.destroy(); reject(new Error('timeout')) })
   })
 }
 
