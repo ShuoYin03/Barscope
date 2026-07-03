@@ -4,8 +4,6 @@ const db = cloud.database()
 const _ = db.command
 
 function likeDocId(reviewId, openId) {
-  // CloudBase document ids allow letters, digits, underscores and hyphens.
-  // Both values already use that character set; trim only as a final safeguard.
   return `${String(reviewId)}_${String(openId)}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
 }
 
@@ -16,24 +14,16 @@ exports.main = async (event) => {
   if (!OPENID) return { success: false, error: 'login required' }
 
   const likeId = likeDocId(reviewId, OPENID)
-  const likeRef = db.collection('review_likes').doc(likeId)
-  const reviewRef = db.collection('reviews').doc(reviewId)
-
   try {
-    const result = await db.runTransaction(async transaction => {
-      const existing = await transaction.get(likeRef)
-      if (existing.data && existing.data.length) return { alreadyLiked: true }
+    // A fixed document id means one user can only own one like record per review.
+    const existing = await db.collection('review_likes').doc(likeId).get().catch(() => ({ data: null }))
+    if (existing && existing.data) return { success: true, liked: true, alreadyLiked: true }
 
-      transaction.set(likeRef, {
-        reviewId,
-        openId: OPENID,
-        createdAt: db.serverDate(),
-      })
-      transaction.update(reviewRef, { likes: _.inc(1) })
-      return { alreadyLiked: false }
+    await db.collection('review_likes').doc(likeId).set({
+      data: { reviewId, openId: OPENID, createdAt: db.serverDate() },
     })
-
-    return { success: true, liked: true, alreadyLiked: !!result.alreadyLiked }
+    await db.collection('reviews').doc(reviewId).update({ data: { likes: _.inc(1) } })
+    return { success: true, liked: true, alreadyLiked: false }
   } catch (err) {
     return { success: false, error: err.message }
   }
