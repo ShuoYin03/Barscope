@@ -2,8 +2,7 @@ const cloud = require('wx-server-sdk')
 const https = require('https')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-
-const PAGE_SIZE = 20
+const _ = db.command
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
@@ -13,7 +12,8 @@ function httpsGet(url) {
       res.on('end', () => { try { resolve(JSON.parse(body)) } catch { resolve(null) } })
     })
     req.on('error', reject)
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')) })
+    // Must finish well within the mini-program cloud-call limit.
+    req.setTimeout(1800, () => { req.destroy(); reject(new Error('timeout')) })
   })
 }
 
@@ -40,31 +40,54 @@ function inspectTracks(songs) {
   return { bad: false }
 }
 
-exports.main = async (event) => {
+async function markScreened(id, status) {
+  await db.collection('albums').doc(id).update({ data: { qualityScreenedAt: db.serverDate(), qualityScreenStatus: status } })
+}
+
+exports.main = async () => {
   const { OPENID } = cloud.getWXContext()
   if (!(await isAdmin(OPENID))) return { success: false, error: '无权限' }
-  const skip = Math.max(0, Number(event.skip || 0))
-  const rows = (await db.collection('albums').field({ _id:true, sourceId:true, title:true, artist:true, primaryArtist:true, neteaseArtistId:true, releaseYear:true, releaseDate:true, coverUrl:true, trackCount:true, genres:true }).skip(skip).limit(PAGE_SIZE).get()).data || []
-  let checked = 0, moved = 0, failed = 0, skipped = 0
-  for (const album of rows) {
-    checked += 1
-    const sourceId = String(album.sourceId || '')
-    if (!/^\d+$/.test(sourceId)) { skipped += 1; continue }
-    try {
-      const data = await httpsGet(`https://music.163.com/api/v1/album/${sourceId}`)
-      const songs = data && data.code === 200 && data.songs ? data.songs : []
-      const verdict = inspectTracks(songs)
-      if (!verdict.bad) continue
-      const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
-      if (!existing.data.length) {
-        await db.collection('album_candidates').add({ data: {
-          sourceId, title: album.title || '', artist: album.artist || '', primaryArtist: album.primaryArtist || '', neteaseArtistId: album.neteaseArtistId || '', releaseYear: album.releaseYear || 0, releaseDate: album.releaseDate || '', coverUrl: album.coverUrl || '', trackCount: album.trackCount || songs.length, genres: album.genres || [], source: 'netease', crawlSource: 'quality-rescreen', candidateReason: verdict.reason, duplicateTrackExample: verdict.example || [], status: 'pending', addedAt: db.serverDate(), decidedAt: null,
-        } })
-      }
-      await db.collection('albums').doc(album._id).remove()
-      moved += 1
-    } catch (e) { failed += 1 }
+
+  // One album per request. The next call finds the next unscreened row, so deleting
+  // candidates never shifts a cursor and each client call stays under the 3-second limit.
+  const query = await db.collection('albums')
+    .where({ qualityScreenedAt: _.exists(false) })
+    .field({ _id:true, sourceId:true, title:true, artist:true, primaryArtist:true, neteaseArtistId:true, releaseYear:true, releaseDate:true, coverUrl:true, trackCount:true, genres:true })
+    .limit(1)
+    .get()
+  const album = (query.data || [])[0]
+  if (!album) return { success: true, checked: 0, moved: 0, failed: 0, skipped: 0, done: true }
+
+  const sourceId = String(album.sourceId || '')
+  if (!/^\d+$/.test(sourceId)) {
+    await markScreened(album._id, 'skipped_no_source_id')
+    return { success: true, checked: 1, moved: 0, failed: 0, skipped: 1, done: false }
   }
-  const nextSkip = rows.length === PAGE_SIZE ? skip : null
-  return { success: true, checked, moved, failed, skipped, nextSkip, done: nextSkip === null }
+
+  try {
+    const data = await httpsGet(`https://music.163.com/api/v1/album/${sourceId}`)
+    const songs = data && data.code === 200 && data.songs ? data.songs : []
+    if (!songs.length) {
+      await markScreened(album._id, 'failed_no_tracks')
+      return { success: true, checked: 1, moved: 0, failed: 1, skipped: 0, done: false }
+    }
+    const verdict = inspectTracks(songs)
+    if (!verdict.bad) {
+      await markScreened(album._id, 'passed')
+      return { success: true, checked: 1, moved: 0, failed: 0, skipped: 0, done: false }
+    }
+
+    const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
+    if (!existing.data.length) {
+      await db.collection('album_candidates').add({ data: {
+        sourceId, title: album.title || '', artist: album.artist || '', primaryArtist: album.primaryArtist || '', neteaseArtistId: album.neteaseArtistId || '', releaseYear: album.releaseYear || 0, releaseDate: album.releaseDate || '', coverUrl: album.coverUrl || '', trackCount: album.trackCount || songs.length, genres: album.genres || [], source: 'netease', crawlSource: 'quality-rescreen', candidateReason: verdict.reason, duplicateTrackExample: verdict.example || [], status: 'pending', addedAt: db.serverDate(), decidedAt: null,
+      } })
+    }
+    await db.collection('albums').doc(album._id).remove()
+    return { success: true, checked: 1, moved: 1, failed: 0, skipped: 0, done: false }
+  } catch (e) {
+    // Mark the record so an unreachable endpoint cannot block the full rescreen forever.
+    await markScreened(album._id, 'failed_request')
+    return { success: true, checked: 1, moved: 0, failed: 1, skipped: 0, done: false }
+  }
 }
