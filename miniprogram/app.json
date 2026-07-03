@@ -11,6 +11,7 @@
     "pages/admin/index",
     "pages/crawler/index",
     "pages/album-candidates/index",
+    "pages/date-tools/index",
     "pages/critics/index",
     "pages/album-manager/index",
     "pages/artist/index"
