@@ -9,53 +9,23 @@
   <view class="search-wrap">
     <view class="search-inner">
       <text class="search-icon">⌕</text>
-      <input
-        class="search-input"
-        placeholder="搜索专辑、歌手"
-        placeholder-class="search-ph"
-        bindinput="onSearch"
-        value="{{keyword}}"
-      />
+      <input class="search-input" placeholder="搜索专辑、歌手" placeholder-class="search-ph" bindinput="onSearch" value="{{keyword}}" />
     </view>
   </view>
 
   <!-- VIEW SWITCH -->
   <view class="view-switch">
-    <view class="switch-chip {{viewMode === 'albums' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="albums">
-      <text>ALBUMS</text>
-    </view>
-    <view class="switch-chip {{viewMode === 'artists' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="artists">
-      <text>ARTISTS</text>
-    </view>
+    <view class="switch-chip {{viewMode === 'albums' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="albums"><text>ALBUMS</text></view>
+    <view class="switch-chip {{viewMode === 'artists' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="artists"><text>ARTISTS</text></view>
   </view>
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{artistScrollIntoView}}" scroll-with-animation="{{true}}">
-
     <block wx:if="{{viewMode === 'albums'}}">
-      <!-- YEAR STAMPS -->
-      <view class="side-row">
-        <text class="side-text">SIDE A — 年份 YEAR</text>
-        <view class="side-rule" />
-      </view>
+      <view class="side-row"><text class="side-text">SIDE A — 年份 YEAR</text><view class="side-rule" /></view>
       <view class="year-stamps">
-        <view
-          wx:for="{{years}}"
-          wx:key="name"
-          class="year-stamp {{activeYear === item.name ? 'active' : ''}}"
-          bindtap="onYearTap"
-          data-year="{{item.name}}"
-        >
-          <text class="year-name">{{item.name}}</text>
-        </view>
+        <view wx:for="{{years}}" wx:key="name" class="year-stamp {{activeYear === item.name ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item.name}}"><text class="year-name">{{item.name}}</text></view>
       </view>
-
-      <!-- ALBUM LIST -->
-      <view class="side-row">
-        <text class="side-text">SIDE B — {{activeYear ? activeYear : '全部'}} · {{loading ? '加载中' : list.length + ' 张'}}</text>
-        <view class="side-rule" />
-      </view>
-
-      <!-- skeleton -->
+      <view class="side-row"><text class="side-text">SIDE B — {{activeYear ? activeYear : '全部'}} · {{loading ? '加载中' : list.length + ' 张'}}</text><view class="side-rule" /></view>
       <view wx:if="{{loading}}" class="album-list">
         <view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="skel-row">
           <view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" />
@@ -67,11 +37,7 @@
           <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
         </view>
       </view>
-      <!-- empty -->
-      <view wx:elif="{{list.length === 0}}" class="empty-state">
-        <text class="empty-text">没有找到相关专辑</text>
-      </view>
-      <!-- real -->
+      <view wx:elif="{{list.length === 0}}" class="empty-state"><text class="empty-text">没有找到相关专辑</text></view>
       <view wx:else class="album-list">
         <view
           wx:for="{{list}}"
@@ -87,12 +53,7 @@
           </view>
           <view class="album-info">
             <text class="album-title">{{item.title}}</text>
-            <text
-              class="album-artist"
-              catchtap="onArtistTap"
-              data-artist-id="{{item.neteaseArtistId}}"
-              data-artist="{{item.primaryArtist}}"
-            >{{item.artist}} · {{item.year}}</text>
+            <text class="album-artist" catchtap="onArtistTap" data-artist-id="{{item.neteaseArtistId}}" data-artist="{{item.primaryArtist}}">{{item.artist}} · {{item.releaseDisplay}}</text>
           </view>
           <text class="album-score">{{item.score}}</text>
         </view>
@@ -100,68 +61,17 @@
     </block>
 
     <block wx:else>
-      <!-- ARTIST DIRECTORY -->
-      <view class="side-row">
-        <text class="side-text">SIDE A — ARTISTS · {{artistLoading ? '加载中' : artistTotal + ' 位'}}</text>
-        <view class="side-rule" />
-      </view>
-
-      <view wx:if="{{artistLoading}}" class="artist-list">
-        <view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="artist-row">
-          <view class="sk" style="width:88rpx;height:88rpx;border-radius:50%;flex-shrink:0;" />
-          <view class="skel-info">
-            <view class="sk" style="width:55%;height:28rpx;" />
-            <view class="sk" style="width:38%;height:20rpx;margin-top:10rpx;" />
-          </view>
-        </view>
-      </view>
-
-      <view wx:elif="{{artistGroups.length === 0}}" class="empty-state">
-        <text class="empty-text">没有找到相关歌手</text>
-      </view>
-
+      <view class="side-row"><text class="side-text">SIDE A — ARTISTS · {{artistLoading ? '加载中' : artistTotal + ' 位'}}</text><view class="side-rule" /></view>
+      <view wx:if="{{artistLoading}}" class="artist-list"><view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="artist-row"><view class="sk" style="width:88rpx;height:88rpx;border-radius:50%;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:55%;height:28rpx;" /><view class="sk" style="width:38%;height:20rpx;margin-top:10rpx;" /></view></view></view>
+      <view wx:elif="{{artistGroups.length === 0}}" class="empty-state"><text class="empty-text">没有找到相关歌手</text></view>
       <view wx:else class="artist-list with-index">
         <view wx:for="{{artistGroups}}" wx:key="letter" class="artist-group" id="artist-letter-{{item.letter === '#' ? 'num' : item.letter}}">
-          <view class="letter-row">
-            <text class="letter-text">{{item.letter}}</text>
-            <view class="letter-rule" />
-          </view>
-          <view
-            wx:for="{{item.list}}"
-            wx:for-item="artist"
-            wx:key="artistId"
-            class="artist-row"
-            bindtap="onArtistTap"
-            data-artist-id="{{artist.artistId}}"
-            data-artist="{{artist.artistName}}"
-          >
-            <view class="artist-avatar">
-              <image wx:if="{{artist.picUrl}}" class="artist-avatar-img" src="{{artist.picUrl}}" mode="aspectFill" />
-              <text wx:else class="artist-avatar-initial">{{artist.letter}}</text>
-            </view>
-            <view class="artist-info">
-              <text class="artist-name">{{artist.artistName}}</text>
-              <text class="artist-meta">{{artist.albumSize || 0}} 张专辑</text>
-            </view>
-            <text class="artist-arrow">›</text>
-          </view>
+          <view class="letter-row"><text class="letter-text">{{item.letter}}</text><view class="letter-rule" /></view>
+          <view wx:for="{{item.list}}" wx:for-item="artist" wx:key="artistId" class="artist-row" bindtap="onArtistTap" data-artist-id="{{artist.artistId}}" data-artist="{{artist.artistName}}"><view class="artist-avatar"><image wx:if="{{artist.picUrl}}" class="artist-avatar-img" src="{{artist.picUrl}}" mode="aspectFill" /><text wx:else class="artist-avatar-initial">{{artist.letter}}</text></view><view class="artist-info"><text class="artist-name">{{artist.artistName}}</text><text class="artist-meta">{{artist.albumSize || 0}} 张专辑</text></view><text class="artist-arrow">›</text></view>
         </view>
       </view>
     </block>
-
   </scroll-view>
-
-  <view wx:if="{{viewMode === 'artists' && artistLetters.length > 1}}" class="alphabet-index">
-    <view
-      wx:for="{{artistLetters}}"
-      wx:key="*this"
-      class="alphabet-index-item {{activeLetter === item ? 'active' : ''}}"
-      bindtap="onLetterTap"
-      data-letter="{{item}}"
-    >
-      <text>{{item}}</text>
-    </view>
-  </view>
-
+  <view wx:if="{{viewMode === 'artists' && artistLetters.length > 1}}" class="alphabet-index"><view wx:for="{{artistLetters}}" wx:key="*this" class="alphabet-index-item {{activeLetter === item ? 'active' : ''}}" bindtap="onLetterTap" data-letter="{{item}}"><text>{{item}}</text></view></view>
   <bottom-nav selected="{{2}}" />
 </view>
