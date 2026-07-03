@@ -4,6 +4,8 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+const BATCH_SIZE = 3
+
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://music.163.com/' } }, res => {
@@ -12,8 +14,7 @@ function httpsGet(url) {
       res.on('end', () => { try { resolve(JSON.parse(body)) } catch { resolve(null) } })
     })
     req.on('error', reject)
-    // Must finish well within the mini-program cloud-call limit.
-    req.setTimeout(1800, () => { req.destroy(); reject(new Error('timeout')) })
+    req.setTimeout(1600, () => { req.destroy(); reject(new Error('timeout')) })
   })
 }
 
@@ -44,39 +45,24 @@ async function markScreened(id, status) {
   await db.collection('albums').doc(id).update({ data: { qualityScreenedAt: db.serverDate(), qualityScreenStatus: status } })
 }
 
-exports.main = async () => {
-  const { OPENID } = cloud.getWXContext()
-  if (!(await isAdmin(OPENID))) return { success: false, error: '无权限' }
-
-  // One album per request. The next call finds the next unscreened row, so deleting
-  // candidates never shifts a cursor and each client call stays under the 3-second limit.
-  const query = await db.collection('albums')
-    .where({ qualityScreenedAt: _.exists(false) })
-    .field({ _id:true, sourceId:true, title:true, artist:true, primaryArtist:true, neteaseArtistId:true, releaseYear:true, releaseDate:true, coverUrl:true, trackCount:true, genres:true })
-    .limit(1)
-    .get()
-  const album = (query.data || [])[0]
-  if (!album) return { success: true, checked: 0, moved: 0, failed: 0, skipped: 0, done: true }
-
+async function processAlbum(album) {
   const sourceId = String(album.sourceId || '')
   if (!/^\d+$/.test(sourceId)) {
     await markScreened(album._id, 'skipped_no_source_id')
-    return { success: true, checked: 1, moved: 0, failed: 0, skipped: 1, done: false }
+    return { checked: 1, moved: 0, failed: 0, skipped: 1 }
   }
-
   try {
     const data = await httpsGet(`https://music.163.com/api/v1/album/${sourceId}`)
     const songs = data && data.code === 200 && data.songs ? data.songs : []
     if (!songs.length) {
       await markScreened(album._id, 'failed_no_tracks')
-      return { success: true, checked: 1, moved: 0, failed: 1, skipped: 0, done: false }
+      return { checked: 1, moved: 0, failed: 1, skipped: 0 }
     }
     const verdict = inspectTracks(songs)
     if (!verdict.bad) {
       await markScreened(album._id, 'passed')
-      return { success: true, checked: 1, moved: 0, failed: 0, skipped: 0, done: false }
+      return { checked: 1, moved: 0, failed: 0, skipped: 0 }
     }
-
     const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
     if (!existing.data.length) {
       await db.collection('album_candidates').add({ data: {
@@ -84,10 +70,26 @@ exports.main = async () => {
       } })
     }
     await db.collection('albums').doc(album._id).remove()
-    return { success: true, checked: 1, moved: 1, failed: 0, skipped: 0, done: false }
+    return { checked: 1, moved: 1, failed: 0, skipped: 0 }
   } catch (e) {
-    // Mark the record so an unreachable endpoint cannot block the full rescreen forever.
     await markScreened(album._id, 'failed_request')
-    return { success: true, checked: 1, moved: 0, failed: 1, skipped: 0, done: false }
+    return { checked: 1, moved: 0, failed: 1, skipped: 0 }
   }
+}
+
+exports.main = async () => {
+  const { OPENID } = cloud.getWXContext()
+  if (!(await isAdmin(OPENID))) return { success: false, error: '无权限' }
+
+  const query = await db.collection('albums')
+    .where({ qualityScreenedAt: _.exists(false) })
+    .field({ _id:true, sourceId:true, title:true, artist:true, primaryArtist:true, neteaseArtistId:true, releaseYear:true, releaseDate:true, coverUrl:true, trackCount:true, genres:true })
+    .limit(BATCH_SIZE)
+    .get()
+  const albums = query.data || []
+  if (!albums.length) return { success: true, checked: 0, moved: 0, failed: 0, skipped: 0, done: true }
+
+  const results = await Promise.all(albums.map(processAlbum))
+  const total = results.reduce((acc, item) => ({ checked: acc.checked + item.checked, moved: acc.moved + item.moved, failed: acc.failed + item.failed, skipped: acc.skipped + item.skipped }), { checked: 0, moved: 0, failed: 0, skipped: 0 })
+  return { success: true, ...total, done: false }
 }
