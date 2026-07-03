@@ -3,19 +3,37 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+function likeDocId(reviewId, openId) {
+  // CloudBase document ids allow letters, digits, underscores and hyphens.
+  // Both values already use that character set; trim only as a final safeguard.
+  return `${String(reviewId)}_${String(openId)}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const reviewId = event.reviewId
   if (!reviewId) return { success: false, error: 'reviewId required' }
   if (!OPENID) return { success: false, error: 'login required' }
 
-  try {
-    const existing = await db.collection('review_likes').where({ reviewId, openId: OPENID }).limit(1).get()
-    if (existing.data.length) return { success: true, alreadyLiked: true, liked: true }
+  const likeId = likeDocId(reviewId, OPENID)
+  const likeRef = db.collection('review_likes').doc(likeId)
+  const reviewRef = db.collection('reviews').doc(reviewId)
 
-    await db.collection('review_likes').add({ data: { reviewId, openId: OPENID, createdAt: db.serverDate() } })
-    await db.collection('reviews').doc(reviewId).update({ data: { likes: _.inc(1) } })
-    return { success: true, alreadyLiked: false, liked: true }
+  try {
+    const result = await db.runTransaction(async transaction => {
+      const existing = await transaction.get(likeRef)
+      if (existing.data && existing.data.length) return { alreadyLiked: true }
+
+      transaction.set(likeRef, {
+        reviewId,
+        openId: OPENID,
+        createdAt: db.serverDate(),
+      })
+      transaction.update(reviewRef, { likes: _.inc(1) })
+      return { alreadyLiked: false }
+    })
+
+    return { success: true, liked: true, alreadyLiked: !!result.alreadyLiked }
   } catch (err) {
     return { success: false, error: err.message }
   }
