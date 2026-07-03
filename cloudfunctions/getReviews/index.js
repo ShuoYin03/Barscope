@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+const _ = db.command
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
@@ -8,23 +9,40 @@ exports.main = async (event) => {
   if (!albumId && !userId && !event.recent) return { success: false, error: 'albumId or userId or recent required' }
 
   try {
-    const skip = (page - 1) * pageSize
-    let query
-    if (albumId) query = db.collection('reviews').where({ albumId }).orderBy('isPinned', 'desc').orderBy('likes', 'desc').orderBy('createdAt', 'desc')
-    else if (userId) query = db.collection('reviews').where({ userId }).orderBy('createdAt', 'desc')
-    else query = db.collection('reviews').orderBy('createdAt', 'desc')
+    let records = []
+    if (userId) {
+      // New reviews use authorOpenId; legacy reviews still use userId = openId.
+      const [newRes, legacyRes] = await Promise.all([
+        db.collection('reviews').where({ authorOpenId: userId }).orderBy('createdAt', 'desc').limit(100).get(),
+        db.collection('reviews').where({ userId }).orderBy('createdAt', 'desc').limit(100).get(),
+      ])
+      const seen = new Set()
+      records = (newRes.data || []).concat(legacyRes.data || []).filter(r => {
+        if (seen.has(r._id)) return false
+        seen.add(r._id)
+        return true
+      }).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      records = records.slice((page - 1) * pageSize, page * pageSize)
+    } else {
+      const skip = (page - 1) * pageSize
+      let query
+      if (albumId) query = db.collection('reviews').where({ albumId }).orderBy('isPinned', 'desc').orderBy('likes', 'desc').orderBy('createdAt', 'desc')
+      else query = db.collection('reviews').orderBy('createdAt', 'desc')
+      const result = await query.skip(skip).limit(pageSize).get()
+      records = result.data || []
+    }
 
-    const result = await query.skip(skip).limit(pageSize).get()
-    const reviewIds = result.data.map(r => r._id)
+    const reviewIds = records.map(r => r._id)
     const [likesRes, repliesRes] = await Promise.all([
-      OPENID && reviewIds.length ? db.collection('review_likes').where({ reviewId: db.command.in(reviewIds), openId: OPENID }).get() : Promise.resolve({ data: [] }),
-      reviewIds.length ? db.collection('review_replies').where({ reviewId: db.command.in(reviewIds) }).get() : Promise.resolve({ data: [] }),
+      OPENID && reviewIds.length ? db.collection('review_likes').where({ reviewId: _.in(reviewIds), openId: OPENID }).get() : Promise.resolve({ data: [] }),
+      reviewIds.length ? db.collection('review_replies').where({ reviewId: _.in(reviewIds) }).get() : Promise.resolve({ data: [] }),
     ])
     const liked = new Set((likesRes.data || []).map(x => x.reviewId))
     const replyCounts = {}
     ;(repliesRes.data || []).forEach(x => { replyCounts[x.reviewId] = (replyCounts[x.reviewId] || 0) + 1 })
 
-    const list = result.data.map(r => Object.assign({}, r, {
+    const list = records.map(r => ({
+      ...r,
       initial: r.userNickName ? r.userNickName[0] : '?',
       userName: r.userNickName || '匿名用户',
       score: String(r.rating || 0),
