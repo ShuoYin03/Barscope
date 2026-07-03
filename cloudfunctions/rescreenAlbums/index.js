@@ -4,7 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
-const BATCH_SIZE = 3
+const BATCH_SIZE = 5
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
@@ -80,15 +80,9 @@ async function processAlbum(album) {
 exports.main = async () => {
   const { OPENID } = cloud.getWXContext()
   if (!(await isAdmin(OPENID))) return { success: false, error: '无权限' }
-
-  const query = await db.collection('albums')
-    .where({ qualityScreenedAt: _.exists(false) })
-    .field({ _id:true, sourceId:true, title:true, artist:true, primaryArtist:true, neteaseArtistId:true, releaseYear:true, releaseDate:true, coverUrl:true, trackCount:true, genres:true })
-    .limit(BATCH_SIZE)
-    .get()
+  const query = await db.collection('albums').where({ qualityScreenedAt: _.exists(false) }).field({ _id:true, sourceId:true, title:true, artist:true, primaryArtist:true, neteaseArtistId:true, releaseYear:true, releaseDate:true, coverUrl:true, trackCount:true, genres:true }).limit(BATCH_SIZE).get()
   const albums = query.data || []
   if (!albums.length) return { success: true, checked: 0, moved: 0, failed: 0, skipped: 0, done: true }
-
   const results = await Promise.all(albums.map(processAlbum))
   const total = results.reduce((acc, item) => ({ checked: acc.checked + item.checked, moved: acc.moved + item.moved, failed: acc.failed + item.failed, skipped: acc.skipped + item.skipped }), { checked: 0, moved: 0, failed: 0, skipped: 0 })
   return { success: true, ...total, done: false }
