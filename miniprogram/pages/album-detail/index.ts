@@ -2,54 +2,36 @@ interface ReviewEntry { _id: string; userType: 'critic' | 'normal'; userName: st
 interface TrackArtist { id: number; name: string }
 interface AlbumTrack { songId: string; no: number; name: string; duration: number; artists: TrackArtist[]; guests: TrackArtist[]; artistText: string; guestText: string }
 interface FeaturingGuest { id: number; name: string; count: number }
-interface AlbumData { id: string; title: string; artist: string; primaryArtist: string; neteaseArtistId: string; sourceId: string; year: number; genres: string[]; avgScore: number; reviewCount: number; scoreFill: string; coverUrl: string; description: string; company: string; tracks: AlbumTrack[]; featuringGuests: FeaturingGuest[] }
+interface AlbumData { id: string; title: string; artist: string; primaryArtist: string; neteaseArtistId: string; sourceId: string; year: number; releaseDate: string; releaseDisplay: string; genres: string[]; avgScore: number; reviewCount: number; scoreFill: string; coverUrl: string; description: string; company: string; tracks: AlbumTrack[]; featuringGuests: FeaturingGuest[] }
 
 const DESC_PREVIEW_LENGTH = 150
 
 function getDescriptionState(description: string) {
   const value = String(description || '').trim()
   const hasLongDescription = value.length > DESC_PREVIEW_LENGTH
-  return {
-    descriptionPreview: hasLongDescription ? value.slice(0, DESC_PREVIEW_LENGTH).replace(/\s+$/, '') + '…' : value,
-    hasLongDescription,
-  }
+  return { descriptionPreview: hasLongDescription ? value.slice(0, DESC_PREVIEW_LENGTH).replace(/\s+$/, '') + '…' : value, hasLongDescription }
+}
+
+function formatReleaseDate(value: any, year: number): string {
+  if (!value) return year ? String(year) : ''
+  const raw = typeof value === 'string' ? value : String(value)
+  const match = raw.match(/(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})/)
+  return match ? `${match[1]}.${match[2]}.${match[3]}` : (year ? String(year) : '')
 }
 
 function mapAlbum(raw: any): AlbumData {
   const score = raw.avgScore || 0
+  const year = raw.releaseYear || 0
   const tracks = (raw.tracks || []).map((t: any, idx: number) => {
-    const artists = t.artists || []
-    const guests = t.guests || []
-    return {
-      songId: String(t.songId || ''), no: t.no || idx + 1, name: t.name || '', duration: t.duration || 0,
-      artists, guests,
-      artistText: artists.map((a: TrackArtist) => a.name).join(' / '),
-      guestText: guests.map((a: TrackArtist) => a.name).join(' / '),
-    }
+    const artists = t.artists || []; const guests = t.guests || []
+    return { songId: String(t.songId || ''), no: t.no || idx + 1, name: t.name || '', duration: t.duration || 0, artists, guests, artistText: artists.map((a: TrackArtist) => a.name).join(' / '), guestText: guests.map((a: TrackArtist) => a.name).join(' / ') }
   })
-  return {
-    id: raw._id, title: raw.title || '', artist: raw.artist || '',
-    primaryArtist: raw.primaryArtist || String(raw.artist || '').split(/[,，&]/)[0].trim(),
-    neteaseArtistId: String(raw.neteaseArtistId || ''), sourceId: String(raw.sourceId || ''), year: raw.releaseYear || 0,
-    genres: raw.genres || [], avgScore: Math.round(score * 10) / 10, reviewCount: raw.reviewCount || 0,
-    scoreFill: Math.round(score / 10 * 100) + '%', coverUrl: raw.coverUrl || '', description: raw.description || '',
-    company: raw.company || '', tracks, featuringGuests: raw.featuringGuests || [],
-  }
+  return { id: raw._id, title: raw.title || '', artist: raw.artist || '', primaryArtist: raw.primaryArtist || String(raw.artist || '').split(/[,，&]/)[0].trim(), neteaseArtistId: String(raw.neteaseArtistId || ''), sourceId: String(raw.sourceId || ''), year, releaseDate: raw.releaseDate || '', releaseDisplay: formatReleaseDate(raw.releaseDate, year), genres: raw.genres || [], avgScore: Math.round(score * 10) / 10, reviewCount: raw.reviewCount || 0, scoreFill: Math.round(score / 10 * 100) + '%', coverUrl: raw.coverUrl || '', description: raw.description || '', company: raw.company || '', tracks, featuringGuests: raw.featuringGuests || [] }
 }
 
 Page({
-  data: {
-    statusBarHeight: 20, topbarHeight: 64, album: null as AlbumData | null, reviews: [] as ReviewEntry[],
-    isLoggedIn: false, isFavorited: false, loading: true, loadError: '', trackSyncing: false,
-    descriptionPreview: '', hasLongDescription: false, descriptionExpanded: false,
-  },
-  onLoad(options) {
-    const app = getApp<IAppOption>()
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight, isLoggedIn: !!app.globalData.userInfo })
-    const id = options.id || ''
-    if (!id) { this.setData({ loading: false, loadError: '缺少专辑参数' }); return }
-    this._loadAlbum(id)
-  },
+  data: { statusBarHeight: 20, topbarHeight: 64, album: null as AlbumData | null, reviews: [] as ReviewEntry[], isLoggedIn: false, isFavorited: false, loading: true, loadError: '', trackSyncing: false, descriptionPreview: '', hasLongDescription: false, descriptionExpanded: false },
+  onLoad(options) { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight, isLoggedIn: !!app.globalData.userInfo }); const id = options.id || ''; if (!id) { this.setData({ loading: false, loadError: '缺少专辑参数' }); return }; this._loadAlbum(id) },
   _loadAlbum(id: string) {
     const albumCall = wx.cloud.callFunction({ name: 'getAlbums', data: { id } }).catch(() => ({ result: { success: false } }))
     const reviewCall = wx.cloud.callFunction({ name: 'getReviews', data: { albumId: id, pageSize: 50 } }).catch(() => ({ result: { success: false, list: [] } }))
@@ -57,29 +39,13 @@ Page({
       const albumRes = results[0] && results[0].result ? results[0].result : { success: false }
       const reviewsRes = results[1] && results[1].result ? results[1].result : { success: false, list: [] }
       const album = albumRes.success && albumRes.album ? mapAlbum(albumRes.album) : null
-      const reviews = reviewsRes.success ? (reviewsRes.list || []).sort((a: any, b: any) => (Number(!!b.isPinned) - Number(!!a.isPinned))) : []
+      const reviews = reviewsRes.success ? (reviewsRes.list || []).sort((a: any, b: any) => Number(!!b.isPinned) - Number(!!a.isPinned)) : []
       this.setData({ album, reviews, loading: false, loadError: album ? '' : '专辑加载失败', descriptionExpanded: false, ...getDescriptionState(album ? album.description : '') })
       if (album && album.sourceId && (!album.tracks.length || !album.description)) this._syncAlbumTracks(album.id)
     })
-    if (this.data.isLoggedIn) {
-      wx.cloud.callFunction({ name: 'getFavorites', data: { checkAlbum: id }, success: (res: any) => { if (res.result && res.result.success) this.setData({ isFavorited: res.result.isFavorited }) } } as any)
-    }
+    if (this.data.isLoggedIn) wx.cloud.callFunction({ name: 'getFavorites', data: { checkAlbum: id }, success: (res: any) => { if (res.result && res.result.success) this.setData({ isFavorited: res.result.isFavorited }) } } as any)
   },
-  _syncAlbumTracks(albumId: string) {
-    if (this.data.trackSyncing) return
-    this.setData({ trackSyncing: true })
-    wx.cloud.callFunction({ name: 'syncAlbumTracks', data: { albumId }, success: (res: any) => {
-      const result = res.result || {}
-      const album = this.data.album
-      if (!album || !result.success) return
-      const tracks = (result.tracks || []).map((t: any, idx: number) => {
-        const artists = t.artists || []; const guests = t.guests || []
-        return { ...t, no: t.no || idx + 1, artistText: artists.map((a: TrackArtist) => a.name).join(' / '), guestText: guests.map((a: TrackArtist) => a.name).join(' / ') }
-      })
-      const description = result.description || album.description
-      this.setData({ album: { ...album, description, company: result.company || album.company, tracks, featuringGuests: result.featuringGuests || [] }, descriptionExpanded: false, ...getDescriptionState(description) })
-    }, complete: () => this.setData({ trackSyncing: false }) } as any)
-  },
+  _syncAlbumTracks(albumId: string) { if (this.data.trackSyncing) return; this.setData({ trackSyncing: true }); wx.cloud.callFunction({ name: 'syncAlbumTracks', data: { albumId }, success: (res: any) => { const result = res.result || {}; const album = this.data.album; if (!album || !result.success) return; const tracks = (result.tracks || []).map((t: any, idx: number) => { const artists = t.artists || []; const guests = t.guests || []; return { ...t, no: t.no || idx + 1, artistText: artists.map((a: TrackArtist) => a.name).join(' / '), guestText: guests.map((a: TrackArtist) => a.name).join(' / ') } }); const description = result.description || album.description; this.setData({ album: { ...album, description, company: result.company || album.company, tracks, featuringGuests: result.featuringGuests || [] }, descriptionExpanded: false, ...getDescriptionState(description) }) }, complete: () => this.setData({ trackSyncing: false }) } as any) },
   onDescriptionToggle() { if (this.data.hasLongDescription) this.setData({ descriptionExpanded: !this.data.descriptionExpanded }) },
   onBack() { wx.navigateBack() },
   onArtistTap() { const album = this.data.album; if (album && album.neteaseArtistId) wx.navigateTo({ url: '/pages/artist/index?artistId=' + album.neteaseArtistId + '&artistName=' + encodeURIComponent(album.primaryArtist) }) },
