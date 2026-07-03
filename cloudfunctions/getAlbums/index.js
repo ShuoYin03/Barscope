@@ -34,7 +34,8 @@ exports.main = async (event, context) => {
       if (genre) merged = merged.filter(function(a) { return a.genres && a.genres.indexOf(genre) !== -1 })
       if (year) merged = merged.filter(function(a) { var y = a.releaseYear; if (year === '2010s') return y >= 2010 && y <= 2017; if (year === '2000s') return y >= 2000 && y <= 2009; return y === parseInt(year) })
       if (month && year && /^\d{4}$/.test(String(year))) merged = merged.filter(function(a) { return String(a.releaseDate || '').slice(5, 7) === String(month).padStart(2, '0') })
-      merged.sort(function(a, b) { return String(b.releaseDate || '').localeCompare(String(a.releaseDate || '')) })
+      // Calendar order: Jan → Dec, then day ascending.
+      merged.sort(function(a, b) { return String(a.releaseDate || '9999-99-99').localeCompare(String(b.releaseDate || '9999-99-99')) })
       return { success: true, list: merged, total: merged.length, page: 1, pageSize: merged.length }
     }
 
@@ -56,8 +57,10 @@ exports.main = async (event, context) => {
     var countResult = await query.count()
     var total = countResult.total
     var skip = (page - 1) * pageSize
+    // In Discover, releaseDate means calendar chronology (Jan → Dec), not newest-first.
     var field = sortBy === 'releaseYear' ? 'releaseDate' : 'avgScore'
-    var listResult = await query.orderBy(field, 'desc').skip(skip).limit(pageSize).get()
+    var direction = sortBy === 'releaseYear' ? 'asc' : 'desc'
+    var listResult = await query.orderBy(field, direction).skip(skip).limit(pageSize).get()
     return { success: true, list: listResult.data, total, page, pageSize }
   } catch (err) {
     return { success: false, error: err.message }
