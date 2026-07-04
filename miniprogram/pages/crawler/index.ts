@@ -263,30 +263,66 @@ Page({
 
   onCleanupSingles() {
     wx.showModal({
-      title: '清除单曲',
-      content: '将删除数据库中所有 trackCount 为 1 或 2 的条目，操作不可撤销。',
-      confirmText: '清除',
+      title: '清理专辑库',
+      content: '将删除 trackCount 为 1 或 2 的条目，然后自动重新筛选剩余专辑（含伴奏/重复曲目版本的会移入候选区），操作不可撤销。',
+      confirmText: '开始清理',
       confirmColor: '#C0392B',
       success: (r) => {
         if (!r.confirm) return
-        wx.showLoading({ title: '清除中…', mask: true })
+        wx.showLoading({ title: '清除单曲中…', mask: true })
         wx.cloud.callFunction({
           name: 'manageCandidates',
           data: { action: 'cleanup_singles' },
           success: (res: any) => {
-            wx.hideLoading()
             const result = res.result || {}
-            if (result.success) {
-              wx.showToast({ title: `已删除 ${result.removed} 条`, icon: 'success' })
-            } else {
+            if (!result.success) {
+              wx.hideLoading()
               wx.showToast({ title: result.error || '操作失败', icon: 'none' })
+              return
             }
+            this._runRescreenLoop(result.removed || 0, { checked: 0, moved: 0, failed: 0, skipped: 0 })
           },
           fail: () => {
             wx.hideLoading()
             wx.showToast({ title: '网络错误', icon: 'error' })
           },
         })
+      },
+    })
+  },
+
+  _runRescreenLoop(removedSingles: number, acc: { checked: number; moved: number; failed: number; skipped: number }) {
+    wx.showLoading({ title: `重新筛选中…(${acc.checked})`, mask: true })
+    wx.cloud.callFunction({
+      name: 'rescreenAlbums',
+      data: {},
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) {
+          wx.hideLoading()
+          wx.showToast({ title: r.error || '筛选失败', icon: 'none' })
+          return
+        }
+        const next = {
+          checked: acc.checked + Number(r.checked || 0),
+          moved:   acc.moved   + Number(r.moved   || 0),
+          failed:  acc.failed  + Number(r.failed  || 0),
+          skipped: acc.skipped + Number(r.skipped || 0),
+        }
+        if (r.done) {
+          wx.hideLoading()
+          wx.showModal({
+            title: '清理完成',
+            content: `删除单曲 ${removedSingles} 条\n重新筛选 ${next.checked} 张，移入候选 ${next.moved} 张${next.failed ? `，请求失败 ${next.failed} 张（可稍后重试或用本地脚本补跑）` : ''}`,
+            showCancel: false,
+          })
+          return
+        }
+        setTimeout(() => this._runRescreenLoop(removedSingles, next), 2000)
+      },
+      fail: () => {
+        wx.hideLoading()
+        wx.showToast({ title: '网络错误', icon: 'error' })
       },
     })
   },
