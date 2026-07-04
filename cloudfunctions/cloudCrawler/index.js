@@ -109,10 +109,11 @@ function normalizeAlbum(raw, fallbackArtist, opts) {
 function normalizeTrackName(name) { return String(name || '').replace(/[（(【\[][^）)】\]]*[）)】\]]/g, '').replace(/(伴奏|instrumental|inst\.?|off\s*vocal|karaoke|纯音乐|伴奏版|伴奏带)/ig, '').replace(/[\s\-_.·]/g, '').toLowerCase() }
 function inspectAlbumTracks(songs) {
   const names = (songs || []).map(s => String(s.name || '').trim()).filter(Boolean)
-  const accompaniment = names.filter(n => /(伴奏|instrumental|inst\.?|off\s*vocal|karaoke|纯音乐|伴奏版|伴奏带)/i.test(n))
+  const accompaniment = names.filter(n => n.includes('伴奏'))
+  const realCount = names.length - accompaniment.length
   const normalized = names.map(normalizeTrackName).filter(Boolean)
   const allSame = normalized.length >= 2 && new Set(normalized).size === 1
-  if (accompaniment.length) return { bad: true, reason: '含有伴奏/纯音乐版本曲目', example: accompaniment.slice(0, 4) }
+  if (realCount < 3) return { bad: true, reason: '剔除伴奏曲目后正式曲目不足3首', example: accompaniment.slice(0, 4) }
   if (allSame) return { bad: true, reason: '全专曲目名称重复', example: names.slice(0, 4) }
   return { bad: false }
 }
