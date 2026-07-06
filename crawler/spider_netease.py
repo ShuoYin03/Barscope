@@ -271,20 +271,35 @@ def normalize_album(
     artist_obj       = raw.get("artist") or {}
     netease_artist_id = str(artist_obj["id"]) if artist_obj.get("id") else ""
 
+    collaborator_artists = [
+        {"id": str(a.get("id", "")), "name": a.get("name", "").strip()}
+        for a in artists_list if a.get("name", "").strip()
+    ]
+    collaborator_artist_ids  = list(dict.fromkeys(a["id"]   for a in collaborator_artists if a["id"]))
+    collaborator_artist_names = list(dict.fromkeys(a["name"] for a in collaborator_artists if a["name"]))
+    # Ensure primary artist is always first
+    if netease_artist_id and netease_artist_id not in collaborator_artist_ids:
+        collaborator_artist_ids.insert(0, netease_artist_id)
+    if primary_artist and primary_artist not in collaborator_artist_names:
+        collaborator_artist_names.insert(0, primary_artist)
+
     return {
-        "title":            title,
-        "artist":           artist,
-        "primaryArtist":    primary_artist,
-        "neteaseArtistId":  netease_artist_id,
-        "releaseYear":      year,
-        "coverUrl":         cover,
-        "genres":           [],
-        "sourceId":         album_id,
-        "source":           "netease",
-        "crawlSource":      crawl_source,
-        "avgScore":         0.0,
-        "reviewCount":      0,
-        "trackCount":       track_count,
+        "title":                  title,
+        "artist":                 artist,
+        "primaryArtist":          primary_artist,
+        "neteaseArtistId":        netease_artist_id,
+        "collaboratorArtists":    collaborator_artists,
+        "collaboratorArtistIds":  collaborator_artist_ids,
+        "collaboratorArtistNames": collaborator_artist_names,
+        "releaseYear":            year,
+        "coverUrl":               cover,
+        "genres":                 [],
+        "sourceId":               album_id,
+        "source":                 "netease",
+        "crawlSource":            crawl_source,
+        "avgScore":               0.0,
+        "reviewCount":            0,
+        "trackCount":             track_count,
     }
 
 # ── 核心工具：拉取单个艺人专辑 ─────────────────────────────────────────────────

@@ -20,12 +20,24 @@ exports.main = async event => {
     const songs = detail.songs || detail.data?.songs || album.songs || []
     // Conservative guest classification: only the single displayed primary artist is exempt.
     // Historical collaborator arrays may be polluted by track-level guests, so never use them here.
-    const ownerNames = new Set([String(albumDoc.primaryArtist || album.artist || '').trim()].filter(Boolean))
+    // Derive album owners from NetEase album-level artists — same authoritative source as repairAlbumOwnership.
+    // Never use stored collaboratorArtists here; they may reflect stale data from before a repair run.
+    const albumArtists = (Array.isArray(album.artists) && album.artists.length) ? album.artists : (album.artist ? [album.artist] : [])
+    const ownerNames = new Set(albumArtists.map(a => String(a && a.name || '').trim()).filter(Boolean))
+    if (!ownerNames.size) ownerNames.add(String(albumDoc.primaryArtist || '').trim())
+    ownerNames.delete('')
+    // Derive collaborator metadata (mirrors repairAlbumOwnership logic)
+    const collaboratorArtists = albumArtists.map(a => ({ id:String(a && a.id || ''), name:String(a && a.name || '').trim() })).filter(a => a.id || a.name)
+    const collaboratorArtistIds = [...new Set(collaboratorArtists.map(a => a.id).filter(Boolean))]
+    const collaboratorArtistNames = [...new Set(collaboratorArtists.map(a => a.name).filter(Boolean))]
+    const primaryArtist = String((album.artist || {}).name || collaboratorArtistNames[0] || albumDoc.primaryArtist || '').trim()
+    const neteaseArtistId = String((album.artist || {}).id || collaboratorArtistIds[0] || albumDoc.neteaseArtistId || '')
+    const artistDisplay = collaboratorArtistNames.join(' / ') || primaryArtist
     const tracks = songs.map((song, idx) => normalizeTrack(song, idx, ownerNames))
     const featuringGuests = collectGuests(tracks)
-    const patch = { description:extractDescription(detail, album, albumDoc), company:album.company || albumDoc.company || '', trackCount:tracks.length || album.size || albumDoc.trackCount || 0, tracks, featuringGuests, trackSyncedAt:db.serverDate() }
+    const patch = { artist:artistDisplay, primaryArtist, neteaseArtistId, collaboratorArtists, collaboratorArtistIds, collaboratorArtistNames, description:extractDescription(detail, album, albumDoc), company:album.company || albumDoc.company || '', trackCount:tracks.length || album.size || albumDoc.trackCount || 0, tracks, featuringGuests, trackSyncedAt:db.serverDate() }
     await db.collection('albums').doc(albumDoc._id).update({ data:patch })
-    return { success:true, albumId:albumDoc._id, sourceId:neteaseAlbumId, trackCount:tracks.length, guestCount:featuringGuests.length, tracks, featuringGuests, debug:{ ownerNames:[...ownerNames] } }
+    return { success:true, albumId:albumDoc._id, sourceId:neteaseAlbumId, trackCount:tracks.length, guestCount:featuringGuests.length, artist:artistDisplay, primaryArtist, collaboratorArtists, collaboratorArtistIds, collaboratorArtistNames, tracks, featuringGuests }
   } catch(e) { return { success:false, error:e.message } }
 }
 function normalizeTrack(song, idx, ownerNames) { const artists=(song.artists || song.ar || []).map(a=>({id:Number(a.id||0),name:String(a.name||'').trim()})).filter(a=>a.name); const guests=artists.filter(a=>!ownerNames.has(a.name)); return {songId:String(song.id||''),no:idx+1,name:song.name||'',duration:Number(song.duration||song.dt||0),artists,guests,hasFeaturing:guests.length>0} }
