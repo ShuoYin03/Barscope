@@ -2,148 +2,35 @@ let _pollTimer: any = null
 
 Page({
   data: {
-    statusBarHeight: 20,
-    topbarHeight:    64,
-
-    crawlerStatus:           null as any,
-    crawlerTriggering:       false,
-    crawlerScheduleEnabled:  false,
-    crawlerScheduleInterval: 'weekly' as 'daily' | 'weekly',
-
+    statusBarHeight: 20, topbarHeight: 64,
+    crawlerStatus: null as any, crawlerTriggering: false, crawlerBatchActive: false,
+    crawlerScheduleEnabled: false, crawlerScheduleInterval: 'weekly' as 'daily' | 'weekly',
     metadataSyncing: false,
-
-    crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync',
-    crawlerParam:       '',
-    crawlerProgressPct: 0,
-    crawlerNeedsId:     false,
-    crawlerIsCloud:     true,
-    crawlerPlaceholder: '',
-    crawlerDesc:        '云端一键爬取所有已批准 rapper 的全部专辑 + 单曲',
-    crawlerLastLog:     '',
-    crawlerTriggerTime: 0,
-    crawlerBatchActive: false,
+    crawlerMode: 'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync', crawlerParam: '', crawlerProgressPct: 0,
+    crawlerNeedsId: false, crawlerIsCloud: true, crawlerPlaceholder: '', crawlerDesc: '云端分批爬取所有已批准 rapper 的专辑',
     crawlerModes: [
-      { key: 'approved', label: '全部已批准', desc: '云端一键爬取所有已批准 rapper 的全部专辑 + 单曲',   needsId: false, cloud: true,  placeholder: '' },
-      { key: 'artist',   label: '按艺人ID',   desc: '云端收录指定网易云艺人的全部专辑 + 单曲',         needsId: true,  cloud: true,  placeholder: '网易云艺人 ID，如 49779880' },
-      { key: 'album',    label: '按专辑ID',   desc: '云端精确收录单张网易云专辑（含单曲）',            needsId: true,  cloud: true,  placeholder: '网易云专辑 ID' },
-      { key: 'fission',  label: '裂变发现',   desc: '本地：从已批准艺人出发发现新合作艺人（需开电脑）', needsId: false, cloud: false, placeholder: '' },
-      { key: 'sync',     label: '同步决定',   desc: '本地：将云端审核结果同步回 rappers.json（需开电脑）', needsId: false, cloud: false, placeholder: '' },
-    ] as Array<{ key: string; label: string; desc: string; needsId: boolean; cloud: boolean; placeholder: string }>,
+      { key:'approved', label:'全部已批准', desc:'分批爬取所有已批准 rapper 的专辑，并补全共创艺人归属', needsId:false, cloud:true, placeholder:'' },
+      { key:'artist', label:'按艺人ID', desc:'云端收录指定网易云艺人的全部专辑', needsId:true, cloud:true, placeholder:'网易云艺人 ID' },
+      { key:'album', label:'按专辑ID', desc:'云端精确收录单张网易云专辑', needsId:true, cloud:true, placeholder:'网易云专辑 ID' },
+      { key:'fission', label:'裂变发现', desc:'本地：发现新合作艺人（需开电脑）', needsId:false, cloud:false, placeholder:'' },
+      { key:'sync', label:'同步决定', desc:'本地：同步审核结果（需开电脑）', needsId:false, cloud:false, placeholder:'' },
+    ],
   },
-
-  onLoad() {
-    const app = getApp<IAppOption>()
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
-  },
-  onShow() { this._startPoll() },
-  onHide() { this._stopPoll() },
-  onUnload() { this._stopPoll() },
-  onBack() { wx.navigateBack() },
-
-  _startPoll(interval = 2000) {
-    this._stopPoll()
-    this._fetchStatus()
-    _pollTimer = setInterval(() => this._fetchStatus(), interval)
-  },
-  _stopPoll() { if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null } },
-  _fetchStatus() {
-    wx.cloud.callFunction({
-      name: 'crawlerControl', data: { action: 'getStatus' },
-      success: (res: any) => {
-        const r = res.result
-        if (!r?.success) return
-        const s = r.status || {}, sched = s.schedule || {}, prog = s.progress || {}
-        const pct = prog.totalArtists > 0 ? Math.round((prog.processedArtists / prog.totalArtists) * 100) : 0
-        const log = s.log || s.logs || []
-        this.setData({ crawlerStatus: s, crawlerProgressPct: pct, crawlerScheduleEnabled: !!sched.enabled, crawlerScheduleInterval: sched.interval || 'weekly', crawlerLastLog: log[0] || '' })
-        if (!this.data.crawlerBatchActive && s.status !== 'running') this._startPoll(4000)
-      },
-    })
-  },
-
-  onCrawlerModeTap(e: WechatMiniprogram.TouchEvent) {
-    const key = (e.currentTarget.dataset as { key: string }).key
-    if (key === this.data.crawlerMode) return
-    const m = this.data.crawlerModes.find((x) => x.key === key)
-    this.setData({ crawlerMode: key as any, crawlerNeedsId: !!m?.needsId, crawlerIsCloud: !!m?.cloud, crawlerPlaceholder: m?.placeholder || '', crawlerDesc: m?.desc || '', crawlerParam: '' })
-  },
-  onCrawlerParamInput(e: WechatMiniprogram.Input) { this.setData({ crawlerParam: e.detail.value || '' }) },
-
-  onCrawlerTrigger() {
-    if (this.data.crawlerTriggering || this.data.crawlerBatchActive) return
-    const s = this.data.crawlerStatus
-    if (s && (s.status === 'running' || s.status === 'pending')) { wx.showToast({ title: '爬虫正在运行中', icon: 'none' }); return }
-    const mode = this.data.crawlerMode, param = (this.data.crawlerParam || '').trim()
-    if (this.data.crawlerNeedsId) {
-      if (!param) { wx.showToast({ title: '请输入 ID', icon: 'none' }); return }
-      if (!/^\d+$/.test(param)) { wx.showToast({ title: 'ID 必须是数字', icon: 'none' }); return }
-    }
-    if (this.data.crawlerIsCloud) this._triggerCloud(mode, param)
-    else this._triggerLocal(mode, param)
-  },
-
-  _runApprovedBatch(cursor = 0, initialize = false) {
-    wx.cloud.callFunction({
-      name: 'crawlerBatch', data: { cursor, initialize },
-      success: (res: any) => {
-        const r = res.result || {}
-        this._fetchStatus()
-        if (!r.success) {
-          this.setData({ crawlerTriggering: false, crawlerBatchActive: false })
-          wx.showToast({ title: r.error || '批处理失败', icon: 'none' })
-          return
-        }
-        if (r.status === 'running' && typeof r.nextCursor === 'number') {
-          this.setData({ crawlerBatchActive: true, crawlerTriggering: false })
-          setTimeout(() => this._runApprovedBatch(r.nextCursor, false), 400)
-          return
-        }
-        this.setData({ crawlerTriggering: false, crawlerBatchActive: false })
-      },
-      fail: () => {
-        this.setData({ crawlerTriggering: false, crawlerBatchActive: false })
-        wx.showToast({ title: '批处理网络错误', icon: 'none' })
-        this._fetchStatus()
-      },
-    })
-  },
-
-  _triggerCloud(mode: string, param: string) {
-    if (mode === 'approved') {
-      this.setData({ crawlerTriggering: true, crawlerBatchActive: true, crawlerTriggerTime: Date.now(), crawlerLastLog: '正在启动分批云端任务…' })
-      this._runApprovedBatch(0, true)
-      wx.showToast({ title: '已开始分批处理', icon: 'success' })
-      this._startPoll(1500)
-      return
-    }
-    const actionMap: Record<string, string> = { artist: 'artist', album: 'album' }
-    this.setData({ crawlerTriggering: true })
-    wx.cloud.callFunction({
-      name: 'cloudCrawler', data: { action: actionMap[mode], param },
-      success: (res: any) => {
-        this.setData({ crawlerTriggering: false })
-        const r = res.result
-        if (r?.success) wx.showToast({ title: `新增 ${r.inserted || 0} 张`, icon: 'success' })
-        else wx.showToast({ title: r?.error || '爬取失败', icon: 'none' })
-        this._fetchStatus()
-      },
-      fail: () => { this.setData({ crawlerTriggering: false }); wx.showToast({ title: '网络错误', icon: 'error' }) },
-    })
-  },
-
-  _triggerLocal(mode: string, param: string) {
-    this.setData({ crawlerTriggering: true })
-    wx.cloud.callFunction({ name: 'crawlerControl', data: { action: 'trigger', mode, param }, success: (res: any) => { this.setData({ crawlerTriggering: false }); if (res.result?.success) { wx.showToast({ title: '已触发，等待本地爬虫', icon: 'success' }); this._fetchStatus() } else wx.showToast({ title: '触发失败', icon: 'error' }) }, fail: () => { this.setData({ crawlerTriggering: false }); wx.showToast({ title: '网络错误', icon: 'error' }) } })
-  },
-
-  onCrawlerAbort() {
-    const s = this.data.crawlerStatus
-    if (!s || (s.status !== 'running' && s.status !== 'pending')) return
-    wx.showModal({ title: '中止爬虫', content: '确定中止当前任务？已爬取的数据会保留。', confirmText: '中止', confirmColor: '#C0392B', success: (r) => { if (!r.confirm) return; wx.cloud.callFunction({ name: 'crawlerControl', data: { action: 'abort' }, success: (res: any) => { if (res.result?.success) { this.setData({ crawlerBatchActive: false }); wx.showToast({ title: '已请求中止', icon: 'none' }); this._fetchStatus() } else wx.showToast({ title: '操作失败', icon: 'error' }) }, fail: () => wx.showToast({ title: '网络错误', icon: 'error' }) }) } })
-  },
-  onCrawlerClearLog() { wx.cloud.callFunction({ name: 'crawlerControl', data: { action: 'clearLog' }, success: () => { this._fetchStatus(); wx.showToast({ title: '日志已清除', icon: 'success' }) } }) },
-  onCleanupSingles() { wx.showModal({ title: '清除单曲', content: '将删除数据库中所有 trackCount 为 1 或 2 的条目，操作不可撤销。', confirmText: '清除', confirmColor: '#C0392B', success: (r) => { if (!r.confirm) return; wx.showLoading({ title: '清除中…', mask: true }); wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'cleanup_singles' }, success: (res: any) => { wx.hideLoading(); const result = res.result || {}; wx.showToast({ title: result.success ? `已删除 ${result.removed} 条` : result.error || '操作失败', icon: result.success ? 'success' : 'none' }) }, fail: () => { wx.hideLoading(); wx.showToast({ title: '网络错误', icon: 'error' }) } }) } }) },
-  onSyncArtistMetadata() { wx.showToast({ title: '请使用原同步功能', icon: 'none' }) },
-  onScheduleToggle() { wx.showToast({ title: '定时功能未改动', icon: 'none' }) },
-  onScheduleInterval() { wx.showToast({ title: '定时功能未改动', icon: 'none' }) },
+  onLoad() { const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight}) },
+  onShow() { this._startPoll() }, onHide() { this._stopPoll() }, onUnload() { this._stopPoll() }, onBack() { wx.navigateBack() },
+  _startPoll(interval=2000) { this._stopPoll(); this._fetchStatus(); _pollTimer=setInterval(()=>this._fetchStatus(),interval) },
+  _stopPoll() { if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null} },
+  _fetchStatus() { wx.cloud.callFunction({name:'crawlerControl',data:{action:'getStatus'},success:(res:any)=>{const s=res.result?.status||{},p=s.progress||{},sched=s.schedule||{};this.setData({crawlerStatus:s,crawlerProgressPct:p.totalArtists?Math.round(p.processedArtists/p.totalArtists*100):0,crawlerScheduleEnabled:!!sched.enabled,crawlerScheduleInterval:sched.interval||'weekly'})}}) },
+  onCrawlerModeTap(e:WechatMiniprogram.TouchEvent) { const key=(e.currentTarget.dataset as any).key; const m=this.data.crawlerModes.find((x:any)=>x.key===key); if(!m)return; this.setData({crawlerMode:key,crawlerNeedsId:m.needsId,crawlerIsCloud:m.cloud,crawlerPlaceholder:m.placeholder,crawlerDesc:m.desc,crawlerParam:''}) },
+  onCrawlerParamInput(e:WechatMiniprogram.Input) { this.setData({crawlerParam:e.detail.value||''}) },
+  onCrawlerTrigger() { if(this.data.crawlerTriggering||this.data.crawlerBatchActive)return; const s=this.data.crawlerStatus;if(s&&(s.status==='running'||s.status==='pending')){wx.showToast({title:'爬虫正在运行中',icon:'none'});return} const mode=this.data.crawlerMode,param=(this.data.crawlerParam||'').trim();if(this.data.crawlerNeedsId&&(!/^\d+$/.test(param))){wx.showToast({title:'请输入数字 ID',icon:'none'});return} if(this.data.crawlerIsCloud)this._triggerCloud(mode,param);else this._triggerLocal(mode,param) },
+  _runApprovedBatch(cursor=0,initialize=false) { wx.cloud.callFunction({name:'crawlerBatch',data:{cursor,initialize},success:(res:any)=>{const r=res.result||{};this._fetchStatus();if(!r.success){this.setData({crawlerTriggering:false,crawlerBatchActive:false});wx.showToast({title:r.error||'批处理失败',icon:'none'});return}if(r.status==='running'&&typeof r.nextCursor==='number'&&this.data.crawlerBatchActive){this.setData({crawlerTriggering:false});setTimeout(()=>this._runApprovedBatch(r.nextCursor,false),400);return}this.setData({crawlerTriggering:false,crawlerBatchActive:false})},fail:()=>{this.setData({crawlerTriggering:false,crawlerBatchActive:false});wx.showToast({title:'批处理网络错误',icon:'none'});this._fetchStatus()}}) },
+  _triggerCloud(mode:string,param:string) { if(mode==='approved'){this.setData({crawlerTriggering:true,crawlerBatchActive:true});this._runApprovedBatch(0,true);this._startPoll(1500);wx.showToast({title:'已开始分批处理',icon:'success'});return}const action=mode==='artist'?'artist':'album';this.setData({crawlerTriggering:true});wx.cloud.callFunction({name:'cloudCrawler',data:{action,param},success:(res:any)=>{this.setData({crawlerTriggering:false});const r=res.result||{};wx.showToast({title:r.success?`新增 ${r.inserted||0} 张`:r.error||'爬取失败',icon:r.success?'success':'none'});this._fetchStatus()},fail:()=>{this.setData({crawlerTriggering:false});wx.showToast({title:'网络错误',icon:'error'})}}) },
+  _triggerLocal(mode:string,param:string) { this.setData({crawlerTriggering:true});wx.cloud.callFunction({name:'crawlerControl',data:{action:'trigger',mode,param},success:(res:any)=>{this.setData({crawlerTriggering:false});wx.showToast({title:res.result?.success?'已触发，等待本地爬虫':'触发失败',icon:res.result?.success?'success':'error'});this._fetchStatus()},fail:()=>{this.setData({crawlerTriggering:false});wx.showToast({title:'网络错误',icon:'error'})}}) },
+  onCrawlerAbort() { const s=this.data.crawlerStatus;if(!s||(s.status!=='running'&&s.status!=='pending'))return;wx.showModal({title:'中止爬虫',content:'确定中止当前任务？已写入的数据会保留。',confirmText:'中止',confirmColor:'#C0392B',success:(r)=>{if(!r.confirm)return;this.setData({crawlerBatchActive:false});wx.cloud.callFunction({name:'crawlerControl',data:{action:'abort'},success:()=>{wx.showToast({title:'已请求中止',icon:'none'});this._fetchStatus()},fail:()=>wx.showToast({title:'网络错误',icon:'error'})})}}) },
+  onCrawlerClearLog() { wx.cloud.callFunction({name:'crawlerControl',data:{action:'clearLog'},success:()=>{this._fetchStatus();wx.showToast({title:'日志已清除',icon:'success'})}}) },
+  onCleanupSingles() { wx.showModal({title:'清除单曲',content:'将删除所有曲目数为 1 或 2 的条目，操作不可撤销。',confirmText:'清除',confirmColor:'#C0392B',success:(r)=>{if(!r.confirm)return;wx.showLoading({title:'清除中…',mask:true});wx.cloud.callFunction({name:'manageCandidates',data:{action:'cleanup_singles'},success:(res:any)=>{wx.hideLoading();const x=res.result||{};wx.showToast({title:x.success?`已删除 ${x.removed} 条`:x.error||'操作失败',icon:x.success?'success':'none'})},fail:()=>{wx.hideLoading();wx.showToast({title:'网络错误',icon:'error'})}})}}) },
+  onSyncArtistMetadata() { if(this.data.metadataSyncing)return;wx.showModal({title:'同步艺人资料',content:'同步头像、主页背景、粉丝数、专辑数和简介。',confirmText:'开始同步',confirmColor:'#C94E25',success:(r)=>{if(!r.confirm)return;this.setData({metadataSyncing:true});wx.showLoading({title:'同步中…',mask:true});wx.cloud.callFunction({name:'syncArtistMetadata',data:{},success:(res:any)=>{wx.hideLoading();this.setData({metadataSyncing:false});const x=res.result||{};if(x.success)wx.showModal({title:'同步完成',content:`扫描 ${x.scanned||0} 位，更新 ${x.updated||0} 位，跳过 ${x.skipped||0} 位，错误 ${x.errors||0} 位。`,showCancel:false});else wx.showToast({title:x.error||'同步失败',icon:'none'})},fail:()=>{wx.hideLoading();this.setData({metadataSyncing:false});wx.showToast({title:'网络错误',icon:'error'})}})}}) },
+  onScheduleToggle(e:WechatMiniprogram.SwitchChange) { const enabled=e.detail.value;this.setData({crawlerScheduleEnabled:enabled});wx.cloud.callFunction({name:'crawlerControl',data:{action:'updateSchedule',enabled,interval:this.data.crawlerScheduleInterval}}) },
+  onScheduleInterval(e:WechatMiniprogram.TouchEvent) { const interval=(e.currentTarget.dataset as any).v as 'daily'|'weekly';this.setData({crawlerScheduleInterval:interval});wx.cloud.callFunction({name:'crawlerControl',data:{action:'updateSchedule',enabled:this.data.crawlerScheduleEnabled,interval}}) },
 })
