@@ -25,7 +25,7 @@ Page({
  onYearTap(e:WechatMiniprogram.TouchEvent){const year=(e.currentTarget.dataset as any).year,active=this.data.activeYear===year?'':year;this.setData({activeYear:active,activeMonth:''});this._fetchAlbums({keyword:this.data.keyword.trim()||undefined,year:active||undefined,page:1,pageSize:ALBUM_PAGE_SIZE,sortBy:'releaseYear'},true)},
  onMonthTap(e:WechatMiniprogram.TouchEvent){if(!/^\d{4}$/.test(this.data.activeYear)){wx.showToast({title:'请选择具体年份',icon:'none'});return};const month=(e.currentTarget.dataset as any).month,active=this.data.activeMonth===month?'':month;this.setData({activeMonth:active});this._fetchAlbums({keyword:this.data.keyword.trim()||undefined,year:this.data.activeYear,month:active||undefined,page:1,pageSize:ALBUM_PAGE_SIZE,sortBy:'releaseYear'},true)},
  onBrandTap(e:WechatMiniprogram.TouchEvent){const brand=(e.currentTarget.dataset as any).brand||'全部';this.setData({activeBrand:brand},()=>this._renderArtistGrid())},
- onLetterTap(e:WechatMiniprogram.TouchEvent){const letter=(e.currentTarget.dataset as any).letter;if(!letter)return;this.setData({activeLetter:letter,artistScrollIntoView:`artist-letter-${letter===' #'?'num':letter}`})},
+ onLetterTap(e:WechatMiniprogram.TouchEvent){const letter=(e.currentTarget.dataset as any).letter;if(!letter)return;this.setData({activeLetter:letter,artistScrollIntoView:`artist-letter-${letter==='#'?'num':letter}`})},
  onAlbumTap(e:WechatMiniprogram.TouchEvent){const id=(e.currentTarget.dataset as any).id;wx.navigateTo({url:`/pages/album-detail/index?id=${id}`})},
  onArtistTap(e:WechatMiniprogram.TouchEvent){const ds=e.currentTarget.dataset as any;if(!ds.artistId)return;wx.navigateTo({url:`/pages/artist/index?artistId=${ds.artistId}&artistName=${encodeURIComponent(ds.artist)}`})}
 })
