@@ -2,7 +2,6 @@ const cloud = require('wx-server-sdk')
 const BRAND_MAP = require('./artistBrandMap')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-const _ = db.command
 
 const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾'],['F','发'],['G','噶'],['H','哈'],['J','击'],['K','喀'],['L','垃'],['M','妈'],['N','拿'],['O','哦'],['P','啪'],['Q','期'],['R','然'],['S','撒'],['T','塌'],['W','挖'],['X','昔'],['Y','压'],['Z','匝']]
 const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
@@ -19,38 +18,42 @@ exports.main = async event => {
       db.collection('artist_candidates').where(conditions).count(),
       fetchApprovedAlbumCounts(),
     ])
-    const list = res.data.filter(a => a.artistId && a.artistName).map(a => {
-      const artistId = String(a.artistId), artistName = a.artistName || ''
-      const primaryBrand = BRAND_MAP[artistId] || '', brands = primaryBrand ? [primaryBrand] : []
+    const list = (res.data || []).filter(a => a.artistId && a.artistName).map(a => {
+      const artistId = String(a.artistId)
+      const artistName = a.artistName || ''
+      const primaryBrand = BRAND_MAP[artistId] || ''
+      const brands = primaryBrand ? [primaryBrand] : []
       if (HIGHER_BROTHERS_IDS.has(artistId) && !brands.includes('成都集团')) brands.push('成都集团')
       return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:primaryBrand, brands }
     }).sort((a,b) => {
-      const la=LETTER_ORDER.indexOf(a.letter)>=0?LETTER_ORDER.indexOf(a.letter):26
-      const lb=LETTER_ORDER.indexOf(b.letter)>=0?LETTER_ORDER.indexOf(b.letter):26
-      return la !== lb ? la - lb : a.artistName.localeCompare(b.artistName,'zh-Hans-CN-u-co-pinyin',{sensitivity:'base',numeric:true})
+      const la = LETTER_ORDER.indexOf(a.letter) >= 0 ? LETTER_ORDER.indexOf(a.letter) : 26
+      const lb = LETTER_ORDER.indexOf(b.letter) >= 0 ? LETTER_ORDER.indexOf(b.letter) : 26
+      return la !== lb ? la - lb : a.artistName.localeCompare(b.artistName, 'zh-Hans-CN-u-co-pinyin', { sensitivity:'base', numeric:true })
     })
     return { success:true, list, total:countRes.total }
   } catch (e) { return { success:false, error:e.message } }
 }
 
+// Count in memory after paginating albums. This is faster and more reliable than issuing
+// one CloudBase array-membership query per rapper (which was overwhelming the function).
 async function fetchApprovedAlbumCounts() {
-  const artists = await db.collection('artist_candidates').where({ status:'approved' }).field({ artistId:true, artistName:true }).limit(1000).get()
-  const artistIds = (artists.data || []).map(a => String(a.artistId)).filter(Boolean)
-  const map = new Map(artistIds.map(id => [id, new Set()]))
-  // CloudBase array membership requires one _.all() query per artist.
-  await Promise.all(artistIds.map(async artistId => {
-    try {
-      const r = await db.collection('albums').where({ approved: _.neq(false), collaboratorArtistIds: _.all([artistId]) }).field({ _id:true }).limit(1000).get()
-      ;(r.data || []).forEach(a => map.get(artistId).add(a._id))
-    } catch (e) {}
-  }))
-  // Legacy fallback while older albums are backfilled with collaboratorArtistIds.
-  for (let i = 0; i < artistIds.length; i += 100) {
-    const chunk = artistIds.slice(i, i + 100)
-    const r = await db.collection('albums').where({ approved: _.neq(false), neteaseArtistId: _.in(chunk) }).field({ _id:true, neteaseArtistId:true }).limit(1000).get()
-    ;(r.data || []).forEach(a => { const id = String(a.neteaseArtistId || ''); if (map.has(id)) map.get(id).add(a._id) })
+  const countResult = await db.collection('albums').where({ approved:true }).count()
+  const total = Number(countResult.total || 0)
+  const pageSize = 100
+  const pages = Math.ceil(total / pageSize)
+  const batches = []
+  for (let page = 0; page < pages; page++) {
+    batches.push(db.collection('albums').where({ approved:true }).field({ _id:true, neteaseArtistId:true, collaboratorArtistIds:true }).skip(page * pageSize).limit(pageSize).get())
   }
-  return new Map([...map.entries()].map(([id, albums]) => [id, albums.size]))
+  const rows = (await Promise.all(batches)).flatMap(x => x.data || [])
+  const map = new Map()
+  rows.forEach(album => {
+    const ids = new Set()
+    if (album.neteaseArtistId) ids.add(String(album.neteaseArtistId))
+    if (Array.isArray(album.collaboratorArtistIds)) album.collaboratorArtistIds.forEach(id => { if (id) ids.add(String(id)) })
+    ids.forEach(id => map.set(id, (map.get(id) || 0) + 1))
+  })
+  return map
 }
 function firstLetter(name){for(const ch of Array.from(String(name||'').trim())){if(/[A-Za-z]/.test(ch))return ch.toUpperCase();if(/[\u4e00-\u9fff]/.test(ch))return pinyinInitial(ch)}return '#'}
 function pinyinInitial(ch){let letter='#';for(const [initial,startChar] of PINYIN_STARTS){if(ch.localeCompare(startChar,'zh-Hans-CN-u-co-pinyin')>=0)letter=initial;else break}return letter}
