@@ -13,9 +13,10 @@ exports.main = async (event) => {
   try {
     const conditions = { status: 'approved' }
     if (keyword) conditions.artistName = db.RegExp({ regexp: keyword, options: 'i' })
-    const [res, countRes] = await Promise.all([
-      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true, albumSize:true }).limit(limit).get(),
+    const [res, countRes, albumCountMap] = await Promise.all([
+      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true }).limit(limit).get(),
       db.collection('artist_candidates').where(conditions).count(),
+      fetchApprovedAlbumCounts(),
     ])
     const list = res.data.filter(a => a.artistId && a.artistName).map(a => {
       const artistId = String(a.artistId)
@@ -23,7 +24,7 @@ exports.main = async (event) => {
       const primaryBrand = BRAND_MAP[artistId] || ''
       const brands = primaryBrand ? [primaryBrand] : []
       if (HIGHER_BROTHERS_IDS.has(artistId) && brands.indexOf('成都集团') < 0) brands.push('成都集团')
-      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:Number(a.albumSize || 0), fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:primaryBrand, brands }
+      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:primaryBrand, brands }
     }).sort((a,b) => {
       const la=LETTER_ORDER.indexOf(a.letter)>=0?LETTER_ORDER.indexOf(a.letter):26
       const lb=LETTER_ORDER.indexOf(b.letter)>=0?LETTER_ORDER.indexOf(b.letter):26
@@ -33,5 +34,25 @@ exports.main = async (event) => {
     return { success:true, list, total:countRes.total }
   } catch (e) { return { success:false, error:e.message } }
 }
+
+async function fetchApprovedAlbumCounts() {
+  const countResult = await db.collection('albums').where({ approved: true }).count()
+  const total = countResult.total || 0
+  const pageSize = 100
+  const pages = Math.ceil(total / pageSize)
+  const tasks = []
+  for (let page = 0; page < pages; page += 1) {
+    tasks.push(db.collection('albums').where({ approved: true }).field({ neteaseArtistId:true }).skip(page * pageSize).limit(pageSize).get())
+  }
+  const batches = await Promise.all(tasks)
+  const map = new Map()
+  batches.forEach(batch => (batch.data || []).forEach(album => {
+    const artistId = String(album.neteaseArtistId || '')
+    if (!artistId) return
+    map.set(artistId, (map.get(artistId) || 0) + 1)
+  }))
+  return map
+}
+
 function firstLetter(name){for(const ch of Array.from(String(name||'').trim())){if(/[A-Za-z]/.test(ch))return ch.toUpperCase();if(/[\u4e00-\u9fff]/.test(ch))return pinyinInitial(ch)}return '#'}
 function pinyinInitial(ch){let letter='#';for(const [initial,startChar] of PINYIN_STARTS){if(ch.localeCompare(startChar,'zh-Hans-CN-u-co-pinyin')>=0)letter=initial;else break}return letter}
