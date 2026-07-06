@@ -1,11 +1,10 @@
 const cloud = require('wx-server-sdk')
+const BRAND_MAP = require('./artistBrandMap')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
-
 const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾'],['F','发'],['G','噶'],['H','哈'],['J','击'],['K','喀'],['L','垃'],['M','妈'],['N','拿'],['O','哦'],['P','啪'],['Q','期'],['R','然'],['S','撒'],['T','塌'],['W','挖'],['X','昔'],['Y','压'],['Z','匝']]
 const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
-
 exports.main = async (event) => {
   const keyword = String(event.keyword || '').trim()
   const limit = Math.min(Number(event.limit || 1000), 1000)
@@ -20,10 +19,11 @@ exports.main = async (event) => {
     const profileMap = await fetchArtistProfiles(candidates.map(a => String(a.artistId)))
     const baseList = candidates.map(a => {
       const profile = profileMap.get(String(a.artistId)) || {}
+      const artistName = profile.artistName || profile.name || a.artistName || ''
       const avatarUrl = firstNonEmpty([profile.avatarUrl,profile.picUrl,a.avatarUrl,a.picUrl,profile.heroImageUrl,profile.backgroundUrl,profile.coverUrl,a.heroImageUrl,a.backgroundUrl,a.coverUrl])
       const heroImageUrl = firstNonEmpty([profile.heroImageUrl,profile.backgroundUrl,profile.coverUrl,a.heroImageUrl,a.backgroundUrl,a.coverUrl,profile.picUrl,profile.avatarUrl,a.picUrl,a.avatarUrl])
-      const artistName = profile.artistName || profile.name || a.artistName || ''
-      return {id:a._id,artistId:String(a.artistId),artistName,picUrl:avatarUrl,avatarUrl,heroImageUrl,backgroundUrl:heroImageUrl,albumSize:0,fansSize:profile.fansSize||a.fansSize||0,letter:firstLetter(artistName)}
+      const artistId = String(a.artistId)
+      return { id:a._id, artistId, artistName, picUrl:avatarUrl, avatarUrl, heroImageUrl, backgroundUrl:heroImageUrl, albumSize:0, fansSize:profile.fansSize||a.fansSize||0, letter:firstLetter(artistName), brand: BRAND_MAP[artistId] || '' }
     })
     const list = (await attachInAppAlbumCounts(baseList)).sort((a,b) => { const la=LETTER_ORDER.indexOf(a.letter)>=0?LETTER_ORDER.indexOf(a.letter):26,lb=LETTER_ORDER.indexOf(b.letter)>=0?LETTER_ORDER.indexOf(b.letter):26; if(la!==lb)return la-lb; return a.artistName.localeCompare(b.artistName,'zh-Hans-CN-u-co-pinyin',{sensitivity:'base',numeric:true}) })
     return { success:true, list, total:countRes.total }
