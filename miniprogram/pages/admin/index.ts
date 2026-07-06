@@ -38,26 +38,37 @@ Page({
   onCopyApprovedList() {
     if (this.data.exporting) return
     this.setData({ exporting: true })
-    const all: Candidate[] = []
-    const fetchPage = (page: number) => wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'list', status: 'approved', page, pageSize: 100, keyword: '' } } as any)
+    wx.showLoading({ title: '正在整理名单…', mask: true })
+    const all: any[] = []
+    const loadPage = (page: number) => new Promise<any>((resolve, reject) => {
+      wx.cloud.callFunction({
+        name: 'manageCandidates',
+        data: { action: 'list', status: 'approved', page, pageSize: 100, keyword: '' },
+        success: (res: any) => resolve(res.result || {}),
+        fail: reject,
+      })
+    })
+    const copy = (data: string) => new Promise<void>((resolve, reject) => {
+      wx.setClipboardData({ data, success: () => resolve(), fail: reject })
+    })
     const run = async () => {
       try {
-        let page = 1
-        while (true) {
-          const res: any = await fetchPage(page)
-          const r = res.result || {}
+        for (let page = 1; ; page += 1) {
+          const r = await loadPage(page)
           if (!r.success) throw new Error(r.error || '读取失败')
           const rows = r.list || []
           all.push(...rows)
           if (rows.length < 100) break
-          page += 1
         }
         const header = '艺人名\t网易云Artist ID\t来源\t裂变轮次\t专辑数\t粉丝数'
         const body = all.map((x: any) => [x.artistName || '', x.artistId || '', x.foundFrom || '', x.round ?? '', x.albumSize || 0, x.fansSize || 0].join('\t')).join('\n')
-        await new Promise<void>((resolve, reject) => wx.setClipboardData({ data: `${header}\n${body}`, success: () => resolve(), fail: reject }))
-        wx.showToast({ title: `已复制 ${all.length} 位`, icon: 'success' })
-      } catch (e) { wx.showToast({ title: '导出失败', icon: 'error' }) }
-      finally { this.setData({ exporting: false }) }
+        await copy(`${header}\n${body}`)
+        wx.hideLoading()
+        wx.showToast({ title: `已复制 ${all.length} 位`, icon: 'success', duration: 2200 })
+      } catch (e) {
+        wx.hideLoading()
+        wx.showModal({ title: '复制失败', content: '未能读取完整已批准名单，请重试。', showCancel: false })
+      } finally { this.setData({ exporting: false }) }
     }
     run()
   },
@@ -65,7 +76,7 @@ Page({
   onDecline(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; this._decide([{ id, decision: 'declined' }]) },
   onRevoke(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; this._decide([{ id, decision: 'pending' }]) },
   onRestore(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; this._decide([{ id, decision: 'pending' }]) },
-  _decide(decisions: Array<{ id: string; decision: string }>) { const ids = decisions.map(d => d.id), decidingPatch: Record<string, boolean> = {}; ids.forEach(id => { decidingPatch[id] = true }); this.setData({ deciding: { ...this.data.deciding, ...decidingPatch } }); wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'decide', decisions }, success: (res: any) => { const r = res.result, deciding = { ...this.data.deciding }; ids.forEach(id => delete deciding[id]); if (r.success) { const idsSet = new Set(ids), list = this.data.list.filter((c: Candidate) => !idsSet.has(c._id)); this.setData({ list, deciding }); this._loadStats() } else { this.setData({ deciding }); wx.showToast({ title: '操作失败', icon: 'error' }) } }, fail: () => { const deciding = { ...this.data.deciding }; ids.forEach(id => delete deciding[id]); this.setData({ deciding }); wx.showToast({ title: '网络错误', icon: 'error' }) } }) },
+  _decide(decisions: Array<{ id: string; decision: string }>) { const ids = decisions.map(d => d.id); const decidingPatch: Record<string, boolean> = {}; ids.forEach(id => { decidingPatch[id] = true }); this.setData({ deciding: { ...this.data.deciding, ...decidingPatch } }); wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'decide', decisions }, success: (res: any) => { const r = res.result, deciding = { ...this.data.deciding }; ids.forEach(id => delete deciding[id]); if (r.success) { const idsSet = new Set(ids), list = this.data.list.filter((c: Candidate) => !idsSet.has(c._id)); this.setData({ list, deciding }); this._loadStats() } else { this.setData({ deciding }); wx.showToast({ title: '操作失败', icon: 'error' }) } }, fail: () => { const deciding = { ...this.data.deciding }; ids.forEach(id => delete deciding[id]); this.setData({ deciding }); wx.showToast({ title: '网络错误', icon: 'error' }) } }) },
   onRefresh(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; if (this.data.refreshing[id]) return; this.setData({ refreshing: { ...this.data.refreshing, [id]: true } }); wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'refresh_albums', candidateId: id }, success: (res: any) => { const r = res.result, refreshing = { ...this.data.refreshing }; delete refreshing[id]; this.setData({ refreshing }); if (r.success) { const title = r.fetched === 0 ? '拉取0张·可能被风控' : r.inserted > 0 ? `新增 ${r.inserted} 张` : `已是最新·拉取${r.fetched}`; wx.showToast({ title, icon: 'none' }) } else wx.showToast({ title: '刷新失败', icon: 'error' }) }, fail: () => { const refreshing = { ...this.data.refreshing }; delete refreshing[id]; this.setData({ refreshing }); wx.showToast({ title: '网络错误', icon: 'error' }) } }) },
   onToggleSelectMode() { const selectMode = !this.data.selectMode; this.setData({ selectMode, selected: {} }) },
   onCardTap(e: WechatMiniprogram.TouchEvent) { if (!this.data.selectMode) return; const { id } = e.currentTarget.dataset as { id: string }; const selected = { ...this.data.selected }; if (selected[id]) delete selected[id]; else selected[id] = true; this.setData({ selected }) },
