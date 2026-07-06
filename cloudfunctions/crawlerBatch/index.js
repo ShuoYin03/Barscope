@@ -2,7 +2,6 @@ const cloud = require('wx-server-sdk')
 const https = require('https')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-const _ = db.command
 
 const C = 'crawlerStatus'
 const D = 'singleton'
@@ -21,9 +20,8 @@ exports.main = async e => {
       queue:{ artists, artistIndex:0, albumIndex:0, currentArtistId:'', currentAlbums:[] },
       progress:{ totalArtists:artists.length, processedArtists:0, albumsFound:0, candidatesFound:0 },
       lastRunSummary:{ newAlbums:0, newCandidates:0, errors:[] },
-      log:[`任务开始：${artists.length} 位艺人；每步最多处理 ${ALBUMS_PER_STEP} 张专辑`],
+      log:[`任务开始：${artists.length} 位艺人；专辑归属以网易云专辑详情页艺人栏为准`],
       triggeredAt:db.serverDate(), completedAt:null }
-    // A user-initiated initialization is the only allowed transition from aborted -> running.
     await save(s, true)
     return { success:true, status:'running', next:true }
   }
@@ -32,7 +30,6 @@ exports.main = async e => {
   if (s.status !== 'running' || !s.queue) return { success:false, error:'没有可继续的任务' }
   const q = s.queue
   const artists = q.artists || []
-
   if (q.artistIndex >= artists.length) {
     s.status = 'done'; s.completedAt = db.serverDate()
     s.lastRunSummary = { newAlbums:+s.progress.albumsFound || 0, newCandidates:+s.progress.candidatesFound || 0, errors:[] }
@@ -46,7 +43,7 @@ exports.main = async e => {
     let raw = []
     try { raw = await fetchAlbums(String(artist.artistId)) } catch (err) {}
     q.currentArtistId = String(artist.artistId)
-    q.currentAlbums = raw.map(x => norm(x, artist.artistName || '')).filter(Boolean)
+    q.currentAlbums = raw.map(x => seedAlbum(x, artist.artistName || '')).filter(Boolean)
     q.albumIndex = 0
     s.log = log(s.log, `[${q.artistIndex + 1}/${artists.length}] ${artist.artistName || artist.artistId}：载入 ${q.currentAlbums.length} 张专辑`)
   }
@@ -61,7 +58,7 @@ exports.main = async e => {
   }
 
   const batch = albums.slice(q.albumIndex, q.albumIndex + ALBUMS_PER_STEP)
-  const results = await Promise.all(batch.map(album => processAlbum(album)))
+  const results = await Promise.all(batch.map(processAlbum))
   results.forEach(r => {
     if (r.newAlbum) s.progress.albumsFound = (+s.progress.albumsFound || 0) + 1
     if (r.candidate) s.progress.candidatesFound = (+s.progress.candidatesFound || 0) + 1
@@ -70,28 +67,47 @@ exports.main = async e => {
   q.albumIndex += batch.length
 
   const latest = await get()
-  if (latest.abort) {
-    s.abort = true
-    return await abort(s)
-  }
+  if (latest.abort) { s.abort = true; return await abort(s) }
   await save(s)
   return { success:true, status:'running', next:true, processed:batch.length }
 }
 
-async function processAlbum(album) {
+// Important: list-page artists can include track collaborators. Never persist them as album owners.
+// We only use them to discover candidate album IDs; ownership is rebuilt below from album detail.
+function seedAlbum(x, fallback) {
+  const title = String(x.name || '').trim()
+  const sourceId = String(x.id || '')
+  const releaseDate = date(x.publishTime)
+  const releaseYear = releaseDate ? +releaseDate.slice(0, 4) : 0
+  const trackCount = +x.size || 0
+  const primaryArtist = String((x.artist || {}).name || fallback || '').trim()
+  if (!title || !sourceId || !primaryArtist || !releaseDate || trackCount < 3 || releaseYear < 1990 || releaseYear > new Date().getFullYear() + 1 || SKIP.some(k => title.includes(k))) return null
+  return { title, sourceId, coverUrl:x.picUrl || x.blurPicUrl || '', releaseDate, releaseYear, trackCount, fallbackArtist:primaryArtist }
+}
+
+async function processAlbum(seed) {
   let out = '已存在', newAlbum = false, candidate = false
   try {
+    // The album-detail response is the authority: it corresponds to the artist line on Netease's album page.
+    const detail = await fetchDetail(seed.sourceId)
+    const album = normalizeDetailAlbum(seed, detail && detail.album)
+    if (!album) return { title:seed.title, out:'详情缺失', newAlbum:false, candidate:false }
+
     const ex = await db.collection('albums').where({ sourceId:album.sourceId }).limit(1).get()
     if (ex.data.length) {
-      const old = ex.data[0], patch = {}
-      const oldIds = Array.isArray(old.collaboratorArtistIds) ? old.collaboratorArtistIds : []
-      if (JSON.stringify(oldIds.slice().sort()) !== JSON.stringify(album.collaboratorArtistIds.slice().sort())) patch.collaboratorArtistIds = album.collaboratorArtistIds
-      if (album.collaboratorArtists?.length) patch.collaboratorArtists = album.collaboratorArtists
-      if (album.collaboratorArtistNames?.length) patch.collaboratorArtistNames = album.collaboratorArtistNames
+      const old = ex.data[0]
+      const patch = {
+        artist: album.artist,
+        primaryArtist: album.primaryArtist,
+        neteaseArtistId: album.neteaseArtistId,
+        collaboratorArtists: album.collaboratorArtists,
+        collaboratorArtistIds: album.collaboratorArtistIds,
+        collaboratorArtistNames: album.collaboratorArtistNames,
+      }
       if (!old.releaseDate && album.releaseDate) { patch.releaseDate = album.releaseDate; patch.releaseYear = album.releaseYear }
-      if (Object.keys(patch).length) await db.collection('albums').doc(old._id).update({ data:patch })
+      await db.collection('albums').doc(old._id).update({ data:patch })
+      out = '校正归属'
     } else {
-      const detail = await fetchDetail(album.sourceId)
       const verdict = bad(detail && detail.songs)
       if (verdict.bad) {
         const c = await db.collection('album_candidates').where({ sourceId:album.sourceId }).limit(1).get()
@@ -105,7 +121,38 @@ async function processAlbum(album) {
       }
     }
   } catch (err) { out = '失败' }
-  return { title:album.title, out, newAlbum, candidate }
+  return { title:seed.title, out, newAlbum, candidate }
+}
+
+function normalizeDetailAlbum(seed, raw) {
+  if (!raw) return null
+  // album.artists from /api/v1/album/{id} is the official album-level artist list.
+  // Do not read song artists here: those are track-level collaborators only.
+  const official = Array.isArray(raw.artists) && raw.artists.length ? raw.artists : (raw.artist ? [raw.artist] : [])
+  const collaboratorArtists = official.map(a => ({ id:String(a && a.id || ''), name:String(a && a.name || '').trim() })).filter(a => a.id || a.name)
+  const collaboratorArtistIds = [...new Set(collaboratorArtists.map(a => a.id).filter(Boolean))]
+  const collaboratorArtistNames = [...new Set(collaboratorArtists.map(a => a.name).filter(Boolean))]
+  const primaryArtist = String((raw.artist || {}).name || collaboratorArtistNames[0] || seed.fallbackArtist || '').trim()
+  const neteaseArtistId = String((raw.artist || {}).id || collaboratorArtistIds[0] || '')
+  if (!primaryArtist) return null
+  if (neteaseArtistId && !collaboratorArtistIds.includes(neteaseArtistId)) collaboratorArtistIds.unshift(neteaseArtistId)
+  if (primaryArtist && !collaboratorArtistNames.includes(primaryArtist)) collaboratorArtistNames.unshift(primaryArtist)
+  // A record with only the primary artist is intentionally single-owner, regardless of track features.
+  return {
+    title:String(raw.name || seed.title || '').trim(),
+    artist:collaboratorArtistNames.join(' / '),
+    primaryArtist,
+    neteaseArtistId,
+    collaboratorArtists,
+    collaboratorArtistIds,
+    collaboratorArtistNames,
+    sourceId:seed.sourceId,
+    coverUrl:raw.picUrl || raw.blurPicUrl || seed.coverUrl || '',
+    releaseYear:seed.releaseYear,
+    releaseDate:seed.releaseDate,
+    genres:[], source:'netease', crawlSource:'cloud-step', avgScore:0, reviewCount:0,
+    trackCount:Number(raw.size || seed.trackCount || 0),
+  }
 }
 
 async function abort(s) {
@@ -114,21 +161,6 @@ async function abort(s) {
   s.log = log(s.log, '任务已中止')
   await save(s)
   return { success:true, status:'aborted', next:false }
-}
-
-function norm(x,f) {
-  const title = String(x.name || '').trim()
-  const rawArtists = x.artists || (x.artist ? [x.artist] : [])
-  const collaboratorArtists = rawArtists.map(a => ({ id:String(a.id || ''), name:String(a.name || '').trim() })).filter(a => a.id || a.name)
-  const collaboratorArtistIds = [...new Set(collaboratorArtists.map(a => a.id).filter(Boolean))]
-  const collaboratorArtistNames = [...new Set(collaboratorArtists.map(a => a.name).filter(Boolean))]
-  const primaryArtist = String((x.artist || {}).name || f || collaboratorArtistNames[0] || '').trim()
-  const neteaseArtistId = String((x.artist || {}).id || collaboratorArtistIds[0] || '')
-  if (neteaseArtistId && !collaboratorArtistIds.includes(neteaseArtistId)) collaboratorArtistIds.unshift(neteaseArtistId)
-  if (primaryArtist && !collaboratorArtistNames.includes(primaryArtist)) collaboratorArtistNames.unshift(primaryArtist)
-  const sourceId = String(x.id || ''), releaseDate = date(x.publishTime), releaseYear = releaseDate ? +releaseDate.slice(0,4) : 0, trackCount = +x.size || 0
-  if (!title || !sourceId || !primaryArtist || !releaseDate || trackCount < 3 || releaseYear < 1990 || releaseYear > new Date().getFullYear()+1 || SKIP.some(k => title.includes(k))) return null
-  return { title, artist:collaboratorArtistNames.length > 1 ? collaboratorArtistNames.join(' / ') : primaryArtist, primaryArtist, neteaseArtistId, collaboratorArtists, collaboratorArtistIds, collaboratorArtistNames, sourceId, coverUrl:x.picUrl || x.blurPicUrl || '', releaseYear, releaseDate, genres:[], source:'netease', crawlSource:'cloud-step', avgScore:0, reviewCount:0, trackCount }
 }
 function bad(s) { const names=(s||[]).map(x=>String(x.name||'').trim()).filter(Boolean), re=/(伴奏|instrumental|inst\.?|off\s*vocal|karaoke|纯音乐|伴奏版|伴奏带)/i; if(names.some(x=>re.test(x))) return { bad:true, reason:'含有伴奏/纯音乐版本曲目', example:names.filter(x=>re.test(x)).slice(0,4) }; const normalized=names.map(x=>x.replace(/[（(【\[][^）)】\]]*[）)】\]]/g,'').replace(re,'').replace(/[\s\-_.·]/g,'').toLowerCase()).filter(Boolean); return normalized.length>=2&&new Set(normalized).size===1 ? { bad:true, reason:'全专曲目名称重复', example:names.slice(0,4) } : { bad:false } }
 function date(v) { const d=new Date(+v || 0); return Number.isNaN(d.getTime()) ? '' : `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}` }
