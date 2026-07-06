@@ -6,20 +6,18 @@ const _ = db.command
 
 const STATUS_COLLECTION = 'crawlerStatus'
 const STATUS_ID = 'singleton'
-const BATCH_SIZE = 20
+const BATCH_SIZE = 10
 const SKIP_KEYWORDS = ['第一期','第二期','第三期','第四期','第五期','第六期','第七期','第八期','第九期','第十期','精选集','合辑','现场版','Live','OST','原声','巅峰对决','新说唱','中国有嘻哈','说唱新世代']
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   if (!(await isAdmin(OPENID))) return { success: false, error: '无权限' }
-
   const cursor = Math.max(0, Number(event.cursor || 0))
   const initialize = !!event.initialize || cursor === 0
   const approved = await db.collection('artist_candidates').where({ status: 'approved' }).field({ _id: true, artistId: true, artistName: true }).limit(1000).get()
   const list = (approved.data || []).filter(x => x.artistId)
   const total = list.length
   if (!total) return { success: true, status: 'done', nextCursor: null }
-
   let status = await getStatus()
   if (initialize) {
     status = { ...status, status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, log: [`云端分批任务已开始：每批 ${BATCH_SIZE} 位 rapper`] }
@@ -27,7 +25,6 @@ exports.main = async (event) => {
   }
   status = await getStatus()
   if (status.abort) { await markAborted(status, total); return { success: true, status: 'aborted', nextCursor: null } }
-
   const slice = list.slice(cursor, cursor + BATCH_SIZE)
   for (const artist of slice) {
     const latest = await getStatus()
@@ -40,7 +37,6 @@ exports.main = async (event) => {
     current.log = prependLog(current.log, err ? `[${processed}/${total}] ${artist.artistName || artist.artistId} 失败：${err}` : `[${processed}/${total}] ${artist.artistName || artist.artistId}：新增${result.inserted}张，候选${result.candidates}张`)
     await saveStatus(current)
   }
-
   const after = await getStatus()
   if (after.abort) { await markAborted(after, total); return { success: true, status: 'aborted', nextCursor: null } }
   const nextCursor = cursor + slice.length
