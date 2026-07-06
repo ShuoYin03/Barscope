@@ -64,7 +64,10 @@ function normalizeAlbum(raw, fallbackArtist) {
   if (SKIP_KEYWORDS.some(kw => raw.name.includes(kw))) return null
   if (trackCount < 3)                                   return null
 
-  return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
+  const collaboratorArtists     = allArtists.map(name => ({ id: '', name }))  // ids not available from hotAlbums list
+  const collaboratorArtistIds   = neteaseArtistId ? [neteaseArtistId] : []
+  const collaboratorArtistNames = allArtists.length ? allArtists : (primaryArtist ? [primaryArtist] : [])
+  return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, collaboratorArtists, collaboratorArtistIds, collaboratorArtistNames, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
 }
 
 async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
@@ -314,13 +317,16 @@ async function decide(decisions) {
       db.collection('albums').where({ artist: artistName }).update({ data: { approved: isApproved } }),
     ])
 
-    // On approval: fetch & insert the full discography from Netease
+    // On approval: fetch & insert the full discography from Netease,
+    // then sync high-quality avatar + hero image from artist detail API.
     if (isApproved && artistId) {
       await upsertAlbumsForArtist(artistId, artistName)
       try {
         const countRes = await db.collection('albums').where({ neteaseArtistId: String(artistId) }).count()
         await db.collection('artist_candidates').doc(d.id).update({ data: { albumSize: countRes.total } })
       } catch {}
+      // Fire-and-forget: sync proper artist avatar + hero image
+      cloud.callFunction({ name: 'syncApprovedArtist', data: { artistId: String(artistId) } }).catch(() => {})
     }
   })
 
