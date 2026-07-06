@@ -38,39 +38,22 @@ Page({
   onCopyApprovedList() {
     if (this.data.exporting) return
     this.setData({ exporting: true })
-    wx.showLoading({ title: '正在整理名单…', mask: true })
-    const all: any[] = []
-    const loadPage = (page: number) => new Promise<any>((resolve, reject) => {
-      wx.cloud.callFunction({
-        name: 'manageCandidates',
-        data: { action: 'list', status: 'approved', page, pageSize: 100, keyword: '' },
-        success: (res: any) => resolve(res.result || {}),
-        fail: reject,
-      })
+    wx.showLoading({ title: '正在生成名单…', mask: true })
+    wx.cloud.callFunction({
+      name: 'exportApprovedRappers',
+      data: {},
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success || !r.text) throw new Error(r.error || 'empty result')
+        wx.setClipboardData({
+          data: r.text,
+          success: () => wx.showToast({ title: `已复制 ${r.count} 位`, icon: 'success', duration: 2200 }),
+          fail: () => wx.showModal({ title: '复制失败', content: '系统未能写入剪贴板，请重试。', showCancel: false }),
+          complete: () => { wx.hideLoading(); this.setData({ exporting: false }) },
+        })
+      },
+      fail: () => { wx.hideLoading(); this.setData({ exporting: false }); wx.showModal({ title: '导出失败', content: '云端名单读取失败，请检查云函数是否已部署。', showCancel: false }) },
     })
-    const copy = (data: string) => new Promise<void>((resolve, reject) => {
-      wx.setClipboardData({ data, success: () => resolve(), fail: reject })
-    })
-    const run = async () => {
-      try {
-        for (let page = 1; ; page += 1) {
-          const r = await loadPage(page)
-          if (!r.success) throw new Error(r.error || '读取失败')
-          const rows = r.list || []
-          all.push(...rows)
-          if (rows.length < 100) break
-        }
-        const header = '艺人名\t网易云Artist ID\t来源\t裂变轮次\t专辑数\t粉丝数'
-        const body = all.map((x: any) => [x.artistName || '', x.artistId || '', x.foundFrom || '', x.round ?? '', x.albumSize || 0, x.fansSize || 0].join('\t')).join('\n')
-        await copy(`${header}\n${body}`)
-        wx.hideLoading()
-        wx.showToast({ title: `已复制 ${all.length} 位`, icon: 'success', duration: 2200 })
-      } catch (e) {
-        wx.hideLoading()
-        wx.showModal({ title: '复制失败', content: '未能读取完整已批准名单，请重试。', showCancel: false })
-      } finally { this.setData({ exporting: false }) }
-    }
-    run()
   },
   onApprove(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; this._decide([{ id, decision: 'approved' }]) },
   onDecline(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; this._decide([{ id, decision: 'declined' }]) },
