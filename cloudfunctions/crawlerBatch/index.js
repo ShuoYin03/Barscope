@@ -23,7 +23,8 @@ exports.main = async e => {
       lastRunSummary:{ newAlbums:0, newCandidates:0, errors:[] },
       log:[`任务开始：${artists.length} 位艺人；每步最多处理 ${ALBUMS_PER_STEP} 张专辑`],
       triggeredAt:db.serverDate(), completedAt:null }
-    await save(s)
+    // A user-initiated initialization is the only allowed transition from aborted -> running.
+    await save(s, true)
     return { success:true, status:'running', next:true }
   }
 
@@ -41,7 +42,6 @@ exports.main = async e => {
   }
 
   const artist = artists[q.artistIndex]
-  // Cache the normalized album list in the run state: no repeated Netease fetch for every album.
   if (q.currentArtistId !== String(artist.artistId) || !Array.isArray(q.currentAlbums)) {
     let raw = []
     try { raw = await fetchAlbums(String(artist.artistId)) } catch (err) {}
@@ -69,7 +69,6 @@ exports.main = async e => {
   })
   q.albumIndex += batch.length
 
-  // A stop request may have arrived while this batch was running.
   const latest = await get()
   if (latest.abort) {
     s.abort = true
@@ -138,5 +137,5 @@ async function fetchAlbums(id) { const all=[]; let offset=0; while(true){const x
 async function fetchDetail(id) { const x=await req(`https://music.163.com/api/v1/album/${id}`); return x&&x.code===200 ? x : null }
 async function admin(id) { if(!id)return false; const r=await db.collection('users').where({openId:id,type:'admin'}).limit(1).get();return !!r.data.length }
 async function get() { try{return (await db.collection(C).doc(D).get()).data}catch(e){return { status:'idle',log:[],progress:{} }} }
-async function save(s) { let current={};try{current=(await db.collection(C).doc(D).get()).data||{}}catch(e){}; if(current.status==='aborted' && s.status==='running') return; const n={...s};delete n._id;n.log=Array.isArray(n.log)?n.log:[];n.logs=n.log;if(current.abort===true&&n.status==='running')n.abort=true;await db.collection(C).doc(D).set({data:n}) }
+async function save(s, allowRestart=false) { let current={};try{current=(await db.collection(C).doc(D).get()).data||{}}catch(e){}; if(!allowRestart && current.status==='aborted' && s.status==='running') return; const n={...s};delete n._id;n.log=Array.isArray(n.log)?n.log:[];n.logs=n.log;if(current.abort===true&&n.status==='running')n.abort=true;await db.collection(C).doc(D).set({data:n}) }
 function log(items,text) { return [text,...(Array.isArray(items)?items:[])].slice(0,100) }
