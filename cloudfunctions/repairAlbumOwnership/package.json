@@ -1,0 +1,9 @@
+{
+  "name": "repairAlbumOwnership",
+  "version": "1.0.0",
+  "description": "Repair album ownership from Netease album detail metadata",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
