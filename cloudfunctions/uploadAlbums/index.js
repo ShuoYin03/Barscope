@@ -65,6 +65,7 @@ exports.main = async (event, context) => {
     }
     if (a.primaryArtist)   fields.primaryArtist   = a.primaryArtist
     if (a.neteaseArtistId) fields.neteaseArtistId = a.neteaseArtistId
+    if (a.artistIds && a.artistIds.length) fields.artistIds = a.artistIds
     return db.collection('albums').doc(existingMap[a.sourceId]).update({ data: fields })
   })
 

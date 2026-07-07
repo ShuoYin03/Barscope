@@ -41,7 +41,8 @@ exports.main = async (event, context) => {
 
     var query = db.collection('albums')
     var filters = { approved: true }
-    if (artistId) filters.neteaseArtistId = artistId
+    var artistOr = null
+    if (artistId) artistOr = _.or([{ neteaseArtistId: artistId }, { artistIds: _.all([artistId]) }])
     else if (genre) filters.genres = _.all([genre])
     else if (year) {
       if (year === '2010s') filters.releaseYear = _.gte(2010).and(_.lte(2017))
@@ -52,7 +53,7 @@ exports.main = async (event, context) => {
       var mm = String(month).padStart(2, '0')
       filters.releaseDate = db.RegExp({ regexp: '^' + String(year) + '-' + mm + '-', options: '' })
     }
-    query = query.where(filters)
+    query = artistOr ? query.where(_.and([filters, artistOr])) : query.where(filters)
 
     var countResult = await query.count()
     var total = countResult.total

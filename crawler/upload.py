@@ -119,6 +119,7 @@ def clean(raw_list: list, skip_singles_filter: bool = False) -> list:
             "artist": artist,
             "primaryArtist": a.get("primaryArtist") or artist,
             "neteaseArtistId": a.get("neteaseArtistId") or "",
+            "artistIds": a.get("artistIds") or [],
             "releaseYear": year,
             "coverUrl": cover,
             "genres": a.get("genres") or [],

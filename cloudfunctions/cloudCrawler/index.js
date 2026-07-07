@@ -100,10 +100,10 @@ async function fetchAlbumDetail(id) { const data = await httpsGet(`https://music
 function releaseDateFromTime(value) { const timestamp = Number(value); if (!timestamp) return ''; const d = new Date(timestamp); if (Number.isNaN(d.getTime())) return ''; const y = d.getUTCFullYear(); const m = String(d.getUTCMonth() + 1).padStart(2, '0'); const day = String(d.getUTCDate()).padStart(2, '0'); return `${y}-${m}-${day}` }
 
 function normalizeAlbum(raw, fallbackArtist, opts) {
-  opts = opts || {}; const title = String(raw.name || '').trim(); const primaryArtist = String((raw.artist || {}).name || fallbackArtist || '').trim(); const artists = (raw.artists || []).map(x => String(x.name || '').trim()).filter(Boolean); const artist = artists.length > 1 ? artists.join(' / ') : primaryArtist; const sourceId = String(raw.id || ''); const coverUrl = raw.picUrl || raw.blurPicUrl || ''; const releaseDate = releaseDateFromTime(raw.publishTime); const releaseYear = releaseDate ? Number(releaseDate.slice(0, 4)) : 0; const trackCount = Number(raw.size || 0)
+  opts = opts || {}; const title = String(raw.name || '').trim(); const primaryArtist = String((raw.artist || {}).name || fallbackArtist || '').trim(); const artists = (raw.artists || []).map(x => String(x.name || '').trim()).filter(Boolean); const artist = artists.length > 1 ? artists.join(' / ') : primaryArtist; const artistIds = Array.from(new Set((raw.artists || []).map(x => x && x.id ? String(x.id) : '').filter(Boolean))); const sourceId = String(raw.id || ''); const coverUrl = raw.picUrl || raw.blurPicUrl || ''; const releaseDate = releaseDateFromTime(raw.publishTime); const releaseYear = releaseDate ? Number(releaseDate.slice(0, 4)) : 0; const trackCount = Number(raw.size || 0)
   if (!title || !primaryArtist || !coverUrl || !sourceId) return null
   if (!opts.skipFilters) { const now = new Date().getFullYear(); if (releaseYear < 1990 || releaseYear > now + 1 || trackCount < 3 || SKIP_KEYWORDS.some(k => title.includes(k))) return null }
-  return { title, artist, primaryArtist, neteaseArtistId: raw.artist && raw.artist.id ? String(raw.artist.id) : '', sourceId, coverUrl, releaseYear, releaseDate, genres: [], source: 'netease', crawlSource: 'cloud', avgScore: 0, reviewCount: 0, trackCount }
+  return { title, artist, primaryArtist, neteaseArtistId: raw.artist && raw.artist.id ? String(raw.artist.id) : '', artistIds, sourceId, coverUrl, releaseYear, releaseDate, genres: [], source: 'netease', crawlSource: 'cloud', avgScore: 0, reviewCount: 0, trackCount }
 }
 
 function normalizeTrackName(name) { return String(name || '').replace(/[（(【\[][^）)】\]]*[）)】\]]/g, '').replace(/(伴奏|instrumental|inst\.?|off\s*vocal|karaoke|纯音乐|伴奏版|伴奏带)/ig, '').replace(/[\s\-_.·]/g, '').toLowerCase() }
@@ -135,13 +135,13 @@ async function upsertAlbums(rawList, fallbackArtist, opts) {
   const albums = rawList.map(x => normalizeAlbum(x, fallbackArtist, opts)).filter(Boolean)
   if (!albums.length) return { inserted: 0, total: 0, dated: 0, candidates: 0 }
   const ids = albums.map(x => x.sourceId); const existing = new Map()
-  for (let i = 0; i < ids.length; i += 100) { const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) }).field({ _id: true, sourceId: true, releaseDate: true, releaseYear: true, neteaseArtistId: true, primaryArtist: true, trackCount: true }).get(); (res.data || []).forEach(x => existing.set(x.sourceId, x)) }
+  for (let i = 0; i < ids.length; i += 100) { const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) }).field({ _id: true, sourceId: true, releaseDate: true, releaseYear: true, neteaseArtistId: true, artistIds: true, primaryArtist: true, trackCount: true }).get(); (res.data || []).forEach(x => existing.set(x.sourceId, x)) }
   let inserted = 0, dated = 0, candidates = 0
   await mapWithConcurrency(albums, DETAIL_CONCURRENCY, async album => {
     const old = existing.get(album.sourceId)
     // Existing records are left alone; initial filtering applies before a new album enters the formal library.
     if (old) {
-      const patch = {}; if (!old.releaseDate && album.releaseDate) { patch.releaseDate = album.releaseDate; patch.releaseYear = album.releaseYear; dated += 1 }; if (!old.neteaseArtistId && album.neteaseArtistId) patch.neteaseArtistId = album.neteaseArtistId; if (!old.primaryArtist && album.primaryArtist) patch.primaryArtist = album.primaryArtist; if (!old.trackCount && album.trackCount) patch.trackCount = album.trackCount; if (Object.keys(patch).length) await db.collection('albums').doc(old._id).update({ data: patch }); return
+      const patch = {}; if (!old.releaseDate && album.releaseDate) { patch.releaseDate = album.releaseDate; patch.releaseYear = album.releaseYear; dated += 1 }; if (!old.neteaseArtistId && album.neteaseArtistId) patch.neteaseArtistId = album.neteaseArtistId; if (!old.artistIds && album.artistIds && album.artistIds.length) patch.artistIds = album.artistIds; if (!old.primaryArtist && album.primaryArtist) patch.primaryArtist = album.primaryArtist; if (!old.trackCount && album.trackCount) patch.trackCount = album.trackCount; if (Object.keys(patch).length) await db.collection('albums').doc(old._id).update({ data: patch }); return
     }
     try {
       const detail = await fetchAlbumDetail(album.sourceId)

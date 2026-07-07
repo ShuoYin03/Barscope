@@ -52,6 +52,7 @@ function normalizeAlbum(raw, fallbackArtist) {
   const neteaseArtistId  = (raw.artist && raw.artist.id) ? String(raw.artist.id) : null
   const allArtists       = (raw.artists || []).map(a => (a.name || '').trim()).filter(Boolean)
   const artist           = allArtists.length > 1 ? allArtists.join(' / ') : primaryArtist
+  const artistIds        = Array.from(new Set((raw.artists || []).map(a => a && a.id ? String(a.id) : '').filter(Boolean)))
   const cover            = raw.picUrl || raw.blurPicUrl || ''
   const year             = raw.publishTime ? new Date(raw.publishTime).getFullYear() : 0
   const id               = String(raw.id || '')
@@ -64,7 +65,7 @@ function normalizeAlbum(raw, fallbackArtist) {
   if (SKIP_KEYWORDS.some(kw => raw.name.includes(kw))) return null
   if (trackCount < 3)                                   return null
 
-  return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
+  return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, artistIds, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
 }
 
 async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
