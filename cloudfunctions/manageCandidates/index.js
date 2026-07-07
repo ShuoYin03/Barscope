@@ -315,13 +315,16 @@ async function decide(decisions) {
       db.collection('albums').where({ artist: artistName }).update({ data: { approved: isApproved } }),
     ])
 
-    // On approval: fetch & insert the full discography from Netease
+    // On approval: fetch & insert the full discography from Netease,
+    // then sync high-quality avatar + hero image from artist detail API.
     if (isApproved && artistId) {
       await upsertAlbumsForArtist(artistId, artistName)
       try {
         const countRes = await db.collection('albums').where({ neteaseArtistId: String(artistId) }).count()
         await db.collection('artist_candidates').doc(d.id).update({ data: { albumSize: countRes.total } })
       } catch {}
+      // Fire-and-forget: sync proper artist avatar + hero image
+      cloud.callFunction({ name: 'syncApprovedArtist', data: { artistId: String(artistId) } }).catch(() => {})
     }
   })
 
