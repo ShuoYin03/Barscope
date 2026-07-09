@@ -1,0 +1,10 @@
+{
+  "timeout": 120,
+  "triggers": [
+    {
+      "name": "daily",
+      "type": "timer",
+      "config": "0 0 0 * * * *"
+    }
+  ]
+}

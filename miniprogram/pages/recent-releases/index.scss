@@ -1,0 +1,112 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--white);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding-left: 32rpx;
+  padding-bottom: 14rpx;
+  border-bottom: 2rpx solid var(--accent);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.back { font-size: 42rpx; color: var(--accent); }
+.title {
+  font-family: var(--font-bebas);
+  font-size: 40rpx;
+  letter-spacing: 5rpx;
+}
+
+.content { flex: 1; min-height: 0; }
+
+.list { background: var(--black); }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 22rpx 32rpx;
+  border-bottom: 2rpx solid var(--off-white);
+}
+.row:last-child { border-bottom: none; }
+
+.rank {
+  font-family: var(--font-bebas);
+  font-weight: 700;
+  font-size: 32rpx;
+  width: 48rpx;
+  flex-shrink: 0;
+  color: var(--gray-mid);
+  letter-spacing: 1rpx;
+}
+
+.vinyl-cover-wrap.small { flex-shrink: 0; }
+
+.info { flex: 1; min-width: 0; }
+.title-text {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.meta {
+  font-size: 20rpx;
+  color: var(--gray-mid);
+  margin-top: 6rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.meta-dot {
+  width: 4rpx;
+  height: 4rpx;
+  border-radius: 50%;
+  background: var(--gray-light);
+  flex-shrink: 0;
+}
+
+.tag-new {
+  flex-shrink: 0;
+  font-family: var(--font-bebas);
+  font-size: 20rpx;
+  color: var(--accent);
+  letter-spacing: 2rpx;
+}
+
+.list-end { padding: 32rpx; display: flex; justify-content: center; }
+.list-end-text {
+  font-family: var(--font-bebas);
+  font-size: 22rpx;
+  color: var(--gray-light);
+  letter-spacing: 6rpx;
+}
+
+.empty {
+  padding: 160rpx 32rpx;
+  text-align: center;
+  color: var(--gray-mid);
+  font-size: 26rpx;
+}
+
+/* skeleton */
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 22rpx 32rpx;
+  border-bottom: 2rpx solid var(--off-white);
+}
+.skel-info { flex: 1; display: flex; flex-direction: column; gap: 10rpx; }
+
