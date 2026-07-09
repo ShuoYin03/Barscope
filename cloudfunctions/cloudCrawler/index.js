@@ -7,11 +7,9 @@ const _ = db.command
 
 const COL = 'crawlerStatus'
 const DOC = 'singleton'
-// Keep each invocation comfortably below the Mini Program 60s callFunction limit.
-// The 5-minute timer keeps waking this worker up until all approved artists are done.
-const CHUNK = 6
+const CHUNK = 15
 const INTERNAL_TOKEN = 'cc_internal_v1'
-const DETAIL_CONCURRENCY = 4
+const DETAIL_CONCURRENCY = 8
 const SKIP_KEYWORDS = ['第一期','第二期','第三期','第四期','第五期','第六期','第七期','第八期','第九期','第十期','精选集','合辑','现场版','Live','OST','原声','巅峰对决','新说唱','中国有嘻哈','说唱新世代','浙江卫视','江苏卫视','湖南卫视','东方卫视','北京卫视','央视','CCTV','春晚','晚会','歌会','跨年','元宵','中秋','节目','综艺','盛典','音乐节','演唱会']
 
 exports.main = async event => {
@@ -24,28 +22,14 @@ exports.main = async event => {
   }
   if (!internal && !(await isAdmin(OPENID))) return { success: false, error: '无权限' }
   try {
-    if (action === 'startAllApproved') return await startAllApproved()
     if (action === 'album') return await runAlbum(String(event.albumId || event.param || ''))
     if (action === 'artist') return await runArtist(String(event.artistId || event.param || ''))
-    if (action === 'allApproved') return await runAllApproved(Number(event.cursor || 0), internal)
+    if (action === 'allApproved') return await runAllApproved(Number(event.cursor || 0))
     return { success: false, error: '未知 action' }
   } catch (e) {
     try { await appendLog(`出错: ${e.message}`); await patchStatus({ status: 'error', completedAt: db.serverDate(), lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [e.message] } }) } catch (x) {}
     return { success: false, error: e.message }
   }
-}
-
-async function startAllApproved() {
-  const approved = await db.collection('artist_candidates').where({ status: 'approved' }).field({ artistId: true, artistName: true }).limit(1000).get()
-  const total = (approved.data || []).filter(x => x.artistId).length
-  if (!total) { await doneStatus(0, 0, '没有已批准的艺人'); return { success: true, status: 'done', total: 0 } }
-  const existing = await getStatus()
-  if (existing.status === 'running' && existing.mode === 'allApproved') {
-    return { success: true, status: 'running', skipped: true, processed: Number((existing.progress && existing.progress.processedArtists) || 0), total }
-  }
-  await patchStatus({ status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, dailyUpdates: [], log: [] })
-  await appendLog(`已创建云端全量任务：${total} 位已批准艺人；每次处理 ${CHUNK} 位，定时器将自动续跑`)
-  return { success: true, status: 'running', queued: true, total }
 }
 
 async function runAlbum(id) {
@@ -68,22 +52,16 @@ async function runArtist(id) {
   return { success: true, artistName: name, ...r }
 }
 
-async function runAllApproved(cursor, internal) {
+async function runAllApproved(cursor) {
   const approved = await db.collection('artist_candidates').where({ status: 'approved' }).field({ artistId: true, artistName: true }).limit(1000).get()
   const list = (approved.data || []).filter(x => x.artistId)
   const total = list.length
   if (!total) { await doneStatus(0, 0, '没有已批准的艺人'); return { success: true, status: 'done', total: 0 } }
   if (cursor === 0) {
-    const existing = await getStatus()
-    if (existing.status === 'running' && existing.mode === 'allApproved' && Number((existing.progress || {}).processedArtists || 0) > 0) {
-      return { success: true, status: 'running', skipped: true, reason: '已有全量任务在跑，未重复开始', processed: Number((existing.progress && existing.progress.processedArtists) || 0), total }
-    }
-    await patchStatus({ status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, dailyUpdates: [], log: [] })
-    await appendLog(`云端全量开始：${total} 位已批准艺人；每 ${CHUNK} 位为一批`)
+    await patchStatus({ status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, log: [] })
+    await appendLog(`云端全量开始：${total} 位已批准艺人；每 ${CHUNK} 位为一批，逐位更新进度`)
   }
-
   let added = 0, dated = 0, candidates = 0
-  const updatesThisChunk = []
   const slice = list.slice(cursor, cursor + CHUNK)
   for (let i = 0; i < slice.length; i++) {
     const st = await getStatus()
@@ -95,45 +73,41 @@ async function runAllApproved(cursor, internal) {
       added += r.inserted; dated += r.dated; candidates += r.candidates || 0
       const count = await db.collection('albums').where(_.or([{ artistIds: _.all([String(artist.artistId)]) }, { neteaseArtistId: String(artist.artistId) }])).count()
       await db.collection('artist_candidates').doc(artist._id).update({ data: { albumSize: count.total } })
-      if (r.inserted > 0 || (r.candidates || 0) > 0) {
-        const parts = []
-        if (r.inserted > 0) parts.push(`新增${r.inserted}张`)
-        if ((r.candidates || 0) > 0) parts.push(`候选${r.candidates}张`)
-        updatesThisChunk.push(`${artist.artistName}(${parts.join('，')})`)
-      }
       await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName}: 新增${r.inserted}张，候选${r.candidates || 0}张，过滤${r.skipped || 0}张，日期写入${r.dated}张`)
-    } catch (e) {
-      await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName} 失败: ${e.message}`)
-    }
+    } catch (e) { await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName} 失败: ${e.message}`) }
     const now = await getStatus(); const p = now.progress || {}
     await patchStatus({ progress: { totalArtists: total, processedArtists: cursor + i + 1, albumsFound: Number(p.albumsFound || 0) + added, candidatesFound: Number(p.candidatesFound || 0) + candidates } })
     added = 0; candidates = 0
     if ((await getStatus()).abort) { await finishAbort(await getStatus(), total); return { success: true, status: 'aborted', processed: cursor + i + 1, total } }
   }
-
-  if (updatesThisChunk.length) {
-    const s2 = await getStatus()
-    const merged = (Array.isArray(s2.dailyUpdates) ? s2.dailyUpdates : []).concat(updatesThisChunk)
-    await patchStatus({ dailyUpdates: merged })
-  }
   const processed = Math.min(cursor + CHUNK, total)
-  if (processed < total) return { success: true, status: 'running', processed, total, dated }
-
+  if (processed < total) {
+    await cloud.callFunction({ name: 'cloudCrawler', data: { action: 'allApproved', cursor: processed, __internal: true, __token: INTERNAL_TOKEN } })
+    return { success: true, status: 'running', processed, total, dated }
+  }
   const status = await getStatus(), p = status.progress || {}
   await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: [] } })
-  if (internal) {
-    const list = Array.isArray(status.dailyUpdates) ? status.dailyUpdates : []
-    if (!list.length) await appendLog(`今日检查完毕：${total} 位已批准艺人均无新内容`)
-    else { const shown = list.slice(0, 60); const more = list.length > shown.length ? `，等共 ${list.length} 位艺人有更新` : ''; await appendLog(`今日更新：${shown.join('、')}${more}`) }
-    await patchStatus({ dailyUpdates: [] })
-  } else {
-    await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)
-  }
+  await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)
   return { success: true, status: 'done', total, newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), dated }
 }
 
-async function finishAbort(status, total) { const p = status.progress || {}; await patchStatus({ status: 'aborted', abort: false, completedAt: db.serverDate(), progress: { totalArtists: total, processedArtists: Number(p.processedArtists || 0), albumsFound: Number(p.albumsFound || 0), candidatesFound: Number(p.candidatesFound || 0) }, lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: ['用户中止'] } }); await appendLog('任务已中止；已写入的数据会保留') }
-function httpsGet(url) { return new Promise((resolve, reject) => { const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://music.163.com/' } }, res => { let body = ''; res.on('data', c => body += c); res.on('end', () => { try { resolve(JSON.parse(body)) } catch (e) { resolve(null) } }) }); req.on('error', reject); req.setTimeout(6000, () => { req.destroy(); reject(new Error('timeout')) }) }) }
+async function finishAbort(status, total) {
+  const p = status.progress || {}
+  await patchStatus({ status: 'aborted', abort: false, completedAt: db.serverDate(), progress: { totalArtists: total, processedArtists: Number(p.processedArtists || 0), albumsFound: Number(p.albumsFound || 0), candidatesFound: Number(p.candidatesFound || 0) }, lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: ['用户中止'] } })
+  await appendLog('任务已中止；已写入的数据会保留')
+}
+
+function httpsGet(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://music.163.com/' } }, res => {
+      let body = ''
+      res.on('data', c => body += c)
+      res.on('end', () => { try { resolve(JSON.parse(body)) } catch (e) { resolve(null) } })
+    })
+    req.on('error', reject)
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')) })
+  })
+}
 async function fetchArtistAlbums(id) { const albums = []; let offset = 0, name = ''; while (true) { let data; try { data = await httpsGet(`https://music.163.com/api/artist/albums/${id}?limit=50&offset=${offset}`) } catch (e) { break } if (!data || data.code !== 200) break; if (!name) name = ((data.artist || {}).name || ''); const batch = data.hotAlbums || []; albums.push(...batch); if (!data.more || !batch.length) break; offset += 50 } return { name, albums } }
 async function fetchAlbumById(id) { const data = await httpsGet(`https://music.163.com/api/v1/album/${id}`); return data && data.code === 200 ? data.album : null }
 async function fetchAlbumDetail(id) { const data = await httpsGet(`https://music.163.com/api/v1/album/${id}`); return data && data.code === 200 ? data : null }
@@ -147,8 +121,8 @@ async function mapWithConcurrency(items, limit, fn) { const output = new Array(i
 async function upsertAlbums(rawList, fallbackArtist, opts) { opts = opts || {}; let skipped = 0; const albums = rawList.map(x => { const a = normalizeAlbum(x, fallbackArtist, opts); if (!a) skipped++; return a }).filter(Boolean); if (!albums.length) return { inserted: 0, total: 0, dated: 0, candidates: 0, skipped }; const ids = albums.map(x => x.sourceId); const existing = new Map(); for (let i = 0; i < ids.length; i += 100) { const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) }).field({ _id: true, sourceId: true, releaseDate: true, releaseYear: true, neteaseArtistId: true, artistIds: true, primaryArtist: true, trackCount: true }).get(); (res.data || []).forEach(x => existing.set(x.sourceId, x)) } let inserted = 0, dated = 0, candidates = 0; await mapWithConcurrency(albums, DETAIL_CONCURRENCY, async album => { const old = existing.get(album.sourceId); if (old) { const patch = {}; if (!old.releaseDate && album.releaseDate) { patch.releaseDate = album.releaseDate; patch.releaseYear = album.releaseYear; dated += 1 }; if (!old.neteaseArtistId && album.neteaseArtistId) patch.neteaseArtistId = album.neteaseArtistId; if (!old.primaryArtist && album.primaryArtist) patch.primaryArtist = album.primaryArtist; if (!old.trackCount && album.trackCount) patch.trackCount = album.trackCount; const oldArtistIds = Array.isArray(old.artistIds) ? old.artistIds : []; if (album.artistIds && album.artistIds.length && JSON.stringify(oldArtistIds) !== JSON.stringify(album.artistIds)) patch.artistIds = album.artistIds; if (Object.keys(patch).length) await db.collection('albums').doc(old._id).update({ data: patch }); return } try { const detail = await fetchAlbumDetail(album.sourceId), verdict = inspectAlbumTracks(detail && detail.songs); if (verdict.bad) { if (await upsertCandidate(album, verdict)) candidates++; return } } catch (e) {} await db.collection('albums').add({ data: Object.assign({ approved: true }, album) }); inserted++; if (album.releaseDate) dated++ }); return { inserted, total: albums.length, dated, candidates, skipped } }
 async function isAdmin(openId) { if (!openId) return false; const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get(); return r.data.length > 0 }
 async function getStatus() { try { return (await db.collection(COL).doc(DOC).get()).data } catch (e) { return makeDefault() } }
-function makeDefault() { return { status: 'idle', log: [], progress: { totalArtists: 0, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, abort: false, dailyUpdates: [] } }
+function makeDefault() { return { status: 'idle', log: [], progress: { totalArtists: 0, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, abort: false } }
 async function patchStatus(data) { const current = await getStatus(); const next = Object.assign({}, makeDefault(), current, data); delete next._id; if (current.progress && data.progress) next.progress = Object.assign({}, current.progress, data.progress); await db.collection(COL).doc(DOC).set({ data: next }) }
-async function startStatus(mode, param, total) { await patchStatus({ status: 'running', mode, param, abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, log: [] }) }
+async function startStatus(mode, param, total) { await patchStatus({ status: 'running', mode, param, abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 } }) }
 async function doneStatus(total, inserted, log) { await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), progress: { totalArtists: total, processedArtists: total, albumsFound: inserted, candidatesFound: 0 }, lastRunSummary: { newAlbums: inserted, newCandidates: 0, errors: [] } }); await appendLog(log) }
-async function appendLog(text) { const s = await getStatus(), logs = Array.isArray(s.log) ? s.log : (Array.isArray(s.logs) ? s.logs : []); const ts = new Date().toISOString().slice(11,19); logs.unshift(`[${ts}] ${text}`); await patchStatus({ log: logs.slice(0, 80) }) }
+async function appendLog(text) { const s = await getStatus(), logs = Array.isArray(s.log) ? s.log : (Array.isArray(s.logs) ? s.logs.map(x => typeof x === 'string' ? x : x.text || '') : []); const ts = new Date().toISOString().slice(11,19); logs.unshift(`[${ts}] ${text}`); await patchStatus({ log: logs.slice(0, 80) }) }
