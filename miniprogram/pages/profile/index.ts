@@ -17,6 +17,7 @@ Page({
     isCritic: false,
     isAdmin: false,
     pendingCount: 0,
+    albumFlagCount: 0,
     favCount: 0,
     albumCount: 0,
     reviews: [] as ProfileReview[],
@@ -61,8 +62,12 @@ Page({
     })
   },
 
-  _loadPendingCount() { wx.cloud.callFunction({ name:'manageCandidates',data:{action:'stats'},success:(res:any)=>{const r=res.result;if(r.success)this.setData({pendingCount:r.pending || 0})} }) },
+  _loadPendingCount() {
+    wx.cloud.callFunction({ name:'manageCandidates',data:{action:'stats'},success:(res:any)=>{const r=res.result;if(r.success)this.setData({pendingCount:r.pending || 0})} })
+    wx.cloud.callFunction({ name:'manageAlbumCandidates',data:{action:'stats'},success:(res:any)=>{const r=res.result;if(r.success)this.setData({albumFlagCount:r.pending || 0})} })
+  },
   onAdminCandidates() { wx.navigateTo({ url:'/pages/admin/index' }) },
+  onAdminAlbumFlags() { wx.navigateTo({ url:'/pages/album-candidates/index' }) },
   onAdminAlbums() { wx.navigateTo({ url:'/pages/album-manager/index' }) },
   onAdminCrawler() { wx.navigateTo({ url:'/pages/crawler/index' }) },
   onAdminCritics() { wx.navigateTo({ url:'/pages/critics/index' }) },
