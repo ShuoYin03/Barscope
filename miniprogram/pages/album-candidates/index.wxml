@@ -1,13 +1,35 @@
 <view class="page">
-  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">ALBUM QUEUE</text></view>
-  <view class="head"><text>专辑候选区</text><text class="count">{{list.length}} 待审核</text></view>
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="title">ALBUM QUEUE</text>
+  </view>
+  <view class="head">
+    <text>专辑候选区</text>
+    <text class="count">{{list.length}} 待审核</text>
+  </view>
   <scroll-view class="content" scroll-y>
-    <view wx:if="{{loading}}" class="empty">加载中…</view>
-    <view wx:elif="{{list.length === 0}}" class="empty">暂无待审核专辑</view>
-    <view wx:else wx:for="{{list}}" wx:key="_id" class="card">
-      <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
-      <view class="info"><text class="album">{{item.title}}</text><text class="artist">{{item.artist}} · {{item.releaseYear}}</text><text class="reason">{{item.candidateReason}}</text><text wx:if="{{item.duplicateTrackExample}}" class="tracks">{{item.duplicateTrackExample.join(' / ')}}</text></view>
-      <view class="actions"><view class="approve" bindtap="decide" data-id="{{item._id}}" data-decision="approve">收录</view><view class="decline" bindtap="decide" data-id="{{item._id}}" data-decision="decline">拒绝</view></view>
-    </view>
+    <block wx:if="{{loading}}">
+      <view class="empty">加载中…</view>
+    </block>
+    <block wx:else>
+      <block wx:if="{{list.length === 0}}">
+        <view class="empty">暂无待审核专辑</view>
+      </block>
+      <block wx:else>
+        <view wx:for="{{list}}" wx:key="_id" class="card">
+          <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view class="info">
+            <text class="album">{{item.title}}</text>
+            <text class="artist">{{item.artist}} · {{item.releaseYear}}</text>
+            <text class="reason">{{item.candidateReason}}</text>
+            <text wx:if="{{item.duplicateTrackExample}}" class="tracks">{{item.duplicateTrackExample.join(' / ')}}</text>
+          </view>
+          <view class="actions">
+            <view class="approve" bindtap="decide" data-id="{{item._id}}" data-decision="approve">收录</view>
+            <view class="decline" bindtap="decide" data-id="{{item._id}}" data-decision="decline">拒绝</view>
+          </view>
+        </view>
+      </block>
+    </block>
   </scroll-view>
 </view>

@@ -1,102 +1,11 @@
-interface ReviewEntry {
-  _id:        string
-  userType:   'critic' | 'normal'
-  userName:   string
-  initial:    string
-  score:      string
-  content:    string
-  timeAgo:    string
-  likes:      number
-  replyCount: number
-  albumTitle: string
-  isPinned:   boolean
-}
-
+interface ReviewEntry { _id: string; userType: 'critic' | 'normal'; userName: string; initial: string; score: string; content: string; timeAgo: string; likes: number; replyCount: number; albumTitle: string; isPinned: boolean; likedByMe?: boolean }
 interface TrackArtist { id: number; name: string }
 interface AlbumTrack { songId: string; no: number; name: string; duration: number; artists: TrackArtist[]; guests: TrackArtist[]; artistText: string; guestText: string }
 interface FeaturingGuest { id: number; name: string; count: number }
-interface AlbumData {
-  id: string; title: string; artist: string; primaryArtist: string; neteaseArtistId: string; sourceId: string; year: number; genres: string[]; avgScore: number; reviewCount: number; scoreFill: string; coverUrl: string; description: string; company: string; tracks: AlbumTrack[]; featuringGuests: FeaturingGuest[]
-}
-
+interface SheetArtist { id: number; name: string; note: string; initial: string; avatarUrl?: string }
+interface AlbumData { id: string; title: string; artist: string; primaryArtist: string; neteaseArtistId: string; sourceId: string; year: number; releaseDate: string; releaseDisplay: string; genres: string[]; avgScore: number; reviewCount: number; scoreFill: string; coverUrl: string; description: string; company: string; tracks: AlbumTrack[]; featuringGuests: FeaturingGuest[] }
 const DESC_PREVIEW_LENGTH = 150
-function getDescriptionState(description: string) {
-  const value = String(description || '').trim()
-  const hasLongDescription = value.length > DESC_PREVIEW_LENGTH
-  return {
-    descriptionPreview: hasLongDescription ? `${value.slice(0, DESC_PREVIEW_LENGTH).trimEnd()}…` : value,
-    hasLongDescription,
-  }
-}
-
-function mapAlbum(raw: any): AlbumData {
-  const score = raw.avgScore || 0
-  const tracks: AlbumTrack[] = (raw.tracks || []).map((t: any, idx: number) => {
-    const artists = t.artists || []
-    const guests = t.guests || []
-    return { songId: String(t.songId || ''), no: t.no || idx + 1, name: t.name || '', duration: t.duration || 0, artists, guests, artistText: artists.map((a: TrackArtist) => a.name).join(' / '), guestText: guests.map((a: TrackArtist) => a.name).join(' / ') }
-  })
-  return {
-    id: raw._id, title: raw.title || '', artist: raw.artist || '', primaryArtist: raw.primaryArtist || (raw.artist || '').split(/[,，&]/)[0].trim(), neteaseArtistId: String(raw.neteaseArtistId || ''), sourceId: String(raw.sourceId || ''), year: raw.releaseYear || 0, genres: raw.genres || [], avgScore: Math.round(score * 10) / 10, reviewCount: raw.reviewCount || 0, scoreFill: Math.round(score / 10 * 100) + '%', coverUrl: raw.coverUrl || '', description: raw.description || '', company: raw.company || '', tracks, featuringGuests: raw.featuringGuests || [],
-  }
-}
-
-Page({
-  data: {
-    statusBarHeight: 20, topbarHeight: 64, album: null as AlbumData | null, reviews: [] as ReviewEntry[], isLoggedIn: false, isFavorited: false, loading: true, trackSyncing: false,
-    descriptionPreview: '', hasLongDescription: false, descriptionExpanded: false,
-  },
-
-  onLoad(options) {
-    const app = getApp<IAppOption>()
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight, isLoggedIn: !!app.globalData.userInfo })
-    const id = options.id || ''
-    if (!id) { wx.showToast({ title: '参数错误', icon: 'error' }); return }
-    this._loadAlbum(id)
-  },
-
-  _loadAlbum(id: string) {
-    const p1 = wx.cloud.callFunction({ name: 'getAlbums', data: { id } })
-    const p2 = wx.cloud.callFunction({ name: 'getReviews', data: { albumId: id, pageSize: 50 } })
-    Promise.all([p1, p2]).then((results: any[]) => {
-      const albumRes = results[0].result
-      const reviewsRes = results[1].result
-      const album = albumRes.success ? mapAlbum(albumRes.album) : null
-      const reviews: ReviewEntry[] = reviewsRes.success ? (reviewsRes.list || []).sort((a: any, b: any) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0)) : []
-      this.setData({ album, reviews, loading: false, descriptionExpanded: false, ...getDescriptionState(album?.description || '') })
-      if (album && album.sourceId && (!album.tracks.length || !album.description)) this._syncAlbumTracks(album.id)
-    }).catch(() => { this.setData({ loading: false }); wx.showToast({ title: '加载失败', icon: 'error' }) })
-    if (this.data.isLoggedIn) {
-      wx.cloud.callFunction({ name: 'getFavorites', data: { checkAlbum: id }, success: (res: any) => { if (res.result?.success) this.setData({ isFavorited: res.result.isFavorited }) } } as any)
-    }
-  },
-
-  _syncAlbumTracks(albumId: string) {
-    if (this.data.trackSyncing) return
-    this.setData({ trackSyncing: true })
-    wx.cloud.callFunction({
-      name: 'syncAlbumTracks', data: { albumId },
-      success: (res: any) => {
-        const result = res.result || {}
-        const album = this.data.album
-        if (album && result.success) {
-          const tracks = (result.tracks || []).map((t: any, idx: number) => {
-            const artists = t.artists || []; const guests = t.guests || []
-            return { ...t, no: t.no || idx + 1, artistText: artists.map((a: TrackArtist) => a.name).join(' / '), guestText: guests.map((a: TrackArtist) => a.name).join(' / ') }
-          })
-          const description = result.description || album.description
-          this.setData({ album: { ...album, description, company: result.company || album.company, tracks, featuringGuests: result.featuringGuests || [] }, descriptionExpanded: false, ...getDescriptionState(description) })
-        }
-      },
-      complete: () => this.setData({ trackSyncing: false }),
-    } as any)
-  },
-
-  onDescriptionToggle() { if (this.data.hasLongDescription) this.setData({ descriptionExpanded: !this.data.descriptionExpanded }) },
-  onBack() { wx.navigateBack() },
-  onArtistTap() { const album = this.data.album; if (album?.neteaseArtistId) wx.navigateTo({ url: `/pages/artist/index?artistId=${album.neteaseArtistId}&artistName=${encodeURIComponent(album.primaryArtist)}` }) },
-  onGuestTap(e: WechatMiniprogram.TouchEvent) { const { id, name } = e.currentTarget.dataset as { id: number | string; name: string }; if (id && name) wx.navigateTo({ url: `/pages/artist/index?artistId=${id}&artistName=${encodeURIComponent(name)}` }) },
-  onWriteReview() { if (!this.data.isLoggedIn) { wx.navigateTo({ url: '/pages/login/index' }); return }; const album = this.data.album; if (album) wx.navigateTo({ url: `/pages/write-review/index?albumId=${album.id}&albumTitle=${encodeURIComponent(album.title)}` }) },
-  onLike(e: WechatMiniprogram.CustomEvent) { const reviewId = e.detail.reviewId; if (!reviewId) return; this.setData({ reviews: this.data.reviews.map((r: ReviewEntry) => r._id === reviewId ? { ...r, likes: r.likes + 1 } : r) }); wx.cloud.callFunction({ name: 'likeReview', data: { reviewId } } as any) },
-  onFavoriteToggle() { if (!this.data.isLoggedIn) { wx.navigateTo({ url: '/pages/login/index' }); return }; const album = this.data.album; if (!album) return; const wasFavorited = this.data.isFavorited; this.setData({ isFavorited: !wasFavorited }); wx.cloud.callFunction({ name: wasFavorited ? 'removeFavorite' : 'addFavorite', data: { albumId: album.id }, fail: () => { this.setData({ isFavorited: wasFavorited }); wx.showToast({ title: '操作失败', icon: 'error' }) } } as any) },
-})
+function getDescriptionState(description: string) { const value = String(description || '').trim(); const hasLongDescription = value.length > DESC_PREVIEW_LENGTH; return { descriptionPreview: hasLongDescription ? value.slice(0, DESC_PREVIEW_LENGTH).replace(/\s+$/, '') + '…' : value, hasLongDescription } }
+function formatReleaseDate(value: any, year: number): string { if (!value) return year ? String(year) : ''; const raw = typeof value === 'string' ? value : String(value); const match = raw.match(/(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})/); return match ? `${match[3]}/${match[2]}/${match[1]}` : (year ? String(year) : '') }
+function mapAlbum(raw: any): AlbumData { const score = raw.avgScore || 0; const year = raw.releaseYear || 0; const tracks = (raw.tracks || []).map((t: any, idx: number) => { const artists = t.artists || []; const guests = t.guests || []; return { songId: String(t.songId || ''), no: t.no || idx + 1, name: t.name || '', duration: t.duration || 0, artists, guests, artistText: artists.map((a: TrackArtist) => a.name).join(' / '), guestText: guests.map((a: TrackArtist) => a.name).join(' / ') } }); return { id: raw._id, title: raw.title || '', artist: raw.artist || '', primaryArtist: raw.primaryArtist || String(raw.artist || '').split(/[,，&]/)[0].trim(), neteaseArtistId: String(raw.neteaseArtistId || ''), sourceId: String(raw.sourceId || ''), year, releaseDate: raw.releaseDate || '', releaseDisplay: formatReleaseDate(raw.releaseDate, year), genres: raw.genres || [], avgScore: Math.round(score * 10) / 10, reviewCount: raw.reviewCount || 0, scoreFill: Math.round(score / 10 * 100) + '%', coverUrl: raw.coverUrl || '', description: raw.description || '', company: raw.company || '', tracks, featuringGuests: raw.featuringGuests || [] } }
+Page({data:{statusBarHeight:20,topbarHeight:64,album:null as AlbumData|null,reviews:[] as ReviewEntry[],isLoggedIn:false,isFavorited:false,loading:true,loadError:'',trackSyncing:false,descriptionPreview:'',hasLongDescription:false,descriptionExpanded:false,artistSheetVisible:false,artistSheetTitle:'该专辑有多位歌手',artistSheetList:[] as SheetArtist[]},onLoad(options){const app=getApp<IAppOption>();this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight,isLoggedIn:!!app.globalData.userInfo});const id=options.id||'';if(!id){this.setData({loading:false,loadError:'缺少专辑参数'});return}this._loadAlbum(id)},_loadAlbum(id:string){const albumCall=wx.cloud.callFunction({name:'getAlbums',data:{id}}).catch(()=>({result:{success:false}}));const reviewCall=wx.cloud.callFunction({name:'getReviews',data:{albumId:id,pageSize:50}}).catch(()=>({result:{success:false,list:[]}}));Promise.all([albumCall,reviewCall]).then((results:any[])=>{const albumRes=results[0]&&results[0].result?results[0].result:{success:false};const reviewsRes=results[1]&&results[1].result?results[1].result:{success:false,list:[]};const album=albumRes.success&&albumRes.album?mapAlbum(albumRes.album):null;const reviews=reviewsRes.success?(reviewsRes.list||[]).sort((a:any,b:any)=>Number(!!b.isPinned)-Number(!!a.isPinned)):[];this.setData({album,reviews,loading:false,loadError:album?'':'专辑加载失败',descriptionExpanded:false,...getDescriptionState(album?album.description:'')});if(album&&album.sourceId&&(!album.tracks.length||!album.description))this._syncAlbumTracks(album.id)});if(this.data.isLoggedIn)wx.cloud.callFunction({name:'getFavorites',data:{checkAlbum:id},success:(res:any)=>{if(res.result&&res.result.success)this.setData({isFavorited:res.result.isFavorited})}} as any)},_syncAlbumTracks(albumId:string){if(this.data.trackSyncing)return;this.setData({trackSyncing:true});wx.cloud.callFunction({name:'syncAlbumTracks',data:{albumId},success:(res:any)=>{const result=res.result||{};const album=this.data.album;if(!album||!result.success)return;const tracks=(result.tracks||[]).map((t:any,idx:number)=>{const artists=t.artists||[];const guests=t.guests||[];return {...t,no:t.no||idx+1,artistText:artists.map((a:TrackArtist)=>a.name).join(' / '),guestText:guests.map((a:TrackArtist)=>a.name).join(' / ')}});const description=result.description||album.description;this.setData({album:{...album,description,company:result.company||album.company,tracks,featuringGuests:result.featuringGuests||[]},descriptionExpanded:false,...getDescriptionState(description)})},complete:()=>this.setData({trackSyncing:false})} as any)},onDescriptionToggle(){if(this.data.hasLongDescription)this.setData({descriptionExpanded:!this.data.descriptionExpanded})},onBack(){wx.navigateBack()},onArtistTap(){const album=this.data.album;if(album&&album.neteaseArtistId)wx.navigateTo({url:'/pages/artist/index?artistId='+album.neteaseArtistId+'&artistName='+encodeURIComponent(album.primaryArtist)})},onOpenArtistSheet(e:WechatMiniprogram.TouchEvent){const source=(e.currentTarget.dataset as any).source;const album=this.data.album;if(!album)return;const raw=source==='guests'?album.featuringGuests:((album.tracks[0]&&album.tracks[0].artists)||[]);const list=(raw||[]).filter((x:any)=>x&&x.name).map((x:any)=>({id:Number(x.id||0),name:x.name,note:source==='guests'?`参与 ${x.count||1} 首歌曲`:'专辑歌手',initial:String(x.name||'?').slice(0,1),avatarUrl:''}));if(!list.length){wx.showToast({title:'暂无艺人资料',icon:'none'});return}this.setData({artistSheetVisible:true,artistSheetTitle:source==='guests'?'Featuring Guests':'该专辑有多位歌手',artistSheetList:list});const ids=list.map(x=>x.id).filter(Boolean);wx.cloud.callFunction({name:'getArtistAvatars',data:{artistIds:ids},success:(res:any)=>{const items=(res.result&&res.result.list)||[];const map:any={};items.forEach((x:any)=>{map[String(x.artistId)]=x.avatarUrl||''});this.setData({artistSheetList:this.data.artistSheetList.map((x:SheetArtist)=>({...x,avatarUrl:map[String(x.id)]||x.avatarUrl||''}))})}} as any)},onCloseArtistSheet(){this.setData({artistSheetVisible:false})},onSheetArtistTap(e:WechatMiniprogram.TouchEvent){const ds=e.currentTarget.dataset as any;this.setData({artistSheetVisible:false});if(ds.id&&ds.name)wx.navigateTo({url:'/pages/artist/index?artistId='+ds.id+'&artistName='+encodeURIComponent(ds.name)})},onGuestTap(e:WechatMiniprogram.TouchEvent){const ds=e.currentTarget.dataset as any;if(ds.id&&ds.name)wx.navigateTo({url:'/pages/artist/index?artistId='+ds.id+'&artistName='+encodeURIComponent(ds.name)})},onWriteReview(){if(!this.data.isLoggedIn){wx.navigateTo({url:'/pages/login/index'});return};const album=this.data.album;if(album)wx.navigateTo({url:'/pages/write-review/index?albumId='+album.id+'&albumTitle='+encodeURIComponent(album.title)})},onLike(e:WechatMiniprogram.CustomEvent){if(!this.data.isLoggedIn){wx.navigateTo({url:'/pages/login/index'});return};const reviewId=e.detail.reviewId;const review=this.data.reviews.filter((r:ReviewEntry)=>r._id===reviewId)[0];if(!reviewId||!review||review.likedByMe)return;this.setData({reviews:this.data.reviews.map((r:ReviewEntry)=>r._id===reviewId?{...r,likes:r.likes+1,likedByMe:true}:r)});wx.cloud.callFunction({name:'likeReview',data:{reviewId}} as any)},onReply(e:WechatMiniprogram.CustomEvent){if(!this.data.isLoggedIn){wx.navigateTo({url:'/pages/login/index'});return};const info=e.detail||{};if(!info.reviewId)return;wx.showModal({title:'回复 '+(info.userName||''),editable:true,placeholderText:'写下你的回复',confirmText:'发送',success:(modal:any)=>{const content=String(modal.content||'').trim();if(!modal.confirm||!content)return;wx.cloud.callFunction({name:'replyReview',data:{reviewId:info.reviewId,content}} as any)}})},onFavoriteToggle(){if(!this.data.isLoggedIn){wx.navigateTo({url:'/pages/login/index'});return};const album=this.data.album;if(!album)return;const old=this.data.isFavorited;this.setData({isFavorited:!old});wx.cloud.callFunction({name:old?'removeFavorite':'addFavorite',data:{albumId:album.id},fail:()=>this.setData({isFavorited:old})} as any)}})

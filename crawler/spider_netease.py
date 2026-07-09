@@ -270,12 +270,14 @@ def normalize_album(
 
     artist_obj       = raw.get("artist") or {}
     netease_artist_id = str(artist_obj["id"]) if artist_obj.get("id") else ""
+    artist_ids       = list(dict.fromkeys(str(a["id"]) for a in artists_list if a.get("id")))
 
     return {
         "title":            title,
         "artist":           artist,
         "primaryArtist":    primary_artist,
         "neteaseArtistId":  netease_artist_id,
+        "artistIds":        artist_ids,
         "releaseYear":      year,
         "coverUrl":         cover,
         "genres":           [],
