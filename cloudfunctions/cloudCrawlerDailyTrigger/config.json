@@ -1,10 +1,10 @@
 {
-  "timeout": 210,
+  "timeout": 60,
   "triggers": [
     {
-      "name": "everyTwoMinutes",
+      "name": "everyMinute",
       "type": "timer",
-      "config": "0 */2 * * * * *"
+      "config": "0 * * * * * *"
     }
   ]
 }

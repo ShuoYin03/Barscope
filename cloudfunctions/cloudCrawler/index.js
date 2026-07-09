@@ -7,7 +7,7 @@ const _ = db.command
 
 const COL = 'crawlerStatus'
 const DOC = 'singleton'
-const CHUNK = 60
+const CHUNK = 999
 const INTERNAL_TOKEN = 'cc_internal_v1'
 const DETAIL_CONCURRENCY = 8
 const SKIP_KEYWORDS = ['第一期','第二期','第三期','第四期','第五期','第六期','第七期','第八期','第九期','第十期','精选集','合辑','现场版','Live','OST','原声','巅峰对决','新说唱','中国有嘻哈','说唱新世代','浙江卫视','江苏卫视','湖南卫视','东方卫视','北京卫视','央视','CCTV','春晚','晚会','歌会','跨年','元宵','中秋','节目','综艺','盛典','音乐节','演唱会']
