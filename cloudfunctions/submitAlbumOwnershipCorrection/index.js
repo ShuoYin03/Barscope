@@ -6,10 +6,11 @@ exports.main = async event => {
   const { OPENID } = cloud.getWXContext()
   if (!OPENID) return { success:false, error:'请先登录' }
   const albumId = String(event.albumId || '').trim()
+  const targetId = String(event.targetArtistId || '').trim()
   const targetName = String(event.targetArtistName || '').trim()
   const reason = String(event.reason || '').trim().slice(0, 200)
   if (!albumId) return { success:false, error:'缺少专辑ID' }
-  if (!targetName) return { success:false, error:'请输入应归属的 rapper 名称' }
+  if (!targetId && !targetName) return { success:false, error:'请选择应归属的 rapper' }
 
   const album = (await db.collection('albums').doc(albumId).get()).data
   if (!album) return { success:false, error:'专辑不存在' }
@@ -18,8 +19,9 @@ exports.main = async event => {
   const norm = s => String(s || '').toLowerCase().replace(/\s+/g, '').replace(/[·._-]/g, '')
   const targetNorm = norm(targetName)
   const candidates = (approved.data || []).filter(a => a.artistId && a.artistName)
-  const exact = candidates.find(a => norm(a.artistName) === targetNorm)
-  const fuzzy = exact || candidates.find(a => norm(a.artistName).includes(targetNorm) || targetNorm.includes(norm(a.artistName)))
+  const byId = targetId ? candidates.find(a => String(a.artistId) === targetId) : null
+  const exact = targetName ? candidates.find(a => norm(a.artistName) === targetNorm) : null
+  const fuzzy = byId || exact || (targetName ? candidates.find(a => norm(a.artistName).includes(targetNorm) || targetNorm.includes(norm(a.artistName))) : null)
   if (!fuzzy) return { success:false, error:'未在已批准 rapper 中找到该名称，请先提交 rapper 申请或确认拼写' }
 
   const exists = await db.collection('album_ownership_corrections').where({ albumId, targetArtistId:String(fuzzy.artistId), status:'pending' }).limit(1).get()
