@@ -50,13 +50,12 @@ function dedupe(list) {
 }
 async function fetchAllApprovedAlbums(filters) {
   const all = []
-  // Some CloudBase environments behave oddly with count + skip on large unindexed queries.
-  // For ALL we page by actual returned batches instead of trusting count for pagination.
-  for (let offset = 0; offset < 5000; offset += 1000) {
-    const r = await db.collection('albums').where(filters).skip(offset).limit(1000).get()
+  // CloudBase is safest with 100-row pages. Larger limits can return unstable windows.
+  for (let offset = 0; offset < 5000; offset += 100) {
+    const r = await db.collection('albums').where(filters).skip(offset).limit(100).get()
     const batch = r.data || []
     all.push(...batch)
-    if (batch.length < 1000) break
+    if (batch.length < 100) break
   }
   return dedupe(all)
 }
@@ -72,8 +71,8 @@ exports.main = async event => {
     if (keyword) {
       const re = db.RegExp({ regexp: keyword, options: 'i' })
       const [res1, res2] = await Promise.all([
-        db.collection('albums').where({ approved: true, title: re }).limit(500).get(),
-        db.collection('albums').where({ approved: true, artist: re }).limit(500).get(),
+        db.collection('albums').where({ approved: true, title: re }).limit(100).get(),
+        db.collection('albums').where({ approved: true, artist: re }).limit(100).get(),
       ])
       const filtered = dedupe(res1.data.concat(res2.data)).filter(a => !genre || (a.genres || []).includes(genre)).filter(a => {
         if (!year || isAllYear(year)) return true
@@ -82,13 +81,13 @@ exports.main = async event => {
       }).filter(a => !month || !year || !/^\d{4}$/.test(String(year)) || String(a.releaseDate || '').slice(5, 7) === String(month).padStart(2, '0'))
       const sorted = isAllYear(year) || sortBy === 'allRatedFirst' ? sortAll(filtered) : filtered.sort((a, b) => String(a.releaseDate || '9999-99-99').localeCompare(String(b.releaseDate || '9999-99-99')))
       const start = (page - 1) * pageSize
-      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize, debug: { year, sortBy, all: isAllYear(year), matched: sorted.length } }
+      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize, debug: { year, sortBy, all: isAllYear(year), matched: sorted.length, returned: sorted.slice(start, start + pageSize).length } }
     }
     if (artistId) {
       const artistKey = String(artistId)
       const [coCreatorRes, legacyRes] = await Promise.all([
-        db.collection('albums').where({ approved: true, artistIds: _.all([artistKey]) }).limit(1000).get(),
-        db.collection('albums').where({ approved: true, neteaseArtistId: artistKey }).limit(1000).get(),
+        db.collection('albums').where({ approved: true, artistIds: _.all([artistKey]) }).limit(100).get(),
+        db.collection('albums').where({ approved: true, neteaseArtistId: artistKey }).limit(100).get(),
       ])
       const sorted = sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)), sortBy), start = (page - 1) * pageSize
       return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize }
@@ -102,7 +101,8 @@ exports.main = async event => {
       const all = await fetchAllApprovedAlbums(filters)
       const sorted = sortAll(all)
       const start = (page - 1) * pageSize
-      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize, debug: { year, sortBy, all: true, fetched: all.length } }
+      const list = sorted.slice(start, start + pageSize)
+      return { success: true, list, total: sorted.length, page, pageSize, debug: { year, sortBy, all: true, fetched: all.length, returned: list.length, start } }
     }
 
     const query = db.collection('albums').where(filters)
