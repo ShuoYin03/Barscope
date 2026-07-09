@@ -41,19 +41,31 @@ function sortList(list, sortBy) {
 function dedupe(list) {
   const seen = {}, seenKey = {}, merged = []
   list.forEach(a => {
-    if (seen[a._id]) return
+    if (!a || seen[a._id]) return
     const dupKey = `${String(a.title || '').toLowerCase()}|||${String(a.artist || '').toLowerCase()}`
     if (seenKey[dupKey]) return
     seen[a._id] = true; seenKey[dupKey] = true; merged.push(a)
   })
   return merged
 }
+async function fetchAllApprovedAlbums(filters) {
+  const all = []
+  // Some CloudBase environments behave oddly with count + skip on large unindexed queries.
+  // For ALL we page by actual returned batches instead of trusting count for pagination.
+  for (let offset = 0; offset < 5000; offset += 1000) {
+    const r = await db.collection('albums').where(filters).skip(offset).limit(1000).get()
+    const batch = r.data || []
+    all.push(...batch)
+    if (batch.length < 1000) break
+  }
+  return dedupe(all)
+}
 
 exports.main = async event => {
   const { genre, year, month, artistId, id } = event
-  const page = event.page || 1
-  const pageSize = event.pageSize || 20
-  const keyword = event.keyword || ''
+  const page = Number(event.page || 1)
+  const pageSize = Math.min(Number(event.pageSize || 20), 100)
+  const keyword = String(event.keyword || '').trim()
   const sortBy = event.sortBy || 'avgScore'
   try {
     if (id) return { success: true, album: (await db.collection('albums').doc(id).get()).data }
@@ -69,7 +81,8 @@ exports.main = async event => {
         return year === '2010s' ? y >= 2010 && y <= 2017 : year === '2000s' ? y >= 2000 && y <= 2009 : y === parseInt(year)
       }).filter(a => !month || !year || !/^\d{4}$/.test(String(year)) || String(a.releaseDate || '').slice(5, 7) === String(month).padStart(2, '0'))
       const sorted = isAllYear(year) || sortBy === 'allRatedFirst' ? sortAll(filtered) : filtered.sort((a, b) => String(a.releaseDate || '9999-99-99').localeCompare(String(b.releaseDate || '9999-99-99')))
-      return { success: true, list: sorted, total: sorted.length, page: 1, pageSize: sorted.length }
+      const start = (page - 1) * pageSize
+      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize, debug: { year, sortBy, all: isAllYear(year), matched: sorted.length } }
     }
     if (artistId) {
       const artistKey = String(artistId)
@@ -84,23 +97,18 @@ exports.main = async event => {
     if (genre) filters.genres = _.all([genre])
     else if (year && !isAllYear(year)) filters.releaseYear = year === '2010s' ? _.gte(2010).and(_.lte(2017)) : year === '2000s' ? _.gte(2000).and(_.lte(2009)) : _.eq(parseInt(year))
     if (month && year && /^\d{4}$/.test(String(year))) filters.releaseDate = db.RegExp({ regexp: `^${year}-${String(month).padStart(2, '0')}-`, options: '' })
-    const query = db.collection('albums').where(filters)
-    const total = (await query.count()).total
 
     if (isAllYear(year) || sortBy === 'allRatedFirst') {
-      const all = []
-      const max = Math.min(total, 5000)
-      for (let offset = 0; offset < max; offset += 1000) {
-        const r = await query.skip(offset).limit(1000).get()
-        all.push(...(r.data || []))
-      }
+      const all = await fetchAllApprovedAlbums(filters)
       const sorted = sortAll(all)
       const start = (page - 1) * pageSize
-      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize }
+      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize, debug: { year, sortBy, all: true, fetched: all.length } }
     }
 
+    const query = db.collection('albums').where(filters)
+    const total = (await query.count()).total
     const field = sortBy === 'releaseYear' ? 'releaseDate' : 'avgScore'
     const listResult = await query.orderBy(field, sortBy === 'releaseYear' ? 'asc' : 'desc').skip((page - 1) * pageSize).limit(pageSize).get()
     return { success: true, list: listResult.data, total, page, pageSize }
-  } catch (err) { return { success: false, error: err.message } }
+  } catch (err) { return { success: false, error: err.message, debug: { year, sortBy, page, pageSize } } }
 }
