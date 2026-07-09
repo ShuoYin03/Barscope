@@ -71,7 +71,7 @@
 
     <!-- ── SECTION 02: NEW RELEASES ────────────────────────────────── -->
     <view class="section-block">
-      <section-header num="02" title="本月新碟" more="{{true}}" bind:more="onReleasesMore" />
+      <section-header num="02" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
       <view wx:if="{{loading}}" class="grid2">
         <view wx:for="{{[1,2]}}" wx:key="*this" class="skel-cell">
           <view class="sk" style="width:80rpx;height:56rpx;margin-bottom:12rpx;" />

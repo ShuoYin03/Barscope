@@ -1,0 +1,48 @@
+<view class="page">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="title">近期发行</text>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{loading}}" class="list">
+      <view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="skel-row">
+        <view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" />
+        <view class="sk" style="width:112rpx;height:112rpx;flex-shrink:0;" />
+        <view class="skel-info">
+          <view class="sk" style="width:65%;height:26rpx;" />
+          <view class="sk" style="width:50%;height:20rpx;" />
+        </view>
+      </view>
+    </view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无近期发行专辑</view>
+    <view wx:else class="list">
+      <view
+        wx:for="{{list}}"
+        wx:key="albumId"
+        class="row"
+        bindtap="onAlbumTap"
+        data-id="{{item.albumId}}"
+      >
+        <text class="rank">{{item.rankDisplay}}</text>
+        <view class="vinyl-cover-wrap small">
+          <view class="vinyl-disc-peek" />
+          <image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="cover-sq cover-sq-ph" />
+        </view>
+        <view class="info">
+          <text class="title-text">{{item.title}}</text>
+          <view class="meta">
+            <text>{{item.artist}}</text>
+            <view class="meta-dot" />
+            <text>{{item.releaseDate || item.releaseYear}}</text>
+          </view>
+        </view>
+        <text wx:if="{{item.isThisWeek}}" class="tag-new">NEW</text>
+      </view>
+      <view class="list-end">
+        <text class="list-end-text">— END —</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

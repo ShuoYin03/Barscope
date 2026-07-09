@@ -36,7 +36,7 @@ Page({
     }).catch((err: any) => { console.error('home _loadData error', err); this.setData({ loading: false }) })
   },
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
-  onReleasesMore() { wx.switchTab({ url: '/pages/discover/index' }) },
+  onReleasesMore() { wx.navigateTo({ url: '/pages/recent-releases/index' }) },
   onGenreMore() { wx.switchTab({ url: '/pages/discover/index' }) },
   onGenreTap() { wx.switchTab({ url: '/pages/discover/index' }) },
   onAlbumTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
