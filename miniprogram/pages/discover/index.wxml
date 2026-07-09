@@ -1,38 +1,19 @@
 <view class="page">
-  <!-- TOPBAR -->
-  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <text class="topbar-title">DISCOVER</text>
-    <text class="topbar-filter">⊞</text>
-  </view>
-
-  <!-- SEARCH BAR -->
-  <view class="search-wrap">
-    <view class="search-inner">
-      <text class="search-icon">⌕</text>
-      <input class="search-input" placeholder="搜索专辑、歌手" placeholder-class="search-ph" bindinput="onSearch" value="{{keyword}}" />
-    </view>
-  </view>
-
-  <!-- VIEW SWITCH -->
-  <view class="view-switch">
-    <view class="switch-chip {{viewMode === 'albums' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="albums"><text>ALBUMS</text></view>
-    <view class="switch-chip {{viewMode === 'artists' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="artists"><text>ARTISTS</text></view>
-  </view>
-
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px"><text class="topbar-title">DISCOVER</text><text class="topbar-filter">⊞</text></view>
+  <view class="search-wrap"><view class="search-inner"><text class="search-icon">⌕</text><input class="search-input" placeholder="搜索专辑、歌手" placeholder-class="search-ph" bindinput="onSearch" value="{{keyword}}" /></view></view>
+  <view class="view-switch"><view class="switch-chip {{viewMode === 'albums' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="albums"><text>ALBUMS</text></view><view class="switch-chip {{viewMode === 'artists' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="artists"><text>ARTISTS</text></view></view>
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{artistScrollIntoView}}" scroll-with-animation="{{true}}" bindscrolltolower="onAlbumScrollToLower" lower-threshold="160">
     <block wx:if="{{viewMode === 'albums'}}">
       <view class="side-row"><text class="side-text">SIDE A — 年份 YEAR</text><view class="side-rule" /></view>
       <view class="year-stamps"><view wx:for="{{years}}" wx:key="name" class="year-stamp {{activeYear === item.name ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item.name}}"><text class="year-name">{{item.name}}</text></view></view>
       <view class="side-row"><text class="side-text">SIDE B — {{activeYear ? activeYear : '全部'}}{{activeMonth ? '.' + activeMonth : ''}} · {{loading ? '加载中' : total + ' 张'}}</text><view class="side-rule" /></view>
-      <view wx:if="{{loading}}" class="album-list">
-        <view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="skel-row"><view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:70%;height:26rpx;" /><view class="sk" style="width:55%;height:20rpx;" /><view class="sk" style="width:40%;height:18rpx;" /></view><view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" /></view>
-      </view>
+      <view wx:if="{{loading}}" class="album-list"><view wx:for="{{[1,2,3,4,5,6,7,8]}}" wx:key="*this" class="skel-row"><view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:70%;height:26rpx;" /><view class="sk" style="width:55%;height:20rpx;" /><view class="sk" style="width:40%;height:18rpx;" /></view><view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" /></view></view>
       <view wx:elif="{{list.length === 0}}" class="empty-state"><text class="empty-text">没有找到相关专辑</text></view>
-      <view wx:else class="album-list {{activeYear === 'ALL' ? '' : 'with-month-index'}}">
-        <view wx:for="{{list}}" wx:key="id" class="album-row" bindtap="onAlbumTap" data-id="{{item.id}}"><view class="vinyl-cover-wrap"><view class="vinyl-disc-peek" /><image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" /><view wx:else class="cover-sq cover-sq-ph" /></view><view class="album-info"><text class="album-title">{{item.title}}</text><text class="album-artist" catchtap="onArtistTap" data-artist-id="{{item.neteaseArtistId}}" data-artist="{{item.primaryArtist}}">{{item.artist}} · {{item.releaseDisplay}}</text></view><text class="album-score">{{item.score}}</text></view>
-        <view wx:if="{{loadingMore}}" class="load-more"><text>加载更多专辑…</text></view>
-        <view wx:elif="{{!albumHasMore}}" class="load-more"><text>已显示全部 {{total}} 张专辑</text></view>
-      </view>
+      <block wx:elif="{{activeYear === 'ALL'}}">
+        <view wx:if="{{allRatedList.length > 0}}" class="album-list all-album-list"><view class="artist-letter-row" id="album-rated"><text class="artist-letter-title">SCORED</text><view class="artist-letter-rule" /></view><view wx:for="{{allRatedList}}" wx:key="id" class="album-row" bindtap="onAlbumTap" data-id="{{item.id}}"><view class="vinyl-cover-wrap"><view class="vinyl-disc-peek" /><image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" /><view wx:else class="cover-sq cover-sq-ph" /></view><view class="album-info"><text class="album-title">{{item.title}}</text><text class="album-artist" catchtap="onArtistTap" data-artist-id="{{item.neteaseArtistId}}" data-artist="{{item.primaryArtist}}">{{item.artist}} · {{item.releaseDisplay}}</text></view><text class="album-score">{{item.score}}</text></view></view>
+        <view class="album-list all-album-list with-alpha-index"><view class="artist-letter-row"><text class="artist-letter-title">UNRATED A-Z</text><view class="artist-letter-rule" /></view><view wx:for="{{allUnratedGroups}}" wx:key="letter" class="artist-letter-group" id="album-letter-{{item.letter === '#' ? 'num' : item.letter}}"><view class="artist-letter-row"><text class="artist-letter-title">{{item.letter}}</text><view class="artist-letter-rule" /></view><view wx:for="{{item.list}}" wx:for-item="album" wx:key="id" class="album-row" bindtap="onAlbumTap" data-id="{{album.id}}"><view class="vinyl-cover-wrap"><view class="vinyl-disc-peek" /><image wx:if="{{album.coverUrl}}" class="cover-sq" src="{{album.coverUrl}}" mode="aspectFill" /><view wx:else class="cover-sq cover-sq-ph" /></view><view class="album-info"><text class="album-title">{{album.title}}</text><text class="album-artist" catchtap="onArtistTap" data-artist-id="{{album.neteaseArtistId}}" data-artist="{{album.primaryArtist}}">{{album.artist}} · {{album.releaseDisplay}}</text></view><text class="album-score">{{album.score}}</text></view></view><view wx:if="{{loadingMore}}" class="load-more"><text>加载更多专辑…</text></view><view wx:elif="{{!albumHasMore}}" class="load-more"><text>已显示全部 {{total}} 张专辑</text></view></view>
+      </block>
+      <view wx:else class="album-list with-month-index"><view wx:for="{{list}}" wx:key="id" class="album-row" bindtap="onAlbumTap" data-id="{{item.id}}"><view class="vinyl-cover-wrap"><view class="vinyl-disc-peek" /><image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" /><view wx:else class="cover-sq cover-sq-ph" /></view><view class="album-info"><text class="album-title">{{item.title}}</text><text class="album-artist" catchtap="onArtistTap" data-artist-id="{{item.neteaseArtistId}}" data-artist="{{item.primaryArtist}}">{{item.artist}} · {{item.releaseDisplay}}</text></view><text class="album-score">{{item.score}}</text></view><view wx:if="{{loadingMore}}" class="load-more"><text>加载更多专辑…</text></view><view wx:elif="{{!albumHasMore}}" class="load-more"><text>已显示全部 {{total}} 张专辑</text></view></view>
     </block>
     <block wx:else>
       <view class="side-row"><text class="side-text">SIDE A — LABEL 厂牌</text><view class="side-rule" /></view>
@@ -45,6 +26,7 @@
     </block>
   </scroll-view>
   <view wx:if="{{viewMode === 'albums' && activeYear && activeYear !== 'ALL' && activeYear !== '2010s' && activeYear !== '2000s'}}" class="month-index"><view wx:for="{{months}}" wx:key="*this" class="month-index-item {{activeMonth === item ? 'active' : ''}}" bindtap="onMonthTap" data-month="{{item}}"><text>{{item}}</text></view></view>
+  <view wx:if="{{viewMode === 'albums' && activeYear === 'ALL' && allAlbumLetters.length > 1}}" class="alphabet-index"><view wx:for="{{allAlbumLetters}}" wx:key="*this" class="alphabet-index-item {{activeAlbumLetter === item ? 'active' : ''}}" bindtap="onAlbumLetterTap" data-letter="{{item}}"><text>{{item}}</text></view></view>
   <view wx:if="{{viewMode === 'artists' && activeBrand === '全部' && artistLetters.length > 1}}" class="alphabet-index"><view wx:for="{{artistLetters}}" wx:key="*this" class="alphabet-index-item {{activeLetter === item ? 'active' : ''}}" bindtap="onLetterTap" data-letter="{{item}}"><text>{{item}}</text></view></view>
   <bottom-nav selected="{{2}}" />
 </view>
