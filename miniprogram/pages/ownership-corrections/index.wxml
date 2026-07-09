@@ -5,10 +5,12 @@
     <view wx:if="{{loading}}" class="empty">加载中…</view>
     <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadList">重新加载</view></view>
     <view wx:elif="{{list.length === 0}}" class="empty">暂无归属纠错申请</view>
-    <view wx:else wx:for="{{list}}" wx:key="_id" class="card">
-      <image class="cover" src="{{item.albumCoverUrl}}" mode="aspectFill" />
-      <view class="info"><text class="album">{{item.albumTitle}}</text><text class="artist">当前：{{item.currentArtist || item.currentPrimaryArtist || '未知'}}</text><text class="target">改为：{{item.targetArtistName}}</text><text class="reason">原因：{{item.reason}}</text></view>
-      <view class="actions"><view class="approve" bindtap="decide" data-id="{{item._id}}" data-decision="approve">批准</view><view class="decline" bindtap="decide" data-id="{{item._id}}" data-decision="decline">拒绝</view></view>
-    </view>
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="_id" class="card">
+        <image class="cover" src="{{item.albumCoverUrl}}" mode="aspectFill" />
+        <view class="info"><text class="album">{{item.albumTitle}}</text><text class="artist">当前：{{item.currentArtist || item.currentPrimaryArtist || '未知'}}</text><text class="target">改为：{{item.targetArtistName}}</text><text class="reason">原因：{{item.reason}}</text></view>
+        <view class="actions"><view class="approve" bindtap="decide" data-id="{{item._id}}" data-decision="approve">批准</view><view class="decline" bindtap="decide" data-id="{{item._id}}" data-decision="decline">拒绝</view></view>
+      </view>
+    </block>
   </scroll-view>
 </view>
