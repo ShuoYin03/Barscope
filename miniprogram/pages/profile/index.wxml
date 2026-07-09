@@ -18,6 +18,7 @@
     <block wx:if="{{isAdmin}}">
       <view class="side-row b"><text class="side-text">SIDE B — ADMIN</text></view>
       <view class="menu-row" bindtap="onAdminCandidates"><text class="menu-icon">✦</text><text class="menu-label">艺人候选审核</text><view wx:if="{{pendingCount > 0}}" class="pending-badge"><text class="pending-num">{{pendingCount}}</text></view><text class="menu-arrow">→</text></view>
+      <view class="menu-row" bindtap="onAdminAlbumFlags"><text class="menu-icon">⚑</text><text class="menu-label">被举报专辑</text><view wx:if="{{albumFlagCount > 0}}" class="pending-badge"><text class="pending-num">{{albumFlagCount}}</text></view><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminAlbums"><text class="menu-icon">◉</text><text class="menu-label">专辑管理</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCrawler"><text class="menu-icon">⟳</text><text class="menu-label">爬虫管理</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCritics"><text class="menu-icon">★</text><text class="menu-label">乐评人认证</text><text class="menu-arrow">→</text></view>
