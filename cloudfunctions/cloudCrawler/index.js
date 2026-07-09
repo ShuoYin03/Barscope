@@ -24,7 +24,7 @@ exports.main = async event => {
   try {
     if (action === 'album') return await runAlbum(String(event.albumId || event.param || ''))
     if (action === 'artist') return await runArtist(String(event.artistId || event.param || ''))
-    if (action === 'allApproved') return await runAllApproved(Number(event.cursor || 0))
+    if (action === 'allApproved') return await runAllApproved(Number(event.cursor || 0), internal)
     return { success: false, error: '未知 action' }
   } catch (e) {
     try { await appendLog(`出错: ${e.message}`); await patchStatus({ status: 'error', completedAt: db.serverDate(), lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [e.message] } }) } catch (x) {}
@@ -50,16 +50,21 @@ async function runArtist(id) {
   await doneStatus(1, r.inserted, `艺人 ${name || id}：新增 ${r.inserted} 张，候选 ${r.candidates || 0} 张，补全日期 ${r.dated || 0} 张`)
   return { success: true, artistName: name, ...r }
 }
-async function runAllApproved(cursor) {
+async function runAllApproved(cursor, internal) {
   const approved = await db.collection('artist_candidates').where({ status: 'approved' }).field({ artistId: true, artistName: true }).limit(1000).get()
   const list = (approved.data || []).filter(x => x.artistId)
   const total = list.length
   if (!total) { await doneStatus(0, 0, '没有已批准的艺人'); return { success: true, status: 'done', total: 0 } }
   if (cursor === 0) {
-    await patchStatus({ status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] } })
+    const existing = await getStatus()
+    if (existing.status === 'running' && existing.mode === 'allApproved') {
+      return { success: true, status: 'running', skipped: true, reason: '已有全量任务在跑，未重复开始', processed: Number((existing.progress && existing.progress.processedArtists) || 0), total }
+    }
+    await patchStatus({ status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, dailyUpdates: [] })
     await appendLog(`云端全量开始：${total} 位已批准艺人；每 ${CHUNK} 位为一批，逐位更新进度`)
   }
   let added = 0, dated = 0, candidates = 0
+  const updatesThisChunk = []
   const slice = list.slice(cursor, cursor + CHUNK)
   for (let i = 0; i < slice.length; i++) {
     const st = await getStatus()
@@ -71,18 +76,44 @@ async function runAllApproved(cursor) {
       added += r.inserted; dated += r.dated; candidates += r.candidates || 0
       const count = await db.collection('albums').where(_.or([{ artistIds: _.all([String(artist.artistId)]) }, { neteaseArtistId: String(artist.artistId) }])).count()
       await db.collection('artist_candidates').doc(artist._id).update({ data: { albumSize: count.total } })
-      await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName}: 新增${r.inserted}张，候选${r.candidates || 0}张，过滤${r.skipped || 0}张，日期写入${r.dated}张`)
+      if (internal) {
+        if (r.inserted > 0 || (r.candidates || 0) > 0) {
+          const parts = []
+          if (r.inserted > 0) parts.push(`新增${r.inserted}张`)
+          if ((r.candidates || 0) > 0) parts.push(`候选${r.candidates}张`)
+          updatesThisChunk.push(`${artist.artistName}(${parts.join('，')})`)
+        }
+      } else {
+        await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName}: 新增${r.inserted}张，候选${r.candidates || 0}张，过滤${r.skipped || 0}张，日期写入${r.dated}张`)
+      }
     } catch (e) { await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName} 失败: ${e.message}`) }
     const now = await getStatus(); const p = now.progress || {}
     await patchStatus({ progress: { totalArtists: total, processedArtists: cursor + i + 1, albumsFound: Number(p.albumsFound || 0) + added, candidatesFound: Number(p.candidatesFound || 0) + candidates } })
     added = 0; candidates = 0
     if ((await getStatus()).abort) { await finishAbort(await getStatus(), total); return { success: true, status: 'aborted', processed: cursor + i + 1, total } }
   }
+  if (internal && updatesThisChunk.length) {
+    const s2 = await getStatus()
+    const merged = (Array.isArray(s2.dailyUpdates) ? s2.dailyUpdates : []).concat(updatesThisChunk)
+    await patchStatus({ dailyUpdates: merged })
+  }
   const processed = Math.min(cursor + CHUNK, total)
   if (processed < total) { return { success: true, status: 'running', processed, total, dated } } // 不再自己递归调用下一批，靠 cloudCrawlerDailyTrigger 定时唤醒继续，避免整条链条卡在一次同步调用里撞超时
   const status = await getStatus(), p = status.progress || {}
   await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: [] } })
-  await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)
+  if (internal) {
+    const list = Array.isArray(status.dailyUpdates) ? status.dailyUpdates : []
+    if (!list.length) {
+      await appendLog(`今日检查完毕：${total} 位已批准艺人均无新内容`)
+    } else {
+      const shown = list.slice(0, 60)
+      const more = list.length > shown.length ? `，等共 ${list.length} 位艺人有更新` : ''
+      await appendLog(`今日更新：${shown.join('、')}${more}`)
+    }
+    await patchStatus({ dailyUpdates: [] })
+  } else {
+    await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)
+  }
   return { success: true, status: 'done', total, newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), dated }
 }
 async function finishAbort(status, total) { const p = status.progress || {}; await patchStatus({ status: 'aborted', abort: false, completedAt: db.serverDate(), progress: { totalArtists: total, processedArtists: Number(p.processedArtists || 0), albumsFound: Number(p.albumsFound || 0), candidatesFound: Number(p.candidatesFound || 0) }, lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: ['用户中止'] } }); await appendLog('任务已中止；已写入的数据会保留') }
@@ -133,7 +164,7 @@ async function upsertAlbums(rawList, fallbackArtist, opts) {
 }
 async function isAdmin(openId) { if (!openId) return false; const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get(); return r.data.length > 0 }
 async function getStatus() { try { return (await db.collection(COL).doc(DOC).get()).data } catch (e) { return makeDefault() } }
-function makeDefault() { return { status: 'idle', logs: [], progress: { totalArtists: 0, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, abort: false } }
+function makeDefault() { return { status: 'idle', logs: [], progress: { totalArtists: 0, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, abort: false, dailyUpdates: [] } }
 async function patchStatus(data) { const current = await getStatus(); const next = Object.assign({}, makeDefault(), current, data); delete next._id; if (current.progress && data.progress) next.progress = Object.assign({}, current.progress, data.progress); await db.collection(COL).doc(DOC).set({ data: next }) }
 async function startStatus(mode, param, total) { await patchStatus({ status: 'running', mode, param, abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 } }) }
 async function doneStatus(total, inserted, log) { await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), progress: { totalArtists: total, processedArtists: total, albumsFound: inserted, candidatesFound: 0 }, lastRunSummary: { newAlbums: inserted, newCandidates: 0, errors: [] } }); await appendLog(log) }
