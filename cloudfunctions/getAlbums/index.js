@@ -3,6 +3,10 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+function isAllYear(year) {
+  return !year || year === 'All' || year === '全部'
+}
+
 function releaseDay(a) {
   const d = String(a.releaseDate || '')
   if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10)
@@ -10,10 +14,14 @@ function releaseDay(a) {
   return y ? `${y}-01-01` : '0000-00-00'
 }
 
+function hasRating(a) {
+  return Number(a.reviewCount || 0) > 0 && Number(a.avgScore || 0) > 0
+}
+
 function sortList(list, sortBy) {
   if (sortBy === 'allMixed') return sortAllMixed(list)
   const field = sortBy === 'releaseYear' ? 'releaseDate' : 'avgScore'
-  const direction = sortBy === 'releaseYear' ? -1 : -1
+  const direction = -1
   return list.slice().sort((a, b) => {
     const av = field === 'releaseDate' ? releaseDay(a) : Number(a[field] || 0)
     const bv = field === 'releaseDate' ? releaseDay(b) : Number(b[field] || 0)
@@ -23,15 +31,16 @@ function sortList(list, sortBy) {
 
 function sortAllMixed(list) {
   return list.slice().sort((a, b) => {
-    const as = Number(a.avgScore || 0)
-    const bs = Number(b.avgScore || 0)
-    const aRated = as > 0
-    const bRated = bs > 0
+    const aRated = hasRating(a)
+    const bRated = hasRating(b)
     if (aRated && bRated) {
+      const as = Number(a.avgScore || 0)
+      const bs = Number(b.avgScore || 0)
       if (bs !== as) return bs - as
       return releaseDay(b).localeCompare(releaseDay(a))
     }
     if (aRated !== bRated) return aRated ? -1 : 1
+    // Unrated projects are sorted by release date from newest to oldest.
     return releaseDay(b).localeCompare(releaseDay(a))
   })
 }
@@ -66,7 +75,7 @@ exports.main = async event => {
       ])
       const merged = dedupe(res1.data.concat(res2.data))
       const filtered = merged.filter(a => !genre || (a.genres || []).includes(genre)).filter(a => {
-        if (!year || year === '全部') return true
+        if (isAllYear(year)) return true
         const y = a.releaseYear
         return year === '2010s' ? y >= 2010 && y <= 2017 : year === '2000s' ? y >= 2000 && y <= 2009 : y === parseInt(year)
       }).filter(a => !month || !year || !/^\d{4}$/.test(String(year)) || String(a.releaseDate || '').slice(5, 7) === String(month).padStart(2, '0'))
@@ -88,12 +97,12 @@ exports.main = async event => {
 
     const filters = { approved: true }
     if (genre) filters.genres = _.all([genre])
-    else if (year && year !== '全部') filters.releaseYear = year === '2010s' ? _.gte(2010).and(_.lte(2017)) : year === '2000s' ? _.gte(2000).and(_.lte(2009)) : _.eq(parseInt(year))
+    else if (!isAllYear(year)) filters.releaseYear = year === '2010s' ? _.gte(2010).and(_.lte(2017)) : year === '2000s' ? _.gte(2000).and(_.lte(2009)) : _.eq(parseInt(year))
     if (month && year && /^\d{4}$/.test(String(year))) filters.releaseDate = db.RegExp({ regexp: `^${year}-${String(month).padStart(2, '0')}-`, options: '' })
     const query = db.collection('albums').where(filters)
     const total = (await query.count()).total
 
-    if (sortBy === 'allMixed' || !year || year === '全部') {
+    if (sortBy === 'allMixed' || isAllYear(year)) {
       const all = []
       const MAX = 5000
       for (let offset = 0; offset < Math.min(total, MAX); offset += 1000) {
@@ -106,7 +115,7 @@ exports.main = async event => {
     }
 
     const field = sortBy === 'releaseYear' ? 'releaseDate' : 'avgScore'
-    const listResult = await query.orderBy(field, sortBy === 'releaseYear' ? 'desc' : 'desc').skip((page - 1) * pageSize).limit(pageSize).get()
+    const listResult = await query.orderBy(field, 'desc').skip((page - 1) * pageSize).limit(pageSize).get()
     return { success: true, list: listResult.data, total, page, pageSize }
   } catch (err) { return { success: false, error: err.message } }
 }
