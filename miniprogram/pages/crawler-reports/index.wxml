@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">RUN REPORTS</text></view>
+  <view class="head"><view><text class="head-title">运行报告</text><text class="head-desc">记录 cloudCrawlerDailyTrigger / cloudCrawler 每日更新结果</text></view><text class="count">{{list.length}} 条</text></view>
+  <scroll-view class="content" scroll-y>
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadReports">重新加载</view></view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无运行报告</view>
+    <view wx:else wx:for="{{list}}" wx:key="_id" class="card">
+      <text class="report-date">{{item.reportDate || item.createdAt || '未知日期'}}</text>
+      <view class="metrics"><text>处理 {{item.processedArtists || 0}} / {{item.totalArtists || 0}}</text><text>新增 {{item.newAlbums || 0}}</text><text>候选 {{item.newCandidates || 0}}</text></view>
+      <view wx:if="{{item.newAlbumItems && item.newAlbumItems.length}}" class="album-list"><text wx:for="{{item.newAlbumItems}}" wx:key="sourceId" class="album-item">{{item.artist}} - {{item.title}}</text></view>
+      <text wx:else class="muted">本次无新增专辑明细</text>
+    </view>
+  </scroll-view>
+</view>
