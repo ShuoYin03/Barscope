@@ -3,10 +3,7 @@
     <text class="topbar-title">PROFILE</text>
     <text wx:if="{{isLoggedIn}}" class="topbar-set" bindtap="onSettingsTap">⚙</text>
   </view>
-  <view wx:if="{{!isLoggedIn}}" class="gate-content">
-    <view class="vinyl-gate-disc"><view class="vinyl-gate-label"><text class="gate-disc-icon">○</text></view></view>
-    <text class="gate-title">登录查看个人主页</text><text class="gate-sub">追踪你的评分记录，加入韵镜社区</text><view class="gate-btn" bindtap="onLogin"><text>立即登录</text></view>
-  </view>
+  <view wx:if="{{!isLoggedIn}}" class="gate-content"><view class="vinyl-gate-disc"><view class="vinyl-gate-label"><text class="gate-disc-icon">○</text></view></view><text class="gate-title">登录查看个人主页</text><text class="gate-sub">追踪你的评分记录，加入韵镜社区</text><view class="gate-btn" bindtap="onLogin"><text>立即登录</text></view></view>
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="user-card"><view class="user-avatar vinyl-disc"><view class="vinyl-disc-center"><text class="avatar-initial">{{userInfo.nickName[0]}}</text></view><view class="vinyl-disc-spindle" /></view><view class="user-info-col"><text class="user-name">{{userInfo.nickName}}</text><view wx:if="{{isCritic}}" class="critic-badge-wrap"><text class="critic-badge">乐评人</text></view><text wx:if="{{userInfo.bio}}" class="user-bio">{{userInfo.bio}}</text></view></view>
     <view class="stat-strip"><view class="stat-cell"><text class="stat-num">{{reviews.length}}</text><text class="stat-lbl">评论</text></view><view class="stat-cell"><text class="stat-num">{{favCount}}</text><text class="stat-lbl">收藏</text></view><view class="stat-cell"><text class="stat-num">{{albumCount}}</text><text class="stat-lbl">专辑</text></view></view>
@@ -19,6 +16,8 @@
       <view class="side-row b"><text class="side-text">SIDE B — ADMIN</text></view>
       <view class="menu-row" bindtap="onAdminCandidates"><text class="menu-icon">✦</text><text class="menu-label">艺人候选审核</text><view wx:if="{{pendingCount > 0}}" class="pending-badge"><text class="pending-num">{{pendingCount}}</text></view><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminAlbumFlags"><text class="menu-icon">⚑</text><text class="menu-label">被举报专辑</text><view wx:if="{{albumFlagCount > 0}}" class="pending-badge"><text class="pending-num">{{albumFlagCount}}</text></view><text class="menu-arrow">→</text></view>
+      <view class="menu-row" bindtap="onAdminOwnershipCorrections"><text class="menu-icon">⇄</text><text class="menu-label">归属纠错审核</text><view wx:if="{{ownershipCorrectionCount > 0}}" class="pending-badge"><text class="pending-num">{{ownershipCorrectionCount}}</text></view><text class="menu-arrow">→</text></view>
+      <view class="menu-row" bindtap="onAdminCrawlerReports"><text class="menu-icon">☷</text><text class="menu-label">运行报告</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminAlbums"><text class="menu-icon">◉</text><text class="menu-label">专辑管理</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCrawler"><text class="menu-icon">⟳</text><text class="menu-label">爬虫管理</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCritics"><text class="menu-icon">★</text><text class="menu-label">乐评人认证</text><text class="menu-arrow">→</text></view>
