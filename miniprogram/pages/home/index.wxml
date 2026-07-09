@@ -19,15 +19,15 @@
     <view wx:if="{{loading}}" class="hero-banner hero-banner-sk" />
     <view wx:elif="{{hero}}" class="hero-banner" bindtap="onHeroTap">
       <view class="hero-kicker" style="align-self:flex-start;margin-bottom:22rpx;font-size:20rpx;font-weight:800;letter-spacing:6rpx;color:#d45124;"><text>今日热评专辑</text></view>
-      <view class="vinyl-hero-wrap" style="width:520rpx;height:430rpx;position:relative;display:flex;align-items:center;justify-content:center;">
-        <view class="vinyl-hero-disc" style="position:absolute;right:14rpx;top:8rpx;z-index:1;">
+      <view class="vinyl-hero-wrap" style="width:560rpx;height:355rpx;position:relative;display:flex;align-items:flex-start;justify-content:center;">
+        <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">
           <view class="vinyl-hero-label">
             <text class="vinyl-label-score-num">{{hero.score}}</text>
             <text class="vinyl-label-score-sub">BARSCOPE</text>
           </view>
           <view class="vinyl-hero-spindle" />
         </view>
-        <view class="hero-cover-card" style="position:absolute;left:52rpx;top:92rpx;width:270rpx;height:270rpx;z-index:3;background:#050505;box-shadow:0 18rpx 36rpx rgba(0,0,0,.5);">
+        <view class="hero-cover-card" style="position:absolute;left:72rpx;top:8rpx;width:320rpx;height:320rpx;z-index:3;background:#050505;box-shadow:0 18rpx 36rpx rgba(0,0,0,.5);">
           <image wx:if="{{hero.coverUrl}}" class="hero-cover-img" style="width:100%;height:100%;display:block;" src="{{hero.coverUrl}}" mode="aspectFill" />
           <view wx:else class="hero-cover-fallback" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#111;color:#d45124;font-size:80rpx;font-family:var(--font-bebas);"><text>{{hero.title[0]}}</text></view>
         </view>
