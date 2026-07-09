@@ -4,109 +4,29 @@ const db = cloud.database()
 const _ = db.command
 
 function isAllYear(year) { return year === 'ALL' }
-function releaseDay(a) { const d=String(a.releaseDate||''); if(/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10); const y=Number(a.releaseYear||0); return y?`${y}-01-01`:'0000-00-00' }
 function sortList(list, sortBy) { const field=sortBy==='releaseYear'?'releaseDate':'avgScore'; const direction=sortBy==='releaseYear'?1:-1; return list.slice().sort((a,b)=>{const av=a[field]||(direction===1?'9999-99-99':0); const bv=b[field]||(direction===1?'9999-99-99':0); return direction*(av>bv?1:av<bv?-1:0)}) }
-function isValidAlbum(a){
-  const title=String(a&&a.title||'').trim()
-  const cover=String(a&&a.coverUrl||'').trim()
-  if(!title || !cover) return false
-  if(/^[-_—–·.\s]+$/.test(title)) return false
-  if(title.length<=1 && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(title)) return false
-  return true
-}
+function isValidAlbum(a){ const title=String(a&&a.title||'').trim(); const cover=String(a&&a.coverUrl||'').trim(); if(!title||!cover)return false; if(/^[-_—–·.\s]+$/.test(title))return false; if(title.length<=1&&!/[\u4e00-\u9fa5A-Za-z0-9]/.test(title))return false; return true }
 function filterValid(list){ return (list||[]).filter(isValidAlbum) }
 function dedupe(list){const seen={},seenKey={},merged=[];filterValid(list).forEach(a=>{if(!a||seen[a._id])return;const dupKey=`${String(a.title||'').toLowerCase()}|||${String(a.artist||'').toLowerCase()}`;if(seenKey[dupKey])return;seen[a._id]=true;seenKey[dupKey]=true;merged.push(a)});return merged}
 function baseFilters(genre){const filters={approved:true}; if(genre) filters.genres=_.all([genre]); return filters}
 function ratedFilters(genre){return Object.assign(baseFilters(genre), { avgScore: _.gt(0), reviewCount: _.gt(0) })}
 function unratedFilters(genre){return Object.assign(baseFilters(genre), { avgScore: _.lte(0) })}
+function letterRegExp(letter){ const l=String(letter||'').toUpperCase(); return l==='#' ? db.RegExp({regexp:'^[^A-Za-z]',options:''}) : db.RegExp({regexp:`^${l}`,options:'i'}) }
 
-async function getValidPage(query, { orderBy, start, pageSize }){
-  const out=[]
-  let offset=start
-  let guard=0
-  while(out.length<pageSize && guard<8){
-    let q=query
-    ;(orderBy||[]).forEach(o=>{ q=q.orderBy(o[0],o[1]) })
-    const r=await q.skip(offset).limit(pageSize).get()
-    const batch=r.data||[]
-    out.push(...filterValid(batch))
-    if(batch.length<pageSize) break
-    offset+=pageSize
-    guard++
-  }
-  return out.slice(0,pageSize)
-}
+async function getValidPage(query, { orderBy, start, pageSize }){ const out=[]; let offset=start; let guard=0; while(out.length<pageSize&&guard<8){ let q=query; (orderBy||[]).forEach(o=>{q=q.orderBy(o[0],o[1])}); const r=await q.skip(offset).limit(pageSize).get(); const batch=r.data||[]; out.push(...filterValid(batch)); if(batch.length<pageSize)break; offset+=pageSize; guard++ } return out.slice(0,pageSize) }
 
-async function fetchAllPage({ genre, page, pageSize }) {
-  const ratedQuery = db.collection('albums').where(ratedFilters(genre))
-  const unratedQuery = db.collection('albums').where(unratedFilters(genre))
-  const [ratedCountRes, unratedCountRes] = await Promise.all([ratedQuery.count(), unratedQuery.count()])
-  const ratedTotal = Number(ratedCountRes.total || 0)
-  const unratedTotal = Number(unratedCountRes.total || 0)
-  const total = ratedTotal + unratedTotal
-  const start = (page - 1) * pageSize
-  let list = []
-
-  if (start < ratedTotal) {
-    const ratedNeed = Math.min(pageSize, ratedTotal - start)
-    const ratedList = await getValidPage(ratedQuery, { orderBy:[['avgScore','desc'],['releaseDate','desc']], start, pageSize:ratedNeed })
-    list = list.concat(ratedList)
-    if (list.length < pageSize) {
-      const remain = pageSize - list.length
-      const unratedList = await getValidPage(unratedQuery, { orderBy:[['title','asc'],['releaseDate','desc']], start:0, pageSize:remain })
-      list = list.concat(unratedList)
-    }
-  } else {
-    const unratedStart = start - ratedTotal
-    list = await getValidPage(unratedQuery, { orderBy:[['title','asc'],['releaseDate','desc']], start:unratedStart, pageSize })
-  }
-
-  return { success:true, list, total, page, pageSize, debug:{ year:'ALL', ratedTotal, unratedTotal, returned:list.length, start, validOnly:true } }
-}
+async function fetchAllPage({ genre, page, pageSize }) { const ratedQuery=db.collection('albums').where(ratedFilters(genre)); const unratedQuery=db.collection('albums').where(unratedFilters(genre)); const [ratedCountRes,unratedCountRes]=await Promise.all([ratedQuery.count(),unratedQuery.count()]); const ratedTotal=Number(ratedCountRes.total||0), unratedTotal=Number(unratedCountRes.total||0); const total=ratedTotal+unratedTotal; const start=(page-1)*pageSize; let list=[]; if(start<ratedTotal){ const ratedNeed=Math.min(pageSize,ratedTotal-start); list=list.concat(await getValidPage(ratedQuery,{orderBy:[['avgScore','desc'],['releaseDate','desc']],start,pageSize:ratedNeed})); if(list.length<pageSize){ list=list.concat(await getValidPage(unratedQuery,{orderBy:[['title','asc'],['releaseDate','desc']],start:0,pageSize:pageSize-list.length})) } } else { list=await getValidPage(unratedQuery,{orderBy:[['title','asc'],['releaseDate','desc']],start:start-ratedTotal,pageSize}) } return {success:true,list,total,page,pageSize,debug:{year:'ALL',ratedTotal,unratedTotal,returned:list.length,start,validOnly:true}} }
+async function fetchUnratedLetter({ genre, letter, page, pageSize }){ const filters=Object.assign(unratedFilters(genre),{title:letterRegExp(letter)}); const query=db.collection('albums').where(filters); const rawTotal=(await query.count()).total; const start=(page-1)*pageSize; const list=await getValidPage(query,{orderBy:[['title','asc'],['releaseDate','desc']],start,pageSize}); return {success:true,list,total:rawTotal,page,pageSize,debug:{mode:'unratedLetter',letter,returned:list.length,start,validOnly:true}} }
 
 exports.main = async event => {
-  const { genre, year, month, artistId, id } = event
-  const page = Number(event.page || 1)
-  const pageSize = Math.min(Number(event.pageSize || 20), 100)
-  const keyword = String(event.keyword || '').trim()
-  const sortBy = event.sortBy || 'avgScore'
+  const { genre, year, month, artistId, id, unratedLetter } = event
+  const page=Number(event.page||1), pageSize=Math.min(Number(event.pageSize||20),100), keyword=String(event.keyword||'').trim(), sortBy=event.sortBy||'avgScore'
   try {
-    if (id) return { success: true, album: (await db.collection('albums').doc(id).get()).data }
-
-    if (isAllYear(year) || sortBy === 'allRatedFirst') {
-      return await fetchAllPage({ genre, page, pageSize })
-    }
-
-    if (keyword) {
-      const re = db.RegExp({ regexp: keyword, options: 'i' })
-      const [res1, res2] = await Promise.all([
-        db.collection('albums').where({ approved: true, title: re }).limit(100).get(),
-        db.collection('albums').where({ approved: true, artist: re }).limit(100).get(),
-      ])
-      const filtered = dedupe(res1.data.concat(res2.data)).filter(a=>!genre||(a.genres||[]).includes(genre)).filter(a=>{if(!year)return true;const y=a.releaseYear;return year==='2010s'?y>=2010&&y<=2017:year==='2000s'?y>=2000&&y<=2009:y===parseInt(year)}).filter(a=>!month||!year||!/^\d{4}$/.test(String(year))||String(a.releaseDate||'').slice(5,7)===String(month).padStart(2,'0'))
-      const sorted = filtered.sort((a,b)=>String(a.releaseDate||'9999-99-99').localeCompare(String(b.releaseDate||'9999-99-99')))
-      const start=(page-1)*pageSize, list=sorted.slice(start,start+pageSize)
-      return { success:true, list, total:sorted.length, page, pageSize, debug:{year,sortBy,matched:sorted.length,returned:list.length} }
-    }
-
-    if (artistId) {
-      const artistKey = String(artistId)
-      const [coCreatorRes, legacyRes] = await Promise.all([
-        db.collection('albums').where({ approved: true, artistIds: _.all([artistKey]) }).limit(100).get(),
-        db.collection('albums').where({ approved: true, neteaseArtistId: artistKey }).limit(100).get(),
-      ])
-      const sorted=sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)),sortBy), start=(page-1)*pageSize
-      return { success:true, list:sorted.slice(start,start+pageSize), total:sorted.length, page, pageSize }
-    }
-
-    const filters = { approved: true }
-    if (genre) filters.genres = _.all([genre])
-    else if (year) filters.releaseYear = year==='2010s'?_.gte(2010).and(_.lte(2017)):year==='2000s'?_.gte(2000).and(_.lte(2009)):_.eq(parseInt(year))
-    if (month && year && /^\d{4}$/.test(String(year))) filters.releaseDate = db.RegExp({ regexp:`^${year}-${String(month).padStart(2,'0')}-`, options:'' })
-    const query=db.collection('albums').where(filters)
-    const total=(await query.count()).total
-    const field=sortBy==='releaseYear'?'releaseDate':'avgScore'
-    const listResult=await query.orderBy(field, sortBy==='releaseYear'?'asc':'desc').skip((page-1)*pageSize).limit(pageSize).get()
-    return { success:true, list:filterValid(listResult.data), total, page, pageSize }
-  } catch(err) { return { success:false, error:err.message, debug:{year,sortBy,page,pageSize} } }
+    if(id) return {success:true,album:(await db.collection('albums').doc(id).get()).data}
+    if(isAllYear(year)&&unratedLetter) return await fetchUnratedLetter({genre,letter:unratedLetter,page,pageSize})
+    if(isAllYear(year)||sortBy==='allRatedFirst') return await fetchAllPage({genre,page,pageSize})
+    if(keyword){ const re=db.RegExp({regexp:keyword,options:'i'}); const [res1,res2]=await Promise.all([db.collection('albums').where({approved:true,title:re}).limit(100).get(),db.collection('albums').where({approved:true,artist:re}).limit(100).get()]); const filtered=dedupe(res1.data.concat(res2.data)).filter(a=>!genre||(a.genres||[]).includes(genre)).filter(a=>{if(!year)return true;const y=a.releaseYear;return year==='2010s'?y>=2010&&y<=2017:year==='2000s'?y>=2000&&y<=2009:y===parseInt(year)}).filter(a=>!month||!year||!/^\d{4}$/.test(String(year))||String(a.releaseDate||'').slice(5,7)===String(month).padStart(2,'0')); const sorted=filtered.sort((a,b)=>String(a.releaseDate||'9999-99-99').localeCompare(String(b.releaseDate||'9999-99-99'))); const start=(page-1)*pageSize,list=sorted.slice(start,start+pageSize); return {success:true,list,total:sorted.length,page,pageSize,debug:{year,sortBy,matched:sorted.length,returned:list.length}} }
+    if(artistId){ const artistKey=String(artistId); const [coCreatorRes,legacyRes]=await Promise.all([db.collection('albums').where({approved:true,artistIds:_.all([artistKey])}).limit(100).get(),db.collection('albums').where({approved:true,neteaseArtistId:artistKey}).limit(100).get()]); const sorted=sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)),sortBy),start=(page-1)*pageSize; return {success:true,list:sorted.slice(start,start+pageSize),total:sorted.length,page,pageSize} }
+    const filters={approved:true}; if(genre)filters.genres=_.all([genre]); else if(year)filters.releaseYear=year==='2010s'?_.gte(2010).and(_.lte(2017)):year==='2000s'?_.gte(2000).and(_.lte(2009)):_.eq(parseInt(year)); if(month&&year&&/^\d{4}$/.test(String(year)))filters.releaseDate=db.RegExp({regexp:`^${year}-${String(month).padStart(2,'0')}-`,options:''}); const query=db.collection('albums').where(filters); const total=(await query.count()).total; const field=sortBy==='releaseYear'?'releaseDate':'avgScore'; const listResult=await query.orderBy(field,sortBy==='releaseYear'?'asc':'desc').skip((page-1)*pageSize).limit(pageSize).get(); return {success:true,list:filterValid(listResult.data),total,page,pageSize}
+  } catch(err){ return {success:false,error:err.message,debug:{year,sortBy,page,pageSize,unratedLetter}} }
 }
