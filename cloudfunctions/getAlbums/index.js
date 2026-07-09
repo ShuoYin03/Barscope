@@ -3,62 +3,22 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
-function isAllYear(year) {
-  return year === 'ALL'
-}
-function releaseDay(a) {
-  const d = String(a.releaseDate || '')
-  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10)
-  const y = Number(a.releaseYear || 0)
-  return y ? `${y}-01-01` : '0000-00-00'
-}
-function hasRating(a) {
-  return Number(a.reviewCount || 0) > 0 && Number(a.avgScore || 0) > 0
-}
+function isAllYear(year) { return year === 'ALL' }
+function releaseDay(a) { const d=String(a.releaseDate||''); if(/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10); const y=Number(a.releaseYear||0); return y?`${y}-01-01`:'0000-00-00' }
+function hasRating(a) { return Number(a.reviewCount || 0) > 0 && Number(a.avgScore || 0) > 0 }
+function titleKey(a) { return String(a.title || '').trim() }
 function sortAll(list) {
-  return list.slice().sort((a, b) => {
-    const ar = hasRating(a)
-    const br = hasRating(b)
-    if (ar && br) {
-      const diff = Number(b.avgScore || 0) - Number(a.avgScore || 0)
-      if (diff) return diff
-      return releaseDay(b).localeCompare(releaseDay(a))
-    }
-    if (ar !== br) return ar ? -1 : 1
-    return releaseDay(b).localeCompare(releaseDay(a))
+  return list.slice().sort((a,b)=>{
+    const ar=hasRating(a), br=hasRating(b)
+    if(ar && br){ const diff=Number(b.avgScore||0)-Number(a.avgScore||0); if(diff)return diff; return releaseDay(b).localeCompare(releaseDay(a)) }
+    if(ar!==br) return ar ? -1 : 1
+    const t=titleKey(a).localeCompare(titleKey(b),'zh-Hans-CN-u-co-pinyin',{sensitivity:'base',numeric:true})
+    return t || releaseDay(b).localeCompare(releaseDay(a))
   })
 }
-function sortList(list, sortBy) {
-  if (sortBy === 'allRatedFirst') return sortAll(list)
-  const field = sortBy === 'releaseYear' ? 'releaseDate' : 'avgScore'
-  const direction = sortBy === 'releaseYear' ? 1 : -1
-  return list.slice().sort((a, b) => {
-    const av = a[field] || (direction === 1 ? '9999-99-99' : 0)
-    const bv = b[field] || (direction === 1 ? '9999-99-99' : 0)
-    return direction * (av > bv ? 1 : av < bv ? -1 : 0)
-  })
-}
-function dedupe(list) {
-  const seen = {}, seenKey = {}, merged = []
-  list.forEach(a => {
-    if (!a || seen[a._id]) return
-    const dupKey = `${String(a.title || '').toLowerCase()}|||${String(a.artist || '').toLowerCase()}`
-    if (seenKey[dupKey]) return
-    seen[a._id] = true; seenKey[dupKey] = true; merged.push(a)
-  })
-  return merged
-}
-async function fetchAllApprovedAlbums(filters) {
-  const all = []
-  // CloudBase is safest with 100-row pages. Larger limits can return unstable windows.
-  for (let offset = 0; offset < 5000; offset += 100) {
-    const r = await db.collection('albums').where(filters).skip(offset).limit(100).get()
-    const batch = r.data || []
-    all.push(...batch)
-    if (batch.length < 100) break
-  }
-  return dedupe(all)
-}
+function sortList(list, sortBy) { if(sortBy==='allRatedFirst')return sortAll(list); const field=sortBy==='releaseYear'?'releaseDate':'avgScore'; const direction=sortBy==='releaseYear'?1:-1; return list.slice().sort((a,b)=>{const av=a[field]||(direction===1?'9999-99-99':0); const bv=b[field]||(direction===1?'9999-99-99':0); return direction*(av>bv?1:av<bv?-1:0)}) }
+function dedupe(list){const seen={},seenKey={},merged=[];list.forEach(a=>{if(!a||seen[a._id])return;const dupKey=`${String(a.title||'').toLowerCase()}|||${String(a.artist||'').toLowerCase()}`;if(seenKey[dupKey])return;seen[a._id]=true;seenKey[dupKey]=true;merged.push(a)});return merged}
+async function fetchAllApprovedAlbums(filters){const all=[];for(let offset=0;offset<5000;offset+=100){const r=await db.collection('albums').where(filters).skip(offset).limit(100).get();const batch=r.data||[];all.push(...batch);if(batch.length<100)break}return dedupe(all)}
 
 exports.main = async event => {
   const { genre, year, month, artistId, id } = event
@@ -74,14 +34,10 @@ exports.main = async event => {
         db.collection('albums').where({ approved: true, title: re }).limit(100).get(),
         db.collection('albums').where({ approved: true, artist: re }).limit(100).get(),
       ])
-      const filtered = dedupe(res1.data.concat(res2.data)).filter(a => !genre || (a.genres || []).includes(genre)).filter(a => {
-        if (!year || isAllYear(year)) return true
-        const y = a.releaseYear
-        return year === '2010s' ? y >= 2010 && y <= 2017 : year === '2000s' ? y >= 2000 && y <= 2009 : y === parseInt(year)
-      }).filter(a => !month || !year || !/^\d{4}$/.test(String(year)) || String(a.releaseDate || '').slice(5, 7) === String(month).padStart(2, '0'))
-      const sorted = isAllYear(year) || sortBy === 'allRatedFirst' ? sortAll(filtered) : filtered.sort((a, b) => String(a.releaseDate || '9999-99-99').localeCompare(String(b.releaseDate || '9999-99-99')))
-      const start = (page - 1) * pageSize
-      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize, debug: { year, sortBy, all: isAllYear(year), matched: sorted.length, returned: sorted.slice(start, start + pageSize).length } }
+      const filtered = dedupe(res1.data.concat(res2.data)).filter(a=>!genre||(a.genres||[]).includes(genre)).filter(a=>{if(!year||isAllYear(year))return true;const y=a.releaseYear;return year==='2010s'?y>=2010&&y<=2017:year==='2000s'?y>=2000&&y<=2009:y===parseInt(year)}).filter(a=>!month||!year||!/^\d{4}$/.test(String(year))||String(a.releaseDate||'').slice(5,7)===String(month).padStart(2,'0'))
+      const sorted = isAllYear(year)||sortBy==='allRatedFirst' ? sortAll(filtered) : filtered.sort((a,b)=>String(a.releaseDate||'9999-99-99').localeCompare(String(b.releaseDate||'9999-99-99')))
+      const start=(page-1)*pageSize, list=sorted.slice(start,start+pageSize)
+      return { success:true, list, total:sorted.length, page, pageSize, debug:{year,sortBy,all:isAllYear(year),matched:sorted.length,returned:list.length} }
     }
     if (artistId) {
       const artistKey = String(artistId)
@@ -89,26 +45,23 @@ exports.main = async event => {
         db.collection('albums').where({ approved: true, artistIds: _.all([artistKey]) }).limit(100).get(),
         db.collection('albums').where({ approved: true, neteaseArtistId: artistKey }).limit(100).get(),
       ])
-      const sorted = sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)), sortBy), start = (page - 1) * pageSize
-      return { success: true, list: sorted.slice(start, start + pageSize), total: sorted.length, page, pageSize }
+      const sorted=sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)),sortBy), start=(page-1)*pageSize
+      return { success:true, list:sorted.slice(start,start+pageSize), total:sorted.length, page, pageSize }
     }
     const filters = { approved: true }
     if (genre) filters.genres = _.all([genre])
-    else if (year && !isAllYear(year)) filters.releaseYear = year === '2010s' ? _.gte(2010).and(_.lte(2017)) : year === '2000s' ? _.gte(2000).and(_.lte(2009)) : _.eq(parseInt(year))
-    if (month && year && /^\d{4}$/.test(String(year))) filters.releaseDate = db.RegExp({ regexp: `^${year}-${String(month).padStart(2, '0')}-`, options: '' })
-
+    else if (year && !isAllYear(year)) filters.releaseYear = year==='2010s'?_.gte(2010).and(_.lte(2017)):year==='2000s'?_.gte(2000).and(_.lte(2009)):_.eq(parseInt(year))
+    if (month && year && /^\d{4}$/.test(String(year))) filters.releaseDate = db.RegExp({ regexp:`^${year}-${String(month).padStart(2,'0')}-`, options:'' })
     if (isAllYear(year) || sortBy === 'allRatedFirst') {
       const all = await fetchAllApprovedAlbums(filters)
       const sorted = sortAll(all)
-      const start = (page - 1) * pageSize
-      const list = sorted.slice(start, start + pageSize)
-      return { success: true, list, total: sorted.length, page, pageSize, debug: { year, sortBy, all: true, fetched: all.length, returned: list.length, start } }
+      const start=(page-1)*pageSize, list=sorted.slice(start,start+pageSize)
+      return { success:true, list, total:sorted.length, page, pageSize, debug:{year,sortBy,all:true,fetched:all.length,returned:list.length,start} }
     }
-
-    const query = db.collection('albums').where(filters)
-    const total = (await query.count()).total
-    const field = sortBy === 'releaseYear' ? 'releaseDate' : 'avgScore'
-    const listResult = await query.orderBy(field, sortBy === 'releaseYear' ? 'asc' : 'desc').skip((page - 1) * pageSize).limit(pageSize).get()
-    return { success: true, list: listResult.data, total, page, pageSize }
-  } catch (err) { return { success: false, error: err.message, debug: { year, sortBy, page, pageSize } } }
+    const query=db.collection('albums').where(filters)
+    const total=(await query.count()).total
+    const field=sortBy==='releaseYear'?'releaseDate':'avgScore'
+    const listResult=await query.orderBy(field, sortBy==='releaseYear'?'asc':'desc').skip((page-1)*pageSize).limit(pageSize).get()
+    return { success:true, list:listResult.data, total, page, pageSize }
+  } catch(err) { return { success:false, error:err.message, debug:{year,sortBy,page,pageSize} } }
 }
