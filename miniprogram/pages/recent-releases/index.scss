@@ -8,11 +8,11 @@
 }
 
 .topbar {
-  height: 92rpx;
   display: flex;
   align-items: center;
   gap: 24rpx;
   padding-left: 32rpx;
+  padding-bottom: 14rpx;
   border-bottom: 2rpx solid var(--accent);
   flex-shrink: 0;
   box-sizing: border-box;

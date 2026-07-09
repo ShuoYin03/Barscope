@@ -1,13 +1,14 @@
 Page({
   data: {
     statusBarHeight: 20,
+    topbarHeight:    64,
     list:            [] as any[],
     loading:         true,
   },
 
   onLoad() {
     const app = getApp<IAppOption>()
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight })
+    this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
     this._loadList()
   },
 

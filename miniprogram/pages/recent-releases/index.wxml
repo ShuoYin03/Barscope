@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="topbar" style="padding-top: {{statusBarHeight}}px">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <text class="back" bindtap="onBack">←</text>
     <text class="title">近期发行</text>
   </view>
