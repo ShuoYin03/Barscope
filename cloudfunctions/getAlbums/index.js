@@ -6,10 +6,36 @@ const _ = db.command
 function isAllYear(year) { return year === 'ALL' }
 function releaseDay(a) { const d=String(a.releaseDate||''); if(/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0,10); const y=Number(a.releaseYear||0); return y?`${y}-01-01`:'0000-00-00' }
 function sortList(list, sortBy) { const field=sortBy==='releaseYear'?'releaseDate':'avgScore'; const direction=sortBy==='releaseYear'?1:-1; return list.slice().sort((a,b)=>{const av=a[field]||(direction===1?'9999-99-99':0); const bv=b[field]||(direction===1?'9999-99-99':0); return direction*(av>bv?1:av<bv?-1:0)}) }
-function dedupe(list){const seen={},seenKey={},merged=[];list.forEach(a=>{if(!a||seen[a._id])return;const dupKey=`${String(a.title||'').toLowerCase()}|||${String(a.artist||'').toLowerCase()}`;if(seenKey[dupKey])return;seen[a._id]=true;seenKey[dupKey]=true;merged.push(a)});return merged}
+function isValidAlbum(a){
+  const title=String(a&&a.title||'').trim()
+  const cover=String(a&&a.coverUrl||'').trim()
+  if(!title || !cover) return false
+  if(/^[-_—–·.\s]+$/.test(title)) return false
+  if(title.length<=1 && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(title)) return false
+  return true
+}
+function filterValid(list){ return (list||[]).filter(isValidAlbum) }
+function dedupe(list){const seen={},seenKey={},merged=[];filterValid(list).forEach(a=>{if(!a||seen[a._id])return;const dupKey=`${String(a.title||'').toLowerCase()}|||${String(a.artist||'').toLowerCase()}`;if(seenKey[dupKey])return;seen[a._id]=true;seenKey[dupKey]=true;merged.push(a)});return merged}
 function baseFilters(genre){const filters={approved:true}; if(genre) filters.genres=_.all([genre]); return filters}
 function ratedFilters(genre){return Object.assign(baseFilters(genre), { avgScore: _.gt(0), reviewCount: _.gt(0) })}
 function unratedFilters(genre){return Object.assign(baseFilters(genre), { avgScore: _.lte(0) })}
+
+async function getValidPage(query, { orderBy, start, pageSize }){
+  const out=[]
+  let offset=start
+  let guard=0
+  while(out.length<pageSize && guard<8){
+    let q=query
+    ;(orderBy||[]).forEach(o=>{ q=q.orderBy(o[0],o[1]) })
+    const r=await q.skip(offset).limit(pageSize).get()
+    const batch=r.data||[]
+    out.push(...filterValid(batch))
+    if(batch.length<pageSize) break
+    offset+=pageSize
+    guard++
+  }
+  return out.slice(0,pageSize)
+}
 
 async function fetchAllPage({ genre, page, pageSize }) {
   const ratedQuery = db.collection('albums').where(ratedFilters(genre))
@@ -23,20 +49,19 @@ async function fetchAllPage({ genre, page, pageSize }) {
 
   if (start < ratedTotal) {
     const ratedNeed = Math.min(pageSize, ratedTotal - start)
-    const ratedRes = await ratedQuery.orderBy('avgScore', 'desc').orderBy('releaseDate', 'desc').skip(start).limit(ratedNeed).get()
-    list = list.concat(ratedRes.data || [])
+    const ratedList = await getValidPage(ratedQuery, { orderBy:[['avgScore','desc'],['releaseDate','desc']], start, pageSize:ratedNeed })
+    list = list.concat(ratedList)
     if (list.length < pageSize) {
       const remain = pageSize - list.length
-      const unratedRes = await unratedQuery.orderBy('title', 'asc').orderBy('releaseDate', 'desc').skip(0).limit(remain).get()
-      list = list.concat(unratedRes.data || [])
+      const unratedList = await getValidPage(unratedQuery, { orderBy:[['title','asc'],['releaseDate','desc']], start:0, pageSize:remain })
+      list = list.concat(unratedList)
     }
   } else {
     const unratedStart = start - ratedTotal
-    const unratedRes = await unratedQuery.orderBy('title', 'asc').orderBy('releaseDate', 'desc').skip(unratedStart).limit(pageSize).get()
-    list = unratedRes.data || []
+    list = await getValidPage(unratedQuery, { orderBy:[['title','asc'],['releaseDate','desc']], start:unratedStart, pageSize })
   }
 
-  return { success:true, list, total, page, pageSize, debug:{ year:'ALL', ratedTotal, unratedTotal, returned:list.length, start } }
+  return { success:true, list, total, page, pageSize, debug:{ year:'ALL', ratedTotal, unratedTotal, returned:list.length, start, validOnly:true } }
 }
 
 exports.main = async event => {
@@ -82,6 +107,6 @@ exports.main = async event => {
     const total=(await query.count()).total
     const field=sortBy==='releaseYear'?'releaseDate':'avgScore'
     const listResult=await query.orderBy(field, sortBy==='releaseYear'?'asc':'desc').skip((page-1)*pageSize).limit(pageSize).get()
-    return { success:true, list:listResult.data, total, page, pageSize }
+    return { success:true, list:filterValid(listResult.data), total, page, pageSize }
   } catch(err) { return { success:false, error:err.message, debug:{year,sortBy,page,pageSize} } }
 }
