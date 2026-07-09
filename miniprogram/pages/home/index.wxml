@@ -15,15 +15,22 @@
     <!-- TICKER -->
     <ticker songs="{{tickerSongs}}" />
 
-    <!-- ── HERO — vinyl record, score on orange label (H-A) ─────────── -->
+    <!-- ── HERO — today hot reviewed album ─────────── -->
     <view wx:if="{{loading}}" class="hero-banner hero-banner-sk" />
     <view wx:elif="{{hero}}" class="hero-banner" bindtap="onHeroTap">
-      <view class="vinyl-hero-disc">
-        <view class="vinyl-hero-label">
-          <text class="vinyl-label-score-num">{{hero.score}}</text>
-          <text class="vinyl-label-score-sub">BARSCOPE</text>
+      <view class="hero-kicker" style="align-self:flex-start;margin-bottom:22rpx;font-size:20rpx;font-weight:800;letter-spacing:6rpx;color:#d45124;"><text>今日热评专辑</text></view>
+      <view class="vinyl-hero-wrap" style="width:560rpx;height:355rpx;position:relative;display:flex;align-items:flex-start;justify-content:center;">
+        <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">
+          <view class="vinyl-hero-label">
+            <text class="vinyl-label-score-num">{{hero.score}}</text>
+            <text class="vinyl-label-score-sub">BARSCOPE</text>
+          </view>
+          <view class="vinyl-hero-spindle" />
         </view>
-        <view class="vinyl-hero-spindle" />
+        <view class="hero-cover-card" style="position:absolute;left:72rpx;top:8rpx;width:320rpx;height:320rpx;z-index:3;background:#050505;box-shadow:0 18rpx 36rpx rgba(0,0,0,.5);">
+          <image wx:if="{{hero.coverUrl}}" class="hero-cover-img" style="width:100%;height:100%;display:block;" src="{{hero.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="hero-cover-fallback" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#111;color:#d45124;font-size:80rpx;font-family:var(--font-bebas);"><text>{{hero.title[0]}}</text></view>
+        </view>
       </view>
       <view class="hero-info">
         <text class="hero-title">{{hero.title}}</text>
@@ -50,18 +57,9 @@
       </view>
       <view wx:else class="ca-list">
         <view class="ca-rows">
-          <view
-            wx:for="{{chartItems}}"
-            wx:key="rank"
-            class="ca-row"
-            bindtap="onAlbumTap"
-            data-id="{{item.albumId}}"
-          >
+          <view wx:for="{{chartItems}}" wx:key="rank" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}">
             <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank <= 5 ? 'A' + item.rank : 'B' + (item.rank - 5)}}</text>
-            <view class="ca-info">
-              <text class="ca-title">{{item.title}}</text>
-              <text class="ca-artist">{{item.artist}}</text>
-            </view>
+            <view class="ca-info"><text class="ca-title">{{item.title}}</text><text class="ca-artist">{{item.artist}}</text></view>
             <text class="ca-score">{{item.scoreDisplay}}</text>
           </view>
         </view>
@@ -81,54 +79,22 @@
         </view>
       </view>
       <view wx:else class="grid2">
-        <view
-          wx:for="{{newReleases}}"
-          wx:key="rank"
-          class="grid2-cell"
-          bindtap="onAlbumTap"
-          data-id="{{item.albumId}}"
-        >
+        <view wx:for="{{newReleases}}" wx:key="rank" class="grid2-cell" bindtap="onAlbumTap" data-id="{{item.albumId}}">
           <text class="g2-rank">{{item.rank}}</text>
-          <view class="g2-cover">
-            <image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" />
-            <view wx:else class="vinyl-cover-sq" />
-          </view>
+          <view class="g2-cover"><image wx:if="{{item.coverUrl}}" class="cover-img" src="{{item.coverUrl}}" mode="aspectFill" /><view wx:else class="vinyl-cover-sq" /></view>
           <text class="g2-title">{{item.title}}</text>
           <text class="g2-artist">{{item.artist}} · {{item.year}}</text>
-          <view class="g2-score-row">
-            <text class="g2-score">{{item.scoreDisplay}}</text>
-            <view class="g2-bar">
-              <view class="g2-bar-fill" style="width: {{item.scoreFill}}" />
-            </view>
-          </view>
+          <view class="g2-score-row"><text class="g2-score">{{item.scoreDisplay}}</text><view class="g2-bar"><view class="g2-bar-fill" style="width: {{item.scoreFill}}" /></view></view>
         </view>
       </view>
     </view>
 
     <!-- ── GENRE GRID ─────────────────────────────────────────────── -->
     <view class="genre-section">
-      <view class="genre-hd">
-        <view class="genre-hd-left">
-          <text class="genre-num">03</text>
-          <text class="genre-hd-title">按风格浏览</text>
-        </view>
-        <text class="genre-hd-more" bindtap="onGenreMore">全部 →</text>
-      </view>
+      <view class="genre-hd"><view class="genre-hd-left"><text class="genre-num">03</text><text class="genre-hd-title">按风格浏览</text></view><text class="genre-hd-more" bindtap="onGenreMore">全部 →</text></view>
       <view class="genre-grid">
-        <view
-          wx:for="{{genres}}"
-          wx:key="name"
-          class="genre-cell"
-          bindtap="onGenreTap"
-          data-genre="{{item.name}}"
-        >
-          <text class="genre-name">{{item.name}}</text>
-          <text class="genre-count">{{item.count}}</text>
-        </view>
-        <view class="genre-cell genre-all" bindtap="onGenreMore">
-          <text class="genre-name">全部 →</text>
-          <text class="genre-count">{{genres.length}} 类型</text>
-        </view>
+        <view wx:for="{{genres}}" wx:key="name" class="genre-cell" bindtap="onGenreTap" data-genre="{{item.name}}"><text class="genre-name">{{item.name}}</text><text class="genre-count">{{item.count}}</text></view>
+        <view class="genre-cell genre-all" bindtap="onGenreMore"><text class="genre-name">全部 →</text><text class="genre-count">{{genres.length}} 类型</text></view>
       </view>
     </view>
 
@@ -137,81 +103,23 @@
       <section-header num="04" title="最新评论" more="{{true}}" bind:more="onReviewMore" />
       <view wx:if="{{loading}}" class="reviews-list">
         <view wx:for="{{[1,2,3]}}" wx:key="*this" class="review-item">
-          <view class="review-header">
-            <view class="sk" style="width:60rpx;height:60rpx;border-radius:50%;flex-shrink:0;" />
-            <view class="skel-info">
-              <view class="sk" style="width:120rpx;height:24rpx;" />
-              <view class="sk" style="width:80rpx;height:20rpx;" />
-            </view>
-          </view>
-          <view class="sk" style="width:100%;height:22rpx;margin-bottom:8rpx;" />
-          <view class="sk" style="width:80%;height:22rpx;" />
+          <view class="review-header"><view class="sk" style="width:60rpx;height:60rpx;border-radius:50%;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:120rpx;height:24rpx;" /><view class="sk" style="width:80rpx;height:20rpx;" /></view></view>
+          <view class="sk" style="width:100%;height:22rpx;margin-bottom:8rpx;" /><view class="sk" style="width:80%;height:22rpx;" />
         </view>
       </view>
       <view wx:else class="reviews-list">
-        <view
-          wx:for="{{reviews}}"
-          wx:key="id"
-          class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}"
-        >
-          <view class="review-header">
-            <view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}">
-              <text>{{item.initial}}</text>
-            </view>
-            <view class="review-meta">
-              <view class="review-name-row">
-                <text class="review-user">{{item.userName}}</text>
-                <text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text>
-              </view>
-              <text class="review-time">{{item.timeAgo}}</text>
-            </view>
-            <text class="review-album-badge">{{item.albumTitle}}</text>
-            <text class="review-score">{{item.score}}</text>
-          </view>
-          <text class="review-text">{{item.content}}</text>
-          <view class="review-footer">
-            <text>❤ {{item.likes}}</text>
-            <text class="sep"> | </text>
-            <text>💬 {{item.replyCount}}条回复</text>
-          </view>
+        <view wx:for="{{reviews}}" wx:key="id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}">
+          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.score}}</text></view>
+          <text class="review-text">{{item.content}}</text><view class="review-footer"><text>❤ {{item.likes}}</text><text class="sep"> | </text><text>💬 {{item.replyCount}}条回复</text></view>
         </view>
       </view>
     </view>
 
     <!-- STATS STRIP -->
-    <view class="stat-strip">
-      <view class="stat-cell">
-        <view class="stat-num-row">
-          <text class="stat-accent">{{totalAlbums}}</text>
-        </view>
-        <text class="stat-label">收录专辑</text>
-      </view>
-      <view class="stat-cell stat-mid">
-        <view class="stat-num-row">
-          <text class="stat-accent">38</text><text class="stat-plain">K</text>
-        </view>
-        <text class="stat-label">评分用户</text>
-      </view>
-      <view class="stat-cell">
-        <view class="stat-num-row">
-          <text class="stat-accent">126</text><text class="stat-plain">K</text>
-        </view>
-        <text class="stat-label">评论总数</text>
-      </view>
-    </view>
+    <view class="stat-strip"><view class="stat-cell"><view class="stat-num-row"><text class="stat-accent">{{totalAlbums}}</text></view><text class="stat-label">收录专辑</text></view><view class="stat-cell stat-mid"><view class="stat-num-row"><text class="stat-accent">38</text><text class="stat-plain">K</text></view><text class="stat-label">评分用户</text></view><view class="stat-cell"><view class="stat-num-row"><text class="stat-accent">126</text><text class="stat-plain">K</text></view><text class="stat-label">评论总数</text></view></view>
 
     <!-- CTA -->
-    <view class="cta-section">
-      <view class="cta-headline">
-        <text>加入韵镜</text>
-        <text>留下你的打分</text>
-      </view>
-      <text class="cta-sub">华语说唱最大评分社区，每一张专辑都值得被认真对待。</text>
-      <view class="cta-buttons">
-        <view class="btn-primary" bindtap="onRegister"><text>立即注册</text></view>
-        <view class="btn-secondary" bindtap="onLearnMore"><text>了解更多</text></view>
-      </view>
-    </view>
+    <view class="cta-section"><view class="cta-headline"><text>加入韵镜</text><text>留下你的打分</text></view><text class="cta-sub">华语说唱最大评分社区，每一张专辑都值得被认真对待。</text><view class="cta-buttons"><view class="btn-primary" bindtap="onRegister"><text>立即注册</text></view><view class="btn-secondary" bindtap="onLearnMore"><text>了解更多</text></view></view></view>
 
   </scroll-view>
 

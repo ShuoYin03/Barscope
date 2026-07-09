@@ -8,7 +8,7 @@ exports.main = async (event) => {
   if (action === 'upsert') return upsert(event.candidates || [])
   if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
   if (action === 'list') return list(event.status || 'pending')
-  if (action === 'decide') return decide(event.id, event.decision)
+  if (action === 'decide') return decide(event.id, event.decision, OPENID)
   if (action === 'stats') return stats()
   return { success: false, error: 'unknown action' }
 }
@@ -41,17 +41,49 @@ async function stats() {
   return { success: true, pending: r.total }
 }
 
-async function decide(id, decision) {
-  if (!id || !['approve', 'decline'].includes(decision)) return { success: false, error: 'invalid decision' }
+async function decide(id, decision, openId) {
+  if (!id || !['keep', 'delete', 'approve', 'decline'].includes(decision)) return { success: false, error: 'invalid decision' }
+  const normalized = decision === 'approve' ? 'keep' : decision === 'decline' ? 'delete' : decision
   const doc = await db.collection('album_candidates').doc(id).get()
   const candidate = doc.data
-  if (decision === 'approve') {
-    const exists = await db.collection('albums').where({ sourceId: candidate.sourceId }).limit(1).get()
-    if (!exists.data.length) {
-      const { _id, status, addedAt, decidedAt, ...album } = candidate
-      await db.collection('albums').add({ data: { ...album, approved: false } })
+  if (!candidate) return { success: false, error: 'candidate not found' }
+
+  const originalId = candidate.albumOriginalId || candidate.originalAlbumId || ''
+  if (normalized === 'keep') {
+    if (originalId) {
+      await db.collection('albums').doc(originalId).update({ data: {
+        approved: true,
+        movedToCandidate: false,
+        restoredFromCandidateAt: db.serverDate(),
+        restoredFromCandidateBy: openId,
+      } })
+    } else if (candidate.sourceId) {
+      const exists = await db.collection('albums').where({ sourceId: String(candidate.sourceId) }).limit(1).get()
+      if (exists.data.length) {
+        await db.collection('albums').doc(exists.data[0]._id).update({ data: { approved: true, movedToCandidate: false, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
+      } else {
+        const { _id, status, addedAt, decidedAt, albumOriginalId, originalAlbumId, reportReason, reportSource, reportedBy, movedFromAlbumsAt, ...album } = candidate
+        await db.collection('albums').add({ data: { ...album, approved: true, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
+      }
     }
   }
-  await db.collection('album_candidates').doc(id).update({ data: { status: decision === 'approve' ? 'approved' : 'declined', decidedAt: db.serverDate() } })
+
+  if (normalized === 'delete') {
+    if (originalId) {
+      try { await db.collection('albums').doc(originalId).remove() } catch (e) { await db.collection('albums').doc(originalId).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
+    } else if (candidate.sourceId) {
+      const exists = await db.collection('albums').where({ sourceId: String(candidate.sourceId) }).limit(20).get()
+      for (const a of exists.data || []) {
+        try { await db.collection('albums').doc(a._id).remove() } catch (e) { await db.collection('albums').doc(a._id).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
+      }
+    }
+  }
+
+  await db.collection('album_candidates').doc(id).update({ data: {
+    status: normalized === 'keep' ? 'kept' : 'deleted',
+    decision: normalized,
+    decidedAt: db.serverDate(),
+    decidedBy: openId,
+  } })
   return { success: true }
 }
