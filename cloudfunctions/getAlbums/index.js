@@ -15,55 +15,17 @@ function baseFilters(genre){const filters={approved:true}; if(genre) filters.gen
 function ratedFilters(genre){return Object.assign(baseFilters(genre), { avgScore: _.gt(0), reviewCount: _.gt(0) })}
 function unratedFilters(genre){return Object.assign(baseFilters(genre), { avgScore: _.lte(0) })}
 function letterRegExp(letter){ const l=String(letter||'').toUpperCase(); return l==='#' ? db.RegExp({regexp:'^[^A-Za-z]',options:''}) : db.RegExp({regexp:`^${l}`,options:'i'}) }
-function normalize(v){return String(v||'').trim().toLowerCase().replace(/[\s._\-·'’]/g,'')}
+function normalize(v){return String(v||'').trim().toLowerCase().replace(/[\s._\-·'’/]/g,'')}
 function pinyinForms(v){const parts=pinyin(String(v||''),{toneType:'none',type:'array'});return [normalize(v),normalize(parts.join('')),normalize(parts.map(x=>x.charAt(0)).join(''))]}
 function fuzzyMatch(v,q){const needle=normalize(q);return !!needle&&pinyinForms(v).some(x=>x.includes(needle))}
+function relevance(a,q){const n=normalize(q),title=normalize(a.title),artist=normalize(a.artist),primary=normalize(a.primaryArtist);const titleForms=pinyinForms(a.title),artistForms=pinyinForms(`${a.artist||''} ${a.primaryArtist||''}`);if(title===n)return 100;if(title.startsWith(n))return 90;if(title.includes(n))return 80;if(titleForms.some(x=>x.startsWith(n)))return 75;if(titleForms.some(x=>x.includes(n)))return 70;if(artist===n||primary===n)return 60;if(artist.startsWith(n)||primary.startsWith(n))return 55;if(artist.includes(n)||primary.includes(n))return 50;if(artistForms.some(x=>x.startsWith(n)))return 45;if(artistForms.some(x=>x.includes(n)))return 40;return 0}
 
-async function getValidPage(query, { orderBy, start, pageSize }){
-  const out=[]; let offset=start; let guard=0
-  while(out.length<pageSize&&guard<8){
-    let q=query; (orderBy||[]).forEach(o=>{q=q.orderBy(o[0],o[1])})
-    const r=await q.skip(offset).limit(pageSize).get(); const batch=r.data||[]
-    out.push(...filterValid(batch)); if(batch.length<pageSize)break
-    offset+=pageSize; guard++
-  }
-  return out.slice(0,pageSize)
-}
+async function getValidPage(query, { orderBy, start, pageSize }){const out=[];let offset=start,guard=0;while(out.length<pageSize&&guard<8){let q=query;(orderBy||[]).forEach(o=>{q=q.orderBy(o[0],o[1])});const r=await q.skip(offset).limit(pageSize).get(),batch=r.data||[];out.push(...filterValid(batch));if(batch.length<pageSize)break;offset+=pageSize;guard++}return out.slice(0,pageSize)}
+async function fetchAllApprovedAlbums(){const query=db.collection('albums').where({approved:true});const total=Number((await query.count()).total||0),pageSize=100,batches=[];for(let start=0;start<total;start+=pageSize)batches.push(query.skip(start).limit(pageSize).get());return (await Promise.all(batches)).flatMap(x=>x.data||[])}
 
-async function fetchUnratedOrderedSlice({ genre, start, pageSize }) {
-  const counts = await Promise.all(UNRATED_LETTER_ORDER.map(async letter => {
-    const filters = Object.assign(unratedFilters(genre), { title: letterRegExp(letter) })
-    const total = Number((await db.collection('albums').where(filters).count()).total || 0)
-    return { letter, total }
-  }))
-  const list=[]; let cursor=0
-  for(const {letter,total} of counts){
-    if(list.length>=pageSize)break
-    const groupEnd=cursor+total
-    if(start>=groupEnd){cursor=groupEnd;continue}
-    const withinGroupStart=Math.max(0,start-cursor),need=pageSize-list.length
-    const filters=Object.assign(unratedFilters(genre),{title:letterRegExp(letter)})
-    const chunk=await getValidPage(db.collection('albums').where(filters),{orderBy:[['title','asc'],['releaseDate','desc']],start:withinGroupStart,pageSize:need})
-    list.push(...chunk);cursor=groupEnd
-  }
-  return list
-}
-
-async function fetchAllPage({ genre, page, pageSize }) {
-  const ratedQuery=db.collection('albums').where(ratedFilters(genre))
-  const unratedQuery=db.collection('albums').where(unratedFilters(genre))
-  const [ratedCountRes,unratedCountRes]=await Promise.all([ratedQuery.count(),unratedQuery.count()])
-  const ratedTotal=Number(ratedCountRes.total||0),unratedTotal=Number(unratedCountRes.total||0),total=ratedTotal+unratedTotal,start=(page-1)*pageSize
-  let list=[]
-  if(start<ratedTotal){
-    const ratedNeed=Math.min(pageSize,ratedTotal-start)
-    list=list.concat(await getValidPage(ratedQuery,{orderBy:[['avgScore','desc'],['releaseDate','desc']],start,pageSize:ratedNeed}))
-    if(list.length<pageSize)list=list.concat(await fetchUnratedOrderedSlice({genre,start:0,pageSize:pageSize-list.length}))
-  }else list=await fetchUnratedOrderedSlice({genre,start:start-ratedTotal,pageSize})
-  return {success:true,list,total,page,pageSize,debug:{year:'ALL',ratedTotal,unratedTotal,returned:list.length,start,validOnly:true,unratedOrder:'A-Z-#'}}
-}
-
-async function fetchUnratedLetter({ genre, letter, page, pageSize }){ const filters=Object.assign(unratedFilters(genre),{title:letterRegExp(letter)}); const query=db.collection('albums').where(filters); const rawTotal=(await query.count()).total; const start=(page-1)*pageSize; const list=await getValidPage(query,{orderBy:[['title','asc'],['releaseDate','desc']],start,pageSize}); return {success:true,list,total:rawTotal,page,pageSize,debug:{mode:'unratedLetter',letter,returned:list.length,start,validOnly:true}} }
+async function fetchUnratedOrderedSlice({ genre, start, pageSize }) {const counts=await Promise.all(UNRATED_LETTER_ORDER.map(async letter=>{const filters=Object.assign(unratedFilters(genre),{title:letterRegExp(letter)});return{letter,total:Number((await db.collection('albums').where(filters).count()).total||0)}}));const list=[];let cursor=0;for(const {letter,total} of counts){if(list.length>=pageSize)break;const groupEnd=cursor+total;if(start>=groupEnd){cursor=groupEnd;continue}const withinGroupStart=Math.max(0,start-cursor),need=pageSize-list.length,filters=Object.assign(unratedFilters(genre),{title:letterRegExp(letter)});list.push(...await getValidPage(db.collection('albums').where(filters),{orderBy:[['title','asc'],['releaseDate','desc']],start:withinGroupStart,pageSize:need}));cursor=groupEnd}return list}
+async function fetchAllPage({ genre, page, pageSize }) {const ratedQuery=db.collection('albums').where(ratedFilters(genre)),unratedQuery=db.collection('albums').where(unratedFilters(genre));const [ratedCountRes,unratedCountRes]=await Promise.all([ratedQuery.count(),unratedQuery.count()]);const ratedTotal=Number(ratedCountRes.total||0),unratedTotal=Number(unratedCountRes.total||0),total=ratedTotal+unratedTotal,start=(page-1)*pageSize;let list=[];if(start<ratedTotal){const ratedNeed=Math.min(pageSize,ratedTotal-start);list=list.concat(await getValidPage(ratedQuery,{orderBy:[['avgScore','desc'],['releaseDate','desc']],start,pageSize:ratedNeed}));if(list.length<pageSize)list=list.concat(await fetchUnratedOrderedSlice({genre,start:0,pageSize:pageSize-list.length}))}else list=await fetchUnratedOrderedSlice({genre,start:start-ratedTotal,pageSize});return{success:true,list,total,page,pageSize,debug:{year:'ALL',ratedTotal,unratedTotal,returned:list.length,start,validOnly:true,unratedOrder:'A-Z-#'}}}
+async function fetchUnratedLetter({ genre, letter, page, pageSize }){const filters=Object.assign(unratedFilters(genre),{title:letterRegExp(letter)}),query=db.collection('albums').where(filters),rawTotal=(await query.count()).total,start=(page-1)*pageSize,list=await getValidPage(query,{orderBy:[['title','asc'],['releaseDate','desc']],start,pageSize});return{success:true,list,total:rawTotal,page,pageSize,debug:{mode:'unratedLetter',letter,returned:list.length,start,validOnly:true}}}
 
 async function searchAlbums({keyword,genre,year,month,page,pageSize}){
   const re=db.RegExp({regexp:keyword,options:'i'})
@@ -72,37 +34,17 @@ async function searchAlbums({keyword,genre,year,month,page,pageSize}){
     db.collection('albums').where({approved:true,artist:re}).limit(100).get(),
     db.collection('albums').where({approved:true,primaryArtist:re}).limit(100).get()
   ])
-  const artistRes=await db.collection('artist_candidates').where({status:'approved'}).field({_id:true,artistId:true,artistName:true}).limit(1000).get()
-  const matchedArtists=(artistRes.data||[]).filter(a=>a.artistId&&fuzzyMatch(a.artistName,keyword)).slice(0,30)
-  const related=[]
-  for(const artist of matchedArtists){
-    const id=String(artist.artistId)
-    const [a,b]=await Promise.all([
-      db.collection('albums').where({approved:true,neteaseArtistId:id}).limit(100).get(),
-      db.collection('albums').where({approved:true,artistIds:_.all([id])}).limit(100).get()
-    ])
-    related.push(...(a.data||[]),...(b.data||[]))
-  }
-  let filtered=dedupe(direct.flatMap(x=>x.data||[]).concat(related))
-  filtered=filtered.filter(a=>!genre||(a.genres||[]).includes(genre)).filter(a=>{
-    if(!year||isAllYear(year))return true
-    const y=a.releaseYear
-    return year==='2010s'?y>=2010&&y<=2017:year==='2000s'?y>=2000&&y<=2009:y===parseInt(year)
-  }).filter(a=>!month||!year||!/^[0-9]{4}$/.test(String(year))||String(a.releaseDate||'').slice(5,7)===String(month).padStart(2,'0'))
-  const sorted=filtered.sort((a,b)=>(Number(b.avgScore||0)-Number(a.avgScore||0))||String(b.releaseDate||'').localeCompare(String(a.releaseDate||'')))
+  const [artistRes,allAlbums]=await Promise.all([
+    db.collection('artist_candidates').where({status:'approved'}).field({_id:true,artistId:true,artistName:true}).limit(1000).get(),
+    fetchAllApprovedAlbums()
+  ])
+  const matchedArtists=(artistRes.data||[]).filter(a=>a.artistId&&fuzzyMatch(a.artistName,keyword)).slice(0,50)
+  const matchedIds=new Set(matchedArtists.map(a=>String(a.artistId)))
+  let filtered=dedupe(direct.flatMap(x=>x.data||[]).concat(allAlbums.filter(a=>fuzzyMatch(a.title,keyword)||fuzzyMatch(a.artist,keyword)||fuzzyMatch(a.primaryArtist,keyword)||(Array.isArray(a.artistIds)&&a.artistIds.some(id=>matchedIds.has(String(id))))||matchedIds.has(String(a.neteaseArtistId||'')))))
+  filtered=filtered.filter(a=>!genre||(a.genres||[]).includes(genre)).filter(a=>{if(!year||isAllYear(year))return true;const y=a.releaseYear;return year==='2010s'?y>=2010&&y<=2017:year==='2000s'?y>=2000&&y<=2009:y===parseInt(year)}).filter(a=>!month||!year||!/^[0-9]{4}$/.test(String(year))||String(a.releaseDate||'').slice(5,7)===String(month).padStart(2,'0'))
+  const sorted=filtered.sort((a,b)=>(relevance(b,keyword)-relevance(a,keyword))||(Number(b.avgScore||0)-Number(a.avgScore||0))||String(b.releaseDate||'').localeCompare(String(a.releaseDate||'')))
   const start=(page-1)*pageSize,list=sorted.slice(start,start+pageSize)
-  return {success:true,list,total:sorted.length,page,pageSize,debug:{mode:'fuzzySearch',keyword,matchedArtists:matchedArtists.map(x=>x.artistName),returned:list.length}}
+  return{success:true,list,total:sorted.length,page,pageSize,debug:{mode:'liveFuzzySearch',keyword,matchedArtists:matchedArtists.map(x=>x.artistName),returned:list.length}}
 }
 
-exports.main = async event => {
-  const { genre, year, month, artistId, id, unratedLetter } = event
-  const page=Number(event.page||1),pageSize=Math.min(Number(event.pageSize||20),100),keyword=String(event.keyword||'').trim(),sortBy=event.sortBy||'avgScore'
-  try {
-    if(id)return {success:true,album:(await db.collection('albums').doc(id).get()).data}
-    if(keyword)return await searchAlbums({keyword,genre,year,month,page,pageSize})
-    if(isAllYear(year)&&unratedLetter)return await fetchUnratedLetter({genre,letter:unratedLetter,page,pageSize})
-    if(isAllYear(year)||sortBy==='allRatedFirst')return await fetchAllPage({genre,page,pageSize})
-    if(artistId){const artistKey=String(artistId);const [coCreatorRes,legacyRes]=await Promise.all([db.collection('albums').where({approved:true,artistIds:_.all([artistKey])}).limit(100).get(),db.collection('albums').where({approved:true,neteaseArtistId:artistKey}).limit(100).get()]);const sorted=sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)),sortBy),start=(page-1)*pageSize;return {success:true,list:sorted.slice(start,start+pageSize),total:sorted.length,page,pageSize}}
-    const filters={approved:true};if(genre)filters.genres=_.all([genre]);else if(year)filters.releaseYear=year==='2010s'?_.gte(2010).and(_.lte(2017)):year==='2000s'?_.gte(2000).and(_.lte(2009)):_.eq(parseInt(year));if(month&&year&&/^[0-9]{4}$/.test(String(year)))filters.releaseDate=db.RegExp({regexp:`^${year}-${String(month).padStart(2,'0')}-`,options:''});const query=db.collection('albums').where(filters);const total=(await query.count()).total;const field=sortBy==='releaseYear'?'releaseDate':'avgScore';const listResult=await query.orderBy(field,sortBy==='releaseYear'?'asc':'desc').skip((page-1)*pageSize).limit(pageSize).get();return {success:true,list:filterValid(listResult.data),total,page,pageSize}
-  }catch(err){return {success:false,error:err.message,debug:{year,sortBy,page,pageSize,unratedLetter,keyword}}}
-}
+exports.main=async event=>{const{genre,year,month,artistId,id,unratedLetter}=event;const page=Number(event.page||1),pageSize=Math.min(Number(event.pageSize||20),100),keyword=String(event.keyword||'').trim(),sortBy=event.sortBy||'avgScore';try{if(id)return{success:true,album:(await db.collection('albums').doc(id).get()).data};if(keyword)return await searchAlbums({keyword,genre,year,month,page,pageSize});if(isAllYear(year)&&unratedLetter)return await fetchUnratedLetter({genre,letter:unratedLetter,page,pageSize});if(isAllYear(year)||sortBy==='allRatedFirst')return await fetchAllPage({genre,page,pageSize});if(artistId){const artistKey=String(artistId),[coCreatorRes,legacyRes]=await Promise.all([db.collection('albums').where({approved:true,artistIds:_.all([artistKey])}).limit(100).get(),db.collection('albums').where({approved:true,neteaseArtistId:artistKey}).limit(100).get()]),sorted=sortList(dedupe(coCreatorRes.data.concat(legacyRes.data)),sortBy),start=(page-1)*pageSize;return{success:true,list:sorted.slice(start,start+pageSize),total:sorted.length,page,pageSize}}const filters={approved:true};if(genre)filters.genres=_.all([genre]);else if(year)filters.releaseYear=year==='2010s'?_.gte(2010).and(_.lte(2017)):year==='2000s'?_.gte(2000).and(_.lte(2009)):_.eq(parseInt(year));if(month&&year&&/^[0-9]{4}$/.test(String(year)))filters.releaseDate=db.RegExp({regexp:`^${year}-${String(month).padStart(2,'0')}-`,options:''});const query=db.collection('albums').where(filters),total=(await query.count()).total,field=sortBy==='releaseYear'?'releaseDate':'avgScore',listResult=await query.orderBy(field,sortBy==='releaseYear'?'asc':'desc').skip((page-1)*pageSize).limit(pageSize).get();return{success:true,list:filterValid(listResult.data),total,page,pageSize}}catch(err){return{success:false,error:err.message,debug:{year,sortBy,page,pageSize,unratedLetter,keyword}}}}
