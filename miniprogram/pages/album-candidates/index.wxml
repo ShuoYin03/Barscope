@@ -27,8 +27,8 @@
         <view class="empty">暂无被举报专辑</view>
       </block>
       <block wx:else>
-        <view wx:for="{{list}}" wx:key="_id" class="card {{selectedIds.indexOf(item._id) >= 0 ? 'selected' : ''}}">
-          <view class="card-check" bindtap="toggleSelect" data-id="{{item._id}}"><view class="checkbox {{selectedIds.indexOf(item._id) >= 0 ? 'checked' : ''}}"><text wx:if="{{selectedIds.indexOf(item._id) >= 0}}">✓</text></view></view>
+        <view wx:for="{{list}}" wx:key="_id" class="card {{item.selected ? 'selected' : ''}}">
+          <view class="card-check" bindtap="toggleSelect" data-id="{{item._id}}"><view class="checkbox {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view></view>
           <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
           <view class="info">
             <text class="album">{{item.title}}</text>
