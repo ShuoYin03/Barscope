@@ -12,12 +12,20 @@
     <text class="tagline">华语说唱最大评分社区</text>
   </view>
 
+  <view class="avatar-section">
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+      <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view>
+    </button>
+    <text class="avatar-hint">点击选择微信头像</text>
+  </view>
+
   <view class="nick-section">
     <text class="nick-label">你的昵称</text>
     <input
       type="nickname"
       class="nick-input"
-      placeholder="输入昵称或使用微信昵称"
+      placeholder="点击使用微信昵称"
       placeholder-class="nick-ph"
       bindinput="onNickInput"
       value="{{nickName}}"

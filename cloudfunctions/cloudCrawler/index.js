@@ -10,6 +10,7 @@ const DOC = 'singleton'
 const CHUNK = 15
 const INTERNAL_TOKEN = 'cc_internal_v1'
 const DETAIL_CONCURRENCY = 8
+const ARTIST_CONCURRENCY = 3
 const SKIP_KEYWORDS = ['第一期','第二期','第三期','第四期','第五期','第六期','第七期','第八期','第九期','第十期','精选集','合辑','现场版','Live','OST','原声','巅峰对决','新说唱','中国有嘻哈','说唱新世代','浙江卫视','江苏卫视','湖南卫视','东方卫视','北京卫视','央视','CCTV','春晚','晚会','歌会','跨年','元宵','中秋','节目','综艺','盛典','音乐节','演唱会']
 
 exports.main = async event => {
@@ -59,26 +60,35 @@ async function runAllApproved(cursor) {
   if (!total) { await doneStatus(0, 0, '没有已批准的艺人'); return { success: true, status: 'done', total: 0 } }
   if (cursor === 0) {
     await patchStatus({ status: 'running', mode: 'allApproved', param: '', abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 }, lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [] }, log: [] })
-    await appendLog(`云端全量开始：${total} 位已批准艺人；每 ${CHUNK} 位为一批，逐位更新进度`)
+    await appendLog(`云端全量开始：${total} 位已批准艺人；每 ${CHUNK} 位为一批，${ARTIST_CONCURRENCY} 位并发处理`)
   }
-  let added = 0, dated = 0, candidates = 0
   const slice = list.slice(cursor, cursor + CHUNK)
-  for (let i = 0; i < slice.length; i++) {
-    const st = await getStatus()
-    if (st.abort) { await finishAbort(st, total); return { success: true, status: 'aborted', processed: cursor + i, total } }
-    const artist = slice[i]
+  let dated = 0, processedCount = 0, aborted = false
+  const lock = createMutex()
+  await mapWithConcurrency(slice, ARTIST_CONCURRENCY, async (artist, i) => {
+    if (aborted) return
+    if ((await getStatus()).abort) { aborted = true; return }
+    let logLine, added = 0, candidates = 0, artistDated = 0
     try {
       const { albums } = await fetchArtistAlbums(artist.artistId)
       const r = await upsertAlbums(albums, artist.artistName, { requiredArtistId: String(artist.artistId) })
-      added += r.inserted; dated += r.dated; candidates += r.candidates || 0
+      added = r.inserted; artistDated = r.dated; candidates = r.candidates || 0
       const count = await db.collection('albums').where(_.or([{ artistIds: _.all([String(artist.artistId)]) }, { neteaseArtistId: String(artist.artistId) }])).count()
       await db.collection('artist_candidates').doc(artist._id).update({ data: { albumSize: count.total } })
-      await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName}: 新增${r.inserted}张，候选${r.candidates || 0}张，过滤${r.skipped || 0}张，日期写入${r.dated}张`)
-    } catch (e) { await appendLog(`[${cursor + i + 1}/${total}] ${artist.artistName} 失败: ${e.message}`) }
-    const now = await getStatus(); const p = now.progress || {}
-    await patchStatus({ progress: { totalArtists: total, processedArtists: cursor + i + 1, albumsFound: Number(p.albumsFound || 0) + added, candidatesFound: Number(p.candidatesFound || 0) + candidates } })
-    added = 0; candidates = 0
-    if ((await getStatus()).abort) { await finishAbort(await getStatus(), total); return { success: true, status: 'aborted', processed: cursor + i + 1, total } }
+      logLine = `[${cursor + i + 1}/${total}] ${artist.artistName}: 新增${r.inserted}张，候选${r.candidates || 0}张，过滤${r.skipped || 0}张，日期写入${r.dated}张`
+    } catch (e) { logLine = `[${cursor + i + 1}/${total}] ${artist.artistName} 失败: ${e.message}` }
+    await lock(async () => {
+      processedCount += 1; dated += artistDated
+      await appendLog(logLine)
+      const now = await getStatus(); const p = now.progress || {}
+      await patchStatus({ progress: { totalArtists: total, processedArtists: cursor + processedCount, albumsFound: Number(p.albumsFound || 0) + added, candidatesFound: Number(p.candidatesFound || 0) + candidates } })
+      if ((await getStatus()).abort) aborted = true
+    })
+  })
+  if (aborted) {
+    const st = await getStatus()
+    await finishAbort(st, total)
+    return { success: true, status: 'aborted', processed: cursor + processedCount, total }
   }
   const processed = Math.min(cursor + CHUNK, total)
   if (processed < total) {
@@ -117,7 +127,8 @@ function normalizeAlbum(raw, fallbackArtist, opts) { opts = opts || {}; const ti
 function normalizeTrackName(name) { return String(name || '').replace(/[（(【\[][^）)】\]]*[）)】\]]/g, '').replace(/(伴奏|instrumental|inst\.?|off\s*vocal|karaoke|纯音乐|伴奏版|伴奏带)/ig, '').replace(/[\s\-_.·]/g, '').toLowerCase() }
 function inspectAlbumTracks(songs) { const names = (songs || []).map(s => String(s.name || '').trim()).filter(Boolean); const accompaniment = names.filter(n => n.includes('伴奏')); const realCount = names.length - accompaniment.length; const normalized = names.map(normalizeTrackName).filter(Boolean); const allSame = normalized.length >= 2 && new Set(normalized).size === 1; if (realCount < 3) return { bad: true, reason: '剔除伴奏曲目后正式曲目不足3首', example: accompaniment.slice(0, 4) }; if (allSame) return { bad: true, reason: '全专曲目名称重复', example: names.slice(0, 4) }; return { bad: false } }
 async function upsertCandidate(album, verdict) { const found = await db.collection('album_candidates').where({ sourceId: album.sourceId }).limit(1).get(); if (found.data.length) return false; await db.collection('album_candidates').add({ data: Object.assign({}, album, { approved: false, crawlSource: 'cloud-initial-quality-filter', candidateReason: verdict.reason, duplicateTrackExample: verdict.example || [], status: 'pending', addedAt: db.serverDate(), decidedAt: null }) }); return true }
-async function mapWithConcurrency(items, limit, fn) { const output = new Array(items.length); let cursor = 0; const workers = Array.from({ length: Math.min(limit, items.length) }, async () => { while (true) { const i = cursor++; if (i >= items.length) return; output[i] = await fn(items[i]) } }); await Promise.all(workers); return output }
+async function mapWithConcurrency(items, limit, fn) { const output = new Array(items.length); let cursor = 0; const workers = Array.from({ length: Math.min(limit, items.length) }, async () => { while (true) { const i = cursor++; if (i >= items.length) return; output[i] = await fn(items[i], i) } }); await Promise.all(workers); return output }
+function createMutex() { let queue = Promise.resolve(); return fn => { const run = queue.then(fn, fn); queue = run.catch(() => {}); return run } }
 async function upsertAlbums(rawList, fallbackArtist, opts) { opts = opts || {}; let skipped = 0; const albums = rawList.map(x => { const a = normalizeAlbum(x, fallbackArtist, opts); if (!a) skipped++; return a }).filter(Boolean); if (!albums.length) return { inserted: 0, total: 0, dated: 0, candidates: 0, skipped }; const ids = albums.map(x => x.sourceId); const existing = new Map(); for (let i = 0; i < ids.length; i += 100) { const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) }).field({ _id: true, sourceId: true, releaseDate: true, releaseYear: true, neteaseArtistId: true, artistIds: true, primaryArtist: true, trackCount: true }).get(); (res.data || []).forEach(x => existing.set(x.sourceId, x)) } let inserted = 0, dated = 0, candidates = 0; await mapWithConcurrency(albums, DETAIL_CONCURRENCY, async album => { const old = existing.get(album.sourceId); if (old) { const patch = {}; if (!old.releaseDate && album.releaseDate) { patch.releaseDate = album.releaseDate; patch.releaseYear = album.releaseYear; dated += 1 }; if (!old.neteaseArtistId && album.neteaseArtistId) patch.neteaseArtistId = album.neteaseArtistId; if (!old.primaryArtist && album.primaryArtist) patch.primaryArtist = album.primaryArtist; if (!old.trackCount && album.trackCount) patch.trackCount = album.trackCount; const oldArtistIds = Array.isArray(old.artistIds) ? old.artistIds : []; if (album.artistIds && album.artistIds.length && JSON.stringify(oldArtistIds) !== JSON.stringify(album.artistIds)) patch.artistIds = album.artistIds; if (Object.keys(patch).length) await db.collection('albums').doc(old._id).update({ data: patch }); return } try { const detail = await fetchAlbumDetail(album.sourceId), verdict = inspectAlbumTracks(detail && detail.songs); if (verdict.bad) { if (await upsertCandidate(album, verdict)) candidates++; return } } catch (e) {} await db.collection('albums').add({ data: Object.assign({ approved: true }, album) }); inserted++; if (album.releaseDate) dated++ }); return { inserted, total: albums.length, dated, candidates, skipped } }
 async function isAdmin(openId) { if (!openId) return false; const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get(); return r.data.length > 0 }
 async function getStatus() { try { return (await db.collection(COL).doc(DOC).get()).data } catch (e) { return makeDefault() } }

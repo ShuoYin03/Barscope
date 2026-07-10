@@ -144,15 +144,6 @@
 .btn-abort .btn-text { color: var(--white); }
 .btn-run.btn-disabled { opacity: 0.4; }
 
-/* SCHEDULE */
-.schedule-row  { display: flex; align-items: center; justify-content: space-between; }
-.schedule-label { font-size: 28rpx; color: var(--white); }
-.interval-row  { display: flex; gap: 16rpx; margin-top: 20rpx; }
-.interval-chip { padding: 14rpx 32rpx; border: 2rpx solid var(--gray-light); background: var(--off-white); }
-.interval-chip text { font-size: 26rpx; color: var(--gray-mid); letter-spacing: 1rpx; }
-.interval-chip.active { border-color: var(--accent); background: var(--accent); }
-.interval-chip.active text { color: var(--black); }
-
 /* LOG */
 .log-empty { padding: 8rpx 0; }
 .log-list  { display: flex; flex-direction: column; gap: 10rpx; }

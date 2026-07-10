@@ -5,7 +5,7 @@ const _   = db.command
 const COL = 'crawlerStatus'
 const DOC = 'singleton'
 
-const ADMIN_ACTIONS  = new Set(['trigger', 'updateSchedule', 'clearLog', 'abort'])
+const ADMIN_ACTIONS  = new Set(['trigger', 'clearLog', 'abort'])
 const SERVER_ACTIONS = new Set(['claimRun', 'updateProgress', 'appendLog', 'completeRun', 'failRun', 'abortRun', 'isAborted'])
 
 exports.main = async (event, context) => {
@@ -43,11 +43,6 @@ exports.main = async (event, context) => {
         log:[`任务已硬中止（当前批次可能仍完成网络请求，但不会继续写入运行状态）`, ...logs].slice(0,100),
       })
       return { success:true, cancelled:'hard' }
-    }
-    if (action === 'updateSchedule') {
-      const { enabled, interval } = event
-      await upsertDoc({ schedule:{ enabled:!!enabled, interval:interval || 'weekly', nextRun:null } })
-      return { success:true }
     }
     if (action === 'clearLog') { await upsertDoc({ log:[] }); return { success:true } }
     if (action === 'claimRun') {
@@ -100,4 +95,4 @@ exports.main = async (event, context) => {
 }
 async function safeGet(){ try{return (await db.collection(COL).doc(DOC).get()).data || makeDefault()}catch{return makeDefault()} }
 async function upsertDoc(fields) { try { await db.collection(COL).doc(DOC).update({ data:fields }) } catch { await db.collection(COL).add({ data:Object.assign(makeDefault(), { _id:DOC }, fields) }) } }
-function makeDefault() { return { _id:DOC, status:'idle', triggeredAt:null, completedAt:null, triggerType:'manual', mode:'fission', param:'', abort:false, progress:{ totalArtists:0, processedArtists:0, albumsFound:0, candidatesFound:0 }, lastRunSummary:{ newAlbums:0, newCandidates:0, errors:[] }, schedule:{ enabled:false, interval:'weekly', nextRun:null }, log:[] } }
+function makeDefault() { return { _id:DOC, status:'idle', triggeredAt:null, completedAt:null, triggerType:'manual', mode:'fission', param:'', abort:false, progress:{ totalArtists:0, processedArtists:0, albumsFound:0, candidatesFound:0 }, lastRunSummary:{ newAlbums:0, newCandidates:0, errors:[] }, log:[] } }

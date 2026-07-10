@@ -3,14 +3,14 @@
 Barscope · 爬虫流水线（全自动）
 
 爬取模式由云端任务指定（管理员在小程序「爬虫」面板里选择）：
-  search      全量爬取   — rappers.json 所有艺人的专辑
-  add-artist  按艺人ID   — 收录指定艺人的全部专辑（param=艺人ID）
-  album       按专辑ID   — 精确收录单张专辑（param=专辑ID）
-  fission     裂变发现   — 已批准 rapper 的专辑 + 发现新候选（默认/定时）
+  fission     裂变发现   — 已批准 rapper 的专辑 + 发现新候选（默认模式）
+  sync        同步决定   — 将云端审核结果同步回 rappers.json，不爬取
+
+（全量/按艺人ID/按专辑ID的爬取改由云端 cloudCrawler 承担，本地不再重复实现）
 
 流程：
   1. 同步管理员审核结果 → 更新本地 rappers.json
-  2. 按模式爬取
+  2. 按模式爬取（fission）
   3. 清洗数据
   4. 上传专辑到云 DB
   5. 上传候选艺人到云 DB（fission 模式产生候选，等待管理员审核）
@@ -18,9 +18,7 @@ Barscope · 爬虫流水线（全自动）
 用法:
   python pipeline.py                              # 认领云端 pending 任务（含模式）
   python pipeline.py --dry-run                    # 只爬取+清洗，不上传
-  python pipeline.py --skip-db-check --mode search          # 本地强制全量爬取
-  python pipeline.py --skip-db-check --mode add-artist --param 123456
-  python pipeline.py --skip-db-check --mode album --param 123456
+  python pipeline.py --skip-db-check --mode fission --max-rounds 2
 """
 
 import argparse
@@ -41,7 +39,7 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 sys.path.insert(0, BASE_DIR)
 from spider_netease import (
-    run_fission, run_search, run_add_artist, run_album,
+    run_fission,
     load_rappers, save_rappers, RAPPERS_FILE,
 )
 from upload import clean
@@ -165,18 +163,16 @@ def upload_candidates(token: str, env: str, batch_size: int = 100) -> dict:
 
 # ── 主流程 ─────────────────────────────────────────────────────────────────────
 
-def main(from_scheduler: bool = False):
+def main():
     parser = argparse.ArgumentParser(description="Barscope 爬虫")
     parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
     parser.add_argument("--skip-db-check", action="store_true", help="跳过 DB pending 检查（直接运行）")
-    parser.add_argument("--mode", choices=["search", "add-artist", "album", "fission", "sync"],
+    parser.add_argument("--mode", choices=["fission", "sync"],
                         default="fission",
                         help="运行模式（仅 --skip-db-check / --dry-run 时生效；正常由云端任务指定）")
-    parser.add_argument("--param", default="", help="模式参数：艺人ID 或 专辑ID")
     parser.add_argument("--max-rounds", type=int, default=2, help="裂变最大轮数（fission 模式，默认 2，深度 1 传 1）")
     parser.add_argument("--workers", type=int, default=5, help="裂变并发线程数（默认 5）")
-    args = parser.parse_args() if not from_scheduler else argparse.Namespace(
-        dry_run=False, skip_db_check=False, mode="fission", param="")
+    args = parser.parse_args()
 
     if not os.path.exists(CONFIG_FILE):
         print("[!] 找不到 config.json")
@@ -195,8 +191,7 @@ def main(from_scheduler: bool = False):
     db = CrawlerDB(cfg) if not args.dry_run else None
 
     # 默认模式由 CLI 指定；若认领到云端任务，则被云端任务的模式覆盖
-    mode  = args.mode
-    param = str(args.param or "")
+    mode = args.mode
 
     # ── DB: 认领任务 ─────────────────────────────────────────────────────────
     if db and not args.skip_db_check:
@@ -205,18 +200,9 @@ def main(from_scheduler: bool = False):
         if not claimed:
             print("  未发现 pending 任务，退出。（如需强制运行，加 --skip-db-check）")
             return
-        mode  = claimed.get("mode", "fission")
-        param = str(claimed.get("param", "") or "")
-        label = f"{mode} / {param}" if param else mode
-        print(f"  已认领任务（模式: {label}），开始运行。")
-        db.append_log(f"爬虫任务开始（模式: {label}）")
-
-    # 校验需要 ID 的模式
-    if mode in ("add-artist", "album") and not param.strip().isdigit():
-        msg = f"模式 {mode} 需要数字 ID，收到: {param!r}"
-        print(f"[!] {msg}")
-        if db: db.fail_run(msg)
-        return
+        mode = claimed.get("mode", "fission")
+        print(f"  已认领任务（模式: {mode}），开始运行。")
+        db.append_log(f"爬虫任务开始（模式: {mode}）")
 
     errors_list: list = []
 
@@ -245,13 +231,7 @@ def main(from_scheduler: bool = False):
                 return
 
         # ── Step 2: 爬取 ─────────────────────────────────────────────────────
-        MODE_NAMES = {
-            "search":     "全量爬取",
-            "add-artist": "按艺人ID",
-            "album":      "按专辑ID",
-            "fission":    "BFS 裂变",
-        }
-        mode_name = MODE_NAMES.get(mode, mode)
+        mode_name = "BFS 裂变"
         print(f"\n━━━ Step 2：{mode_name}爬取 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         if db: db.append_log(f"Step 2: {mode_name}爬取开始")
 
@@ -270,17 +250,10 @@ def main(from_scheduler: bool = False):
             return False
 
         rappers_data  = load_rappers()
-        total_artists = len(rappers_data.get("rappers", [])) if mode in ("search", "fission") else 1
+        total_artists = len(rappers_data.get("rappers", []))
         if db: db.update_progress(total_artists=total_artists)
 
-        if mode == "search":
-            raw_albums = run_search(rappers_data.get("rappers", []), dry_run=False)
-        elif mode == "add-artist":
-            raw_albums = run_add_artist(int(param), dry_run=False)
-        elif mode == "album":
-            raw_albums = run_album(int(param), dry_run=False)
-        else:  # fission
-            raw_albums = run_fission(dry_run=False, should_abort=_should_abort, max_rounds=args.max_rounds, workers=args.workers)
+        raw_albums = run_fission(dry_run=False, should_abort=_should_abort, max_rounds=args.max_rounds, workers=args.workers)
 
         aborted      = _abort_state["aborted"] or bool(db and db.is_aborted())
         albums_found = len(raw_albums)
@@ -296,7 +269,7 @@ def main(from_scheduler: bool = False):
         # ── Step 3: 清洗 ─────────────────────────────────────────────────────
         print("\n━━━ Step 3：清洗 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         if db: db.append_log("Step 3: 数据清洗")
-        cleaned = clean(raw_albums, skip_singles_filter=(mode == "album"))
+        cleaned = clean(raw_albums)
         print(f"  原始 {len(raw_albums)} 张  →  清洗后 {len(cleaned)} 张")
 
         if args.dry_run:

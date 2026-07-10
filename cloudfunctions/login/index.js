@@ -7,16 +7,26 @@ exports.main = async (event, context) => {
 
   try {
     const { data } = await db.collection('users').where({ openId: OPENID }).get()
+    const nickName = String(event.nickName || '').trim()
+    const avatarUrl = String(event.avatarUrl || '').trim()
 
     if (data.length > 0) {
-      return { success: true, user: data[0], isNew: false }
+      const existing = data[0]
+      const patch = {}
+      if (nickName && nickName !== existing.nickName) patch.nickName = nickName
+      if (avatarUrl && avatarUrl !== existing.avatarUrl) patch.avatarUrl = avatarUrl
+      if (Object.keys(patch).length) {
+        await db.collection('users').doc(existing._id).update({ data: patch })
+        Object.assign(existing, patch)
+      }
+      return { success: true, user: existing, isNew: false }
     }
 
     // First time login — create user
     const newUser = {
       openId: OPENID,
-      nickName: event.nickName || '说唱迷',
-      avatarUrl: event.avatarUrl || '',
+      nickName: nickName || '说唱迷',
+      avatarUrl: avatarUrl || '',
       type: 'normal',
       bio: '',
       reviewCount: 0,
