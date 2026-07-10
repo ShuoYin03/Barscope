@@ -1,10 +1,10 @@
 <view class="page">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px">
     <text class="back" bindtap="onBack">←</text>
-    <text class="title">FLAGGED ALBUMS</text>
+    <text class="title">ALBUM REVIEW</text>
   </view>
   <view class="head">
-    <view class="head-copy"><text class="head-title">被举报专辑</text><text class="head-desc">用户认为不应收录的专辑会进入这里，由管理员复核</text></view>
+    <view class="head-copy"><text class="head-title">专辑审核</text><text class="head-desc">包含被举报专辑、网易云匹配提交和用户手动提交</text></view>
     <text class="count">{{list.length}} 待处理</text>
   </view>
   <view wx:if="{{!loading && !loadError && list.length}}" class="batch-toolbar">
@@ -16,24 +16,22 @@
     </view>
   </view>
   <scroll-view class="content" scroll-y>
-    <block wx:if="{{loading}}">
-      <view class="empty">加载中…</view>
-    </block>
+    <block wx:if="{{loading}}"><view class="empty">加载中…</view></block>
     <block wx:else>
-      <block wx:if="{{loadError}}">
-        <view class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadCandidates">重新加载</view></view>
-      </block>
-      <block wx:elif="{{list.length === 0}}">
-        <view class="empty">暂无被举报专辑</view>
-      </block>
+      <block wx:if="{{loadError}}"><view class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadCandidates">重新加载</view></view></block>
+      <block wx:elif="{{list.length === 0}}"><view class="empty">暂无待审核专辑</view></block>
       <block wx:else>
         <view wx:for="{{list}}" wx:key="_id" class="card {{item.selected ? 'selected' : ''}}">
           <view class="card-check" bindtap="toggleSelect" data-id="{{item._id}}"><view class="checkbox {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view></view>
           <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
           <view class="info">
             <text class="album">{{item.title}}</text>
-            <text class="artist">{{item.artist || item.primaryArtist}} · {{item.releaseYear || '未知年份'}}</text>
-            <text class="reason">原因：{{item.reportReason || item.candidateReason || '用户认为该专辑不应收录'}}</text>
+            <text class="artist">{{item.artist || item.primaryArtist}} · {{item.releaseDate || item.releaseYear || '未知日期'}}</text>
+            <text wx:if="{{item.company}}" class="artist">发行公司：{{item.company}}</text>
+            <text class="reason">来源：{{item.submissionMode === 'manual' ? '用户手动提交' : item.submissionMode === 'netease' ? '网易云匹配' : '专辑举报'}}</text>
+            <text class="reason">说明：{{item.reportReason || item.candidateReason || '待管理员复核'}}</text>
+            <text wx:if="{{item.tracks && item.tracks.length}}" class="tracks">曲目：<block wx:for="{{item.tracks}}" wx:for-item="track" wx:key="no">{{index ? ' / ' : ''}}{{track.name || track}}</block></text>
+            <text wx:if="{{item.description}}" class="tracks">简介：{{item.description}}</text>
             <text wx:if="{{item.duplicateTrackExample}}" class="tracks">{{item.duplicateTrackExample.join(' / ')}}</text>
           </view>
           <view class="actions">
