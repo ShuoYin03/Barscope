@@ -7,6 +7,14 @@
     <view class="head-copy"><text class="head-title">被举报专辑</text><text class="head-desc">用户认为不应收录的专辑会进入这里，由管理员复核</text></view>
     <text class="count">{{list.length}} 待处理</text>
   </view>
+  <view wx:if="{{!loading && !loadError && list.length}}" class="batch-toolbar">
+    <view class="select-all" bindtap="toggleSelectAll"><view class="checkbox {{allSelected ? 'checked' : ''}}"><text wx:if="{{allSelected}}">✓</text></view><text>{{allSelected ? '取消全选' : '全选当前列表'}}</text></view>
+    <text class="selected-count">已选 {{selectedIds.length}} 张</text>
+    <view class="batch-actions">
+      <view class="batch-keep {{selectedIds.length ? '' : 'disabled'}}" bindtap="batchDecide" data-decision="keep">批量保留</view>
+      <view class="batch-delete {{selectedIds.length ? '' : 'disabled'}}" bindtap="batchDecide" data-decision="delete">批量删除</view>
+    </view>
+  </view>
   <scroll-view class="content" scroll-y>
     <block wx:if="{{loading}}">
       <view class="empty">加载中…</view>
@@ -19,7 +27,8 @@
         <view class="empty">暂无被举报专辑</view>
       </block>
       <block wx:else>
-        <view wx:for="{{list}}" wx:key="_id" class="card">
+        <view wx:for="{{list}}" wx:key="_id" class="card {{selectedIds.indexOf(item._id) >= 0 ? 'selected' : ''}}">
+          <view class="card-check" bindtap="toggleSelect" data-id="{{item._id}}"><view class="checkbox {{selectedIds.indexOf(item._id) >= 0 ? 'checked' : ''}}"><text wx:if="{{selectedIds.indexOf(item._id) >= 0}}">✓</text></view></view>
           <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
           <view class="info">
             <text class="album">{{item.title}}</text>
