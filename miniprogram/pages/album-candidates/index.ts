@@ -22,7 +22,8 @@ Page({
       success: (res: any) => {
         const r = res.result || {}
         if (!r.success) { this.setData({ list: [], loading: false, loadError: r.error || '加载失败，请确认云函数已部署', selectedIds: [], allSelected: false }); return }
-        this.setData({ list: r.list || [], loading: false, loadError: '', selectedIds: [], allSelected: false })
+        const list = (r.list || []).map((item: any) => ({ ...item, selected: false }))
+        this.setData({ list, loading: false, loadError: '', selectedIds: [], allSelected: false })
       },
       fail: () => { this.setData({ loading: false, loadError: '加载失败，请确认 manageAlbumCandidates 云函数已部署' }); wx.showToast({ title: '加载失败', icon: 'none' }) },
     } as any)
@@ -34,12 +35,16 @@ Page({
     const index = selectedIds.indexOf(id)
     if (index >= 0) selectedIds.splice(index, 1)
     else selectedIds.push(id)
-    this.setData({ selectedIds, allSelected: this.data.list.length > 0 && selectedIds.length === this.data.list.length })
+    const selectedSet = new Set(selectedIds)
+    const list = this.data.list.map(item => ({ ...item, selected: selectedSet.has(String(item._id)) }))
+    this.setData({ list, selectedIds, allSelected: list.length > 0 && selectedIds.length === list.length })
   },
   toggleSelectAll() {
     if (this.data.processing || !this.data.list.length) return
-    const selectedIds = this.data.allSelected ? [] : this.data.list.map(item => String(item._id))
-    this.setData({ selectedIds, allSelected: !this.data.allSelected })
+    const allSelected = !this.data.allSelected
+    const selectedIds = allSelected ? this.data.list.map(item => String(item._id)) : []
+    const list = this.data.list.map(item => ({ ...item, selected: allSelected }))
+    this.setData({ list, selectedIds, allSelected })
   },
   batchDecide(e: WechatMiniprogram.TouchEvent) {
     const decision = String((e.currentTarget.dataset as any).decision || '') as 'keep' | 'delete'
