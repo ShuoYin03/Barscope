@@ -9,5 +9,6 @@
     <view class="like-btn {{(localLiked || review.likedByMe) ? 'liked' : ''}}" catchtap="onLike"><text>{{(localLiked || review.likedByMe) ? '♥' : '♡'}} {{review.likes}}</text></view>
     <text class="sep"> | </text>
     <view class="reply-btn" catchtap="onReply"><text>💬 {{review.replyCount}}条 · 回复</text></view>
+    <view class="reply-btn" catchtap="onManage"><text> ··· {{review.isMine ? '删除' : '举报'}}</text></view>
   </view>
 </view>
