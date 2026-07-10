@@ -9,7 +9,7 @@ const ALBUM_PAGE_SIZE=100
 const LETTER_ORDER='ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
 const ALBUM_LETTERS=LETTER_ORDER.split('')
 function isAllYear(year:string){return year==='ALL'}
-function formatReleaseDate(value:any,year:number){if(!value)return year?String(year):'';const raw=typeof value==='string'?value:new Date(value).toISOString();const m=raw.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})/);return m?`${m[1]}.${m[2]}.${m[3]}`:year?String(year):''}
+function formatReleaseDate(value:any,year:number){if(!value)return year?String(year):'';const raw=typeof value==='string'?value:new Date(value).toISOString();const m=raw.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:year?String(year):''}
 function mapAlbum(a:any):AlbumCard{const score=a.avgScore||0,year=a.releaseYear||0;return{id:a._id,title:a.title||'',artist:a.artist||'',primaryArtist:a.primaryArtist||(a.artist||'').split(/[,，&]/)[0].trim(),neteaseArtistId:String(a.neteaseArtistId||''),year,releaseDate:a.releaseDate||'',releaseDisplay:formatReleaseDate(a.releaseDate,year),score:Math.round(score*10)/10,reviewCount:Number(a.reviewCount||0),genres:a.genres||[],scoreFill:Math.round(score/10*100)+'%',coverUrl:a.coverUrl||''}}
 function alphaSort(a:ArtistCard,b:ArtistCard){return String(a.artistName||'').localeCompare(String(b.artistName||''),'zh-Hans-CN-u-co-pinyin',{sensitivity:'base',numeric:true})}
 function albumAlphaSort(a:AlbumCard,b:AlbumCard){const t=String(a.title||'').localeCompare(String(b.title||''),'zh-Hans-CN-u-co-pinyin',{sensitivity:'base',numeric:true});return t||String(b.releaseDate||'').localeCompare(String(a.releaseDate||''))}
