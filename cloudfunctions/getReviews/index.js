@@ -10,6 +10,7 @@ async function safeGet(task) {
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const { albumId, userId, page = 1, pageSize = 20 } = event
+  if (event.dailyHotAlbum) return getBeijingDailyHotAlbum()
   if (!albumId && !userId && !event.recent) return { success: false, error: 'albumId or userId or recent required' }
 
   try {
@@ -30,7 +31,6 @@ exports.main = async (event) => {
       const skip = (page - 1) * pageSize
       let query
       if (albumId) {
-        // Avoid requiring a compound index just to render the review section.
         query = db.collection('reviews').where({ albumId }).orderBy('createdAt', 'desc')
       } else {
         query = db.collection('reviews').orderBy('createdAt', 'desc')
@@ -72,6 +72,74 @@ exports.main = async (event) => {
     console.error('getReviews failed:', err)
     return { success: false, error: err.message }
   }
+}
+
+async function getBeijingDailyHotAlbum() {
+  try {
+    const { start, end, dateKey } = beijingDayRange()
+    const where = { createdAt: _.gte(start).and(_.lt(end)) }
+    const countRes = await db.collection('reviews').where(where).count()
+    const total = Number(countRes.total || 0)
+    if (!total) return { success: true, album: null, dateKey, reviewCount: 0 }
+
+    const rows = []
+    for (let offset = 0; offset < total; offset += 100) {
+      const r = await db.collection('reviews').where(where).field({ albumId: true, createdAt: true }).skip(offset).limit(100).get()
+      rows.push(...(r.data || []))
+    }
+
+    const stats = new Map()
+    rows.forEach(review => {
+      const id = String(review.albumId || '')
+      if (!id) return
+      const time = new Date(review.createdAt || 0).getTime()
+      const current = stats.get(id) || { albumId: id, reviewCount: 0, latestReviewAt: 0 }
+      current.reviewCount += 1
+      current.latestReviewAt = Math.max(current.latestReviewAt, time)
+      stats.set(id, current)
+    })
+
+    const ranked = Array.from(stats.values()).sort((a, b) => (b.reviewCount - a.reviewCount) || (b.latestReviewAt - a.latestReviewAt))
+    if (!ranked.length) return { success: true, album: null, dateKey, reviewCount: 0 }
+
+    const ids = ranked.slice(0, 20).map(x => x.albumId)
+    const albumRes = await db.collection('albums').where({ _id: _.in(ids), approved: true }).get()
+    const albumMap = new Map((albumRes.data || []).map(a => [String(a._id), a]))
+    const winner = ranked.find(x => albumMap.has(x.albumId))
+    if (!winner) return { success: true, album: null, dateKey, reviewCount: 0 }
+
+    const album = albumMap.get(winner.albumId)
+    return {
+      success: true,
+      dateKey,
+      reviewCount: winner.reviewCount,
+      album: {
+        albumId: String(album._id),
+        title: String(album.title || ''),
+        artist: String(album.artist || album.primaryArtist || ''),
+        year: album.releaseYear || '',
+        score: Number(album.avgScore || 0),
+        coverUrl: String(album.coverUrl || ''),
+        genres: Array.isArray(album.genres) ? album.genres : [],
+        todayReviewCount: winner.reviewCount,
+      },
+    }
+  } catch (err) {
+    console.error('getBeijingDailyHotAlbum failed:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+function beijingDayRange() {
+  const now = new Date()
+  const beijingNow = new Date(now.getTime() + 8 * 60 * 60 * 1000)
+  const y = beijingNow.getUTCFullYear()
+  const m = beijingNow.getUTCMonth()
+  const d = beijingNow.getUTCDate()
+  const start = new Date(Date.UTC(y, m, d) - 8 * 60 * 60 * 1000)
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
+  const dateKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  return { start, end, dateKey }
 }
 
 function formatTimeAgo(date) {
