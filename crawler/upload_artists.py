@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 上传歌手元数据到云数据库 artists 集合
+Beatween · 上传歌手元数据到云数据库 artists 集合
 
 功能：
   1. 读取 rappers.json 中所有已知艺人（rappers 列表）

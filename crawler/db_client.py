@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 爬虫状态上报客户端
+Beatween · 爬虫状态上报客户端
 
 通过微信 HTTP API 调用 crawlerControl 云函数，
 将爬虫运行状态、进度、日志写入 Cloud DB。

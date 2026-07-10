@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 爬虫流水线（全自动）
+Beatween · 爬虫流水线（全自动）
 
 爬取模式由云端任务指定（管理员在小程序「爬虫」面板里选择）：
   fission     裂变发现   — 已批准 rapper 的专辑 + 发现新候选（默认模式）
@@ -164,7 +164,7 @@ def upload_candidates(token: str, env: str, batch_size: int = 100) -> dict:
 # ── 主流程 ─────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Barscope 爬虫")
+    parser = argparse.ArgumentParser(description="Beatween 爬虫")
     parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
     parser.add_argument("--skip-db-check", action="store_true", help="跳过 DB pending 检查（直接运行）")
     parser.add_argument("--mode", choices=["fission", "sync"],

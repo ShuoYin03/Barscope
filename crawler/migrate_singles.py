@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 存量数据去单曲迁移脚本
+Beatween · 存量数据去单曲迁移脚本
 
 从 albums_raw.json 读取已有数据，通过网易云 album detail API 获取
 每张专辑的曲目数，过滤掉 trackCount < 3 的条目，输出清洗后的文件。
@@ -75,7 +75,7 @@ def get_track_count(album_id: str, cache: dict) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Barscope 存量去单曲迁移")
+    parser = argparse.ArgumentParser(description="Beatween 存量去单曲迁移")
     parser.add_argument("--dry-run", action="store_true", help="只分析，不写文件")
     parser.add_argument("--limit",   type=int, default=0, help="只处理前 N 条")
     args = parser.parse_args()

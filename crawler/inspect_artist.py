@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 网易云艺人数据字段诊断工具
+Beatween · 网易云艺人数据字段诊断工具
 
 对比已知 rapper 和 fission 误抓的非-rapper，打印所有可用字段，
 帮助找出可用于过滤的信号。

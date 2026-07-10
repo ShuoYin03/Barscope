@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope 爬虫测试脚本
+Beatween 爬虫测试脚本
 测试网易云音乐 + QQ音乐 能否正常返回说唱专辑数据
 
 运行：
@@ -130,7 +130,7 @@ def test_qqmusic(keyword="中国说唱", limit=10):
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("  Barscope · 爬虫接口测试")
+    print("  Beatween · 爬虫接口测试")
     print("=" * 55)
 
     keyword = "中国说唱"

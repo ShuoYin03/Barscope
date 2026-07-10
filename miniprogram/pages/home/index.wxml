@@ -3,7 +3,7 @@
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="logo-col">
-      <text class="logo-main">BARSCOPE</text>
+      <text class="logo-main">BEATWEEN</text>
       <text class="logo-sub">中文说唱</text>
     </view>
     <text class="logo-search" bindtap="onSearchTap">⌕</text>
@@ -23,7 +23,7 @@
         <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">
           <view class="vinyl-hero-label">
             <text class="vinyl-label-score-num">{{hero.score}}</text>
-            <text class="vinyl-label-score-sub">BARSCOPE</text>
+            <text class="vinyl-label-score-sub">BEATWEEN</text>
           </view>
           <view class="vinyl-hero-spindle" />
         </view>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 本地版专辑质量重筛（rescreenAlbums 云函数的本地替代）
+Beatween · 本地版专辑质量重筛（rescreenAlbums 云函数的本地替代）
 
 背景：微信云函数所在的腾讯云出口 IP 被网易云临时限流，云端「重新筛选专辑」
 （cloudfunctions/rescreenAlbums）大批量请求失败。本脚本用本地网络直接跑同样的

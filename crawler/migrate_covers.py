@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 封面图迁移脚本（并发版）
+Beatween · 封面图迁移脚本（并发版）
 NetEase CDN → 微信云存储，8 线程并发，支持中断续传
 
 用法：

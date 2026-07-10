@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barscope · 诊断脚本 —— 测试 syncArtistMetadata 云函数用到的各个接口，
+Beatween · 诊断脚本 —— 测试 syncArtistMetadata 云函数用到的各个接口，
 逐个单独探测哪个接口真的能拿到歌手头像 / 封面图。
 
 背景：

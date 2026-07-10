@@ -6,6 +6,12 @@ Page({
     loading: false,
   },
 
+  // Not part of `data` — these track the avatar upload that starts the
+  // moment it's picked, so it's usually already done by the time the user
+  // finishes typing their nickname and taps login.
+  _avatarFileId: '',
+  _avatarUploadPromise: null as Promise<string> | null,
+
   onLoad() {
     this.setData({ statusBarHeight: getApp<IAppOption>().globalData.statusBarHeight })
   },
@@ -13,6 +19,15 @@ Page({
   onChooseAvatar(e: any) {
     const { avatarUrl } = e.detail
     this.setData({ avatarUrl })
+    this._avatarFileId = ''
+    this._avatarUploadPromise = this._uploadAvatar(avatarUrl)
+  },
+
+  _uploadAvatar(filePath: string): Promise<string> {
+    const cloudPath = `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+    return wx.cloud.uploadFile({ cloudPath, filePath })
+      .then((res) => { this._avatarFileId = res.fileID; return res.fileID })
+      .catch(() => '')
   },
 
   onNickInput(e: WechatMiniprogram.Input) {
@@ -28,7 +43,7 @@ Page({
     this.setData({ loading: true })
 
     wx.login({
-      success: () => this._uploadAvatarAndLogin(nickName),
+      success: () => this._resolveAvatarThenLogin(nickName),
       fail: () => {
         this.setData({ loading: false })
         wx.showToast({ title: '获取登录凭证失败', icon: 'none' })
@@ -36,17 +51,18 @@ Page({
     })
   },
 
-  _uploadAvatarAndLogin(nickName: string) {
-    const cloudPath = `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
-    wx.cloud.uploadFile({
-      cloudPath,
-      filePath: this.data.avatarUrl,
-      success: (uploadRes) => this._callLogin(nickName, uploadRes.fileID),
-      fail: () => {
-        this.setData({ loading: false })
-        wx.showToast({ title: '头像上传失败，请重试', icon: 'none' })
-      },
-    })
+  async _resolveAvatarThenLogin(nickName: string) {
+    // Selection already uploaded (or is uploading) in the background — this
+    // usually resolves instantly here since the user spent time typing.
+    let fileId = this._avatarFileId || (this._avatarUploadPromise ? await this._avatarUploadPromise : '')
+    if (!fileId) fileId = await this._uploadAvatar(this.data.avatarUrl)
+
+    if (!fileId) {
+      this.setData({ loading: false })
+      wx.showToast({ title: '头像上传失败，请重试', icon: 'none' })
+      return
+    }
+    this._callLogin(nickName, fileId)
   },
 
   _callLogin(nickName: string, avatarUrl: string) {

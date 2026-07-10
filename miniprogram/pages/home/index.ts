@@ -1,5 +1,5 @@
 const FALLBACK_TICKER_SONGS = [
-  'BARSCOPE · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
+  'BEATWEEN · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
 const GENRES = [
