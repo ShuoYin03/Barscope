@@ -27,8 +27,6 @@
       <view class="stat-sep" />
       <text class="stat-num">{{avgScore}}</text>
       <text class="stat-unit">AVG</text>
-      <view class="stat-sep" />
-      <text class="stat-year">{{yearRange}}</text>
     </view>
   </view>
 
