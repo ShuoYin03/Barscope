@@ -19,6 +19,10 @@ function matchesKeyword(name, keyword){
   if (!q) return true
   return searchForms(name).some(x => x.includes(q))
 }
+function cleanBrands(values){
+  const seen = new Set()
+  return (Array.isArray(values) ? values : []).map(x => String(x || '').trim()).filter(x => x && !seen.has(x) && seen.add(x))
+}
 
 exports.main = async event => {
   const keyword = String(event.keyword || '').trim()
@@ -26,7 +30,7 @@ exports.main = async event => {
   try {
     const conditions = { status: 'approved' }
     const [res, albumCountMap] = await Promise.all([
-      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true }).limit(1000).get(),
+      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true, brand:true, brands:true }).limit(1000).get(),
       fetchApprovedAlbumCounts(),
     ])
     const all = (res.data || []).filter(a => a.artistId && a.artistName)
@@ -34,10 +38,11 @@ exports.main = async event => {
     const list = filtered.slice(0, limit).map(a => {
       const artistId = String(a.artistId)
       const artistName = a.artistName || ''
-      const primaryBrand = BRAND_MAP[artistId] || ''
-      const brands = primaryBrand ? [primaryBrand] : []
+      const managedBrands = cleanBrands(a.brands && a.brands.length ? a.brands : (a.brand ? [a.brand] : []))
+      const legacyBrand = BRAND_MAP[artistId] || ''
+      const brands = managedBrands.length ? managedBrands : (legacyBrand ? [legacyBrand] : [])
       if (HIGHER_BROTHERS_IDS.has(artistId) && !brands.includes('成都集团')) brands.push('成都集团')
-      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:primaryBrand, brands }
+      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:brands[0] || '', brands }
     }).sort((a,b) => {
       const la = LETTER_ORDER.indexOf(a.letter) >= 0 ? LETTER_ORDER.indexOf(a.letter) : 26
       const lb = LETTER_ORDER.indexOf(b.letter) >= 0 ? LETTER_ORDER.indexOf(b.letter) : 26
