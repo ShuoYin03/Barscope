@@ -21,5 +21,9 @@ Component({
       const review = this.properties.review as any
       this.triggerEvent('reply', { reviewId: review && review._id, userName: review && review.userName })
     },
+    onManage() {
+      const review = this.properties.review as any
+      this.triggerEvent('manage', { review })
+    },
   },
 })
