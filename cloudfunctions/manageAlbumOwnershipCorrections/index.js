@@ -23,11 +23,18 @@ async function decide(id, decision, openId){
   if(decision === 'approve'){
     const albumId = String(item.albumId || '')
     if(!albumId) return {success:false,error:'missing albumId'}
+    const targets = Array.isArray(item.targetArtists) && item.targetArtists.length
+      ? item.targetArtists
+      : [{artistId:item.targetArtistId,artistName:item.targetArtistName}]
+    const clean = targets.map(x=>({artistId:String(x&&x.artistId||'').trim(),artistName:String(x&&x.artistName||'').trim()})).filter(x=>x.artistId&&x.artistName)
+    if(!clean.length) return {success:false,error:'missing target artists'}
+    const artistIds = Array.from(new Set(clean.map(x=>x.artistId)))
+    const artistNames = clean.filter((x,i,a)=>a.findIndex(y=>y.artistId===x.artistId)===i).map(x=>x.artistName)
     await db.collection('albums').doc(albumId).update({ data:{
-      artist:String(item.targetArtistName || ''),
-      primaryArtist:String(item.targetArtistName || ''),
-      neteaseArtistId:String(item.targetArtistId || ''),
-      artistIds:[String(item.targetArtistId || '')].filter(Boolean),
+      artist:artistNames.join(' / '),
+      primaryArtist:artistNames[0],
+      neteaseArtistId:artistIds[0],
+      artistIds,
       ownershipCorrectedAt:db.serverDate(),
       ownershipCorrectedBy:openId,
       ownershipSource:'user-admin-correction',
