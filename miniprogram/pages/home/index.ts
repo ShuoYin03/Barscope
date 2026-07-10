@@ -15,18 +15,36 @@ function safeCallFunction(name: string, data: Record<string, any>) {
 
 Page({
   data: { statusBarHeight: 20, topbarHeight: 64, tickerSongs: FALLBACK_TICKER_SONGS, loading: true, hero: null as any, heroScoreFill: '0%', chartItems: [] as any[], newReleases: [] as any[], genres: GENRES, reviews: [] as any[], totalAlbums: 0 },
-  onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }); this._loadData() },
-  onShow() { if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 }) },
+  onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }) },
+  onShow() { if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 }); this._loadData() },
   _loadData() {
+    this.setData({ loading: true })
     const p1 = safeCallFunction('getCharts', { limit: 5 })
     const p2 = safeCallFunction('getReviews', { recent: true, pageSize: 4 })
     const p3 = safeCallFunction('getAlbums', { pageSize: 1 })
     const p4 = safeCallFunction('getLatestAlbums', { limit: 12 })
-    Promise.all([p1, p2, p3, p4]).then((results: any[]) => {
-      const chartsRes = results[0], reviewsRes = results[1], totalRes = results[2], latestRes = results[3]
+    const p5 = safeCallFunction('getReviews', { dailyHotAlbum: true })
+    Promise.all([p1, p2, p3, p4, p5]).then((results: any[]) => {
+      const chartsRes = results[0], reviewsRes = results[1], totalRes = results[2], latestRes = results[3], dailyHotRes = results[4]
       const chartItems = chartsRes.success ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) })) : []
       const topItem = chartItems[0] || null
-      const hero = topItem ? { albumId: topItem.albumId, title: topItem.title, artist: topItem.artist, year: topItem.year, score: fmtScore(topItem.score), scoreFill: scoreFill(topItem.score), coverUrl: topItem.coverUrl || '', genres: [] } : null
+      const dailyAlbum = dailyHotRes?.success ? dailyHotRes.album : null
+      const hero = dailyAlbum
+        ? {
+            albumId: dailyAlbum.albumId,
+            title: dailyAlbum.title,
+            artist: dailyAlbum.artist,
+            year: dailyAlbum.year,
+            score: fmtScore(dailyAlbum.score),
+            scoreFill: scoreFill(dailyAlbum.score),
+            coverUrl: dailyAlbum.coverUrl || '',
+            genres: dailyAlbum.genres || [],
+            todayReviewCount: Number(dailyAlbum.todayReviewCount || dailyHotRes.reviewCount || 0),
+            heroSource: 'dailyReviews',
+          }
+        : topItem
+          ? { albumId: topItem.albumId, title: topItem.title, artist: topItem.artist, year: topItem.year, score: fmtScore(topItem.score), scoreFill: scoreFill(topItem.score), coverUrl: topItem.coverUrl || '', genres: [], todayReviewCount: 0, heroSource: 'chartFallback' }
+          : null
       const newReleases = latestRes?.success ? (latestRes.list || []).slice(0, 4).map((a: any, i: number) => ({
         albumId: a.albumId, rank: String(i + 1).padStart(2, '0'), title: a.title, artist: a.artist,
         year: a.releaseDate || a.releaseYear, scoreDisplay: 'NEW', score: 0, scoreFill: '0%', coverUrl: a.coverUrl || '', isThisWeek: !!a.isThisWeek,

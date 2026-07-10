@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { pinyin } = require('pinyin-pro')
 const BRAND_MAP = require('./artistBrandMap')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -7,35 +8,50 @@ const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾
 const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
 const HIGHER_BROTHERS_IDS = new Set(['1132392', '27868624', '29303235', '29304235'])
 
+function normalize(v){ return String(v || '').trim().toLowerCase().replace(/[\s._\-·'’]/g, '') }
+function searchForms(name){
+  const raw = String(name || '')
+  const full = pinyin(raw, { toneType:'none', type:'array' })
+  return [normalize(raw), normalize(full.join('')), normalize(full.join(' ')), normalize(full.map(x => x.charAt(0)).join(''))]
+}
+function matchesKeyword(name, keyword){
+  const q = normalize(keyword)
+  if (!q) return true
+  return searchForms(name).some(x => x.includes(q))
+}
+function cleanBrands(values){
+  const seen = new Set()
+  return (Array.isArray(values) ? values : []).map(x => String(x || '').trim()).filter(x => x && !seen.has(x) && seen.add(x))
+}
+
 exports.main = async event => {
   const keyword = String(event.keyword || '').trim()
   const limit = Math.min(Number(event.limit || 1000), 1000)
   try {
     const conditions = { status: 'approved' }
-    if (keyword) conditions.artistName = db.RegExp({ regexp: keyword, options: 'i' })
-    const [res, countRes, albumCountMap] = await Promise.all([
-      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true }).limit(limit).get(),
-      db.collection('artist_candidates').where(conditions).count(),
+    const [res, albumCountMap] = await Promise.all([
+      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true, brand:true, brands:true }).limit(1000).get(),
       fetchApprovedAlbumCounts(),
     ])
-    const list = (res.data || []).filter(a => a.artistId && a.artistName).map(a => {
+    const all = (res.data || []).filter(a => a.artistId && a.artistName)
+    const filtered = keyword ? all.filter(a => matchesKeyword(a.artistName, keyword)) : all
+    const list = filtered.slice(0, limit).map(a => {
       const artistId = String(a.artistId)
       const artistName = a.artistName || ''
-      const primaryBrand = BRAND_MAP[artistId] || ''
-      const brands = primaryBrand ? [primaryBrand] : []
+      const managedBrands = cleanBrands(a.brands && a.brands.length ? a.brands : (a.brand ? [a.brand] : []))
+      const legacyBrand = BRAND_MAP[artistId] || ''
+      const brands = managedBrands.length ? managedBrands : (legacyBrand ? [legacyBrand] : [])
       if (HIGHER_BROTHERS_IDS.has(artistId) && !brands.includes('成都集团')) brands.push('成都集团')
-      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:primaryBrand, brands }
+      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:brands[0] || '', brands }
     }).sort((a,b) => {
       const la = LETTER_ORDER.indexOf(a.letter) >= 0 ? LETTER_ORDER.indexOf(a.letter) : 26
       const lb = LETTER_ORDER.indexOf(b.letter) >= 0 ? LETTER_ORDER.indexOf(b.letter) : 26
       return la !== lb ? la - lb : a.artistName.localeCompare(b.artistName, 'zh-Hans-CN-u-co-pinyin', { sensitivity:'base', numeric:true })
     })
-    return { success:true, list, total:countRes.total }
+    return { success:true, list, total:filtered.length }
   } catch (e) { return { success:false, error:e.message } }
 }
 
-// Count in memory after paginating albums. This is faster and more reliable than issuing
-// one CloudBase array-membership query per rapper (which was overwhelming the function).
 async function fetchApprovedAlbumCounts() {
   const countResult = await db.collection('albums').where({ approved:true }).count()
   const total = Number(countResult.total || 0)

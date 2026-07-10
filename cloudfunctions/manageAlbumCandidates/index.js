@@ -9,6 +9,7 @@ exports.main = async (event) => {
   if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
   if (action === 'list') return list(event.status || 'pending')
   if (action === 'decide') return decide(event.id, event.decision, OPENID)
+  if (action === 'batchDecide') return batchDecide(event.ids || [], event.decision, OPENID)
   if (action === 'stats') return stats()
   return { success: false, error: 'unknown action' }
 }
@@ -39,6 +40,24 @@ async function list(status) {
 async function stats() {
   const r = await db.collection('album_candidates').where({ status: 'pending' }).count()
   return { success: true, pending: r.total }
+}
+
+async function batchDecide(ids, decision, openId) {
+  const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '').trim()).filter(Boolean))).slice(0, 100)
+  if (!uniqueIds.length) return { success: false, error: '请选择至少一张专辑' }
+  if (!['keep', 'delete', 'approve', 'decline'].includes(decision)) return { success: false, error: 'invalid decision' }
+  let succeeded = 0
+  const errors = []
+  for (const id of uniqueIds) {
+    try {
+      const result = await decide(id, decision, openId)
+      if (result && result.success) succeeded += 1
+      else errors.push({ id, error: result && result.error ? result.error : '操作失败' })
+    } catch (e) {
+      errors.push({ id, error: String(e && (e.message || e.errMsg) || e) })
+    }
+  }
+  return { success: errors.length === 0, partial: succeeded > 0 && errors.length > 0, succeeded, failed: errors.length, errors }
 }
 
 async function decide(id, decision, openId) {
