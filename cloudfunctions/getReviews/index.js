@@ -11,6 +11,7 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const { albumId, userId, page = 1, pageSize = 20 } = event
   if (event.dailyHotAlbum) return getBeijingDailyHotAlbum()
+  if (event.totalCount) return getTotalReviewCount()
   if (!albumId && !userId && !event.recent) return { success: false, error: 'albumId or userId or recent required' }
 
   try {
@@ -70,6 +71,15 @@ exports.main = async (event) => {
     return { success: true, list }
   } catch (err) {
     console.error('getReviews failed:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+async function getTotalReviewCount() {
+  try {
+    const countRes = await db.collection('reviews').count()
+    return { success: true, total: Number(countRes.total || 0) }
+  } catch (err) {
     return { success: false, error: err.message }
   }
 }

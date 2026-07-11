@@ -69,7 +69,5 @@
 .album-score { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); flex-shrink: 0; }
 .skel-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 32rpx; }
 .skel-info { flex: 1; }
-.sk { background: var(--gray-light); animation: shimmer 1.2s infinite; }
-@keyframes shimmer { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
 .empty-state { display: flex; justify-content: center; padding: 120rpx 32rpx; }
 .empty-text { font-size: 26rpx; color: var(--gray-mid); }

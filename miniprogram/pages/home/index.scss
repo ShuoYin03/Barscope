@@ -56,11 +56,6 @@
   box-sizing: border-box;
 }
 
-.hero-banner-sk {
-  height: 520rpx;
-  background: var(--gray-light);
-}
-
 /* The vinyl record disc */
 .vinyl-hero-disc {
   width: 440rpx;
@@ -136,6 +131,33 @@
   display: block;
   margin-top: 14rpx;
   letter-spacing: 2rpx;
+}
+
+/* ── HERO ROTATION — crossfade between daily/latest picks ── */
+.hero-kicker {
+  transition: opacity 260ms ease;
+}
+.hero-kicker.is-swapping {
+  opacity: 0;
+}
+.hero-cover-card,
+.vinyl-hero-disc {
+  transition: opacity 380ms cubic-bezier(.4, 0, .2, 1), transform 380ms cubic-bezier(.4, 0, .2, 1);
+}
+.hero-info {
+  transition: opacity 340ms cubic-bezier(.4, 0, .2, 1), transform 340ms cubic-bezier(.4, 0, .2, 1);
+}
+.hero-rotating .hero-cover-card {
+  opacity: 0;
+  transform: scale(0.93) translateY(8rpx);
+}
+.hero-rotating .vinyl-hero-disc {
+  opacity: 0;
+  transform: scale(0.93);
+}
+.hero-rotating .hero-info {
+  opacity: 0;
+  transform: translateY(10rpx);
 }
 
 /* ── SIDE A — TOP CHARTS (text rows) ── */
@@ -296,76 +318,6 @@
 
 .g2-bar { flex: 1; height: 3rpx; background: var(--gray-light); }
 .g2-bar-fill { height: 3rpx; background: var(--accent); }
-
-/* ── GENRE GRID ── */
-.genre-section {
-  background: var(--black);
-  border-top: 2rpx solid var(--gray-light);
-}
-
-.genre-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16rpx 44rpx;
-}
-
-.genre-hd-left {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
-}
-
-.genre-num {
-  font-family: var(--font-bebas);
-  font-weight: 700;
-  font-size: 24rpx;
-  color: var(--gray-mid);
-  line-height: 1;
-  letter-spacing: 4rpx;
-}
-
-.genre-hd-title {
-  font-size: 18rpx;
-  font-weight: 700;
-  letter-spacing: 4rpx;
-  color: var(--gray-mid);
-}
-
-.genre-hd-more {
-  font-size: 22rpx;
-  color: var(--accent);
-}
-
-.genre-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rpx;
-  background: var(--gray-light);
-  margin: 0 44rpx 28rpx;
-}
-
-.genre-cell {
-  box-sizing: border-box;
-  background: var(--off-white);
-  padding: 20rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.genre-name {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--white);
-  letter-spacing: 2rpx;
-}
-
-.genre-count { font-size: 18rpx; color: var(--gray-mid); }
-
-.genre-all { background: var(--accent); }
-.genre-all .genre-name { color: var(--black); }
-.genre-all .genre-count { color: rgba(14,11,9,0.6); }
 
 /* ── REVIEWS ── */
 .reviews-list { background: var(--black); }
@@ -529,75 +481,9 @@
   letter-spacing: 2rpx;
 }
 
-.stat-plain {
-  font-family: var(--font-bebas);
-  font-weight: 700;
-  font-size: 56rpx;
-  color: var(--white);
-  line-height: 1;
-}
-
 .stat-label {
   font-size: 18rpx;
   color: var(--gray-mid);
   letter-spacing: 2rpx;
 }
 
-/* ── CTA ── */
-.cta-section {
-  background: var(--off-white);
-  padding: 48rpx 32rpx;
-  border-top: 2rpx solid var(--gray-light);
-}
-
-.cta-headline {
-  display: flex;
-  flex-direction: column;
-  font-size: 44rpx;
-  font-weight: 700;
-  color: var(--white);
-  line-height: 1.2;
-  margin-bottom: 12rpx;
-}
-
-.cta-sub {
-  font-size: 24rpx;
-  color: var(--gray-mid);
-  margin-bottom: 32rpx;
-  line-height: 1.6;
-  display: block;
-}
-
-.cta-buttons {
-  display: flex;
-  gap: 20rpx;
-}
-
-.btn-primary {
-  flex: 1;
-  background: var(--accent);
-  color: var(--black);
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: 2rpx;
-  text-align: center;
-  padding: 26rpx 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-secondary {
-  flex: 1;
-  background: transparent;
-  color: var(--white);
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: 2rpx;
-  text-align: center;
-  padding: 26rpx 0;
-  border: 2rpx solid var(--gray-mid);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
