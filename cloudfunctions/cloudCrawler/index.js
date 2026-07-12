@@ -91,10 +91,7 @@ async function runAllApproved(cursor) {
     return { success: true, status: 'aborted', processed: cursor + processedCount, total }
   }
   const processed = Math.min(cursor + CHUNK, total)
-  if (processed < total) {
-    await cloud.callFunction({ name: 'cloudCrawler', data: { action: 'allApproved', cursor: processed, __internal: true, __token: INTERNAL_TOKEN } })
-    return { success: true, status: 'running', processed, total, dated }
-  }
+  if (processed < total) return { success: true, status: 'running', processed, total, dated } // 不再自己递归调用下一批，靠 cloudCrawlerDailyTrigger 定时唤醒继续，避免整条链条卡在一次同步调用里撞超时
   const status = await getStatus(), p = status.progress || {}
   await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: [] } })
   await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)

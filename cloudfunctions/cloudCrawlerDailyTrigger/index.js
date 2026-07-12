@@ -21,9 +21,12 @@ exports.main = async (event, context) => {
     let status
     try { status = (await db.collection(COL).doc(DOC).get()).data } catch (e) { status = {} }
     status = status || {}
+    console.log(`[cloudCrawlerDailyTrigger] status=${status.status} mode=${status.mode} completedAt=${JSON.stringify(status.completedAt)} processedArtists=${(status.progress && status.progress.processedArtists) || 0}`)
 
     if (status.status === 'running' && status.mode === 'allApproved') {
       const cursor = Number((status.progress && status.progress.processedArtists) || 0)
+      console.log(`[cloudCrawlerDailyTrigger] branch=continue cursor=${cursor}`)
+      await heartbeat('continue', cursor)
       const res = await cloud.callFunction({
         name: 'cloudCrawler',
         data: { action: 'allApproved', cursor, __internal: true, __token: INTERNAL_TOKEN },
@@ -34,19 +37,38 @@ exports.main = async (event, context) => {
 
     if (status.status === 'pending') {
       // pending 是 crawlerControl（本地 pipeline.py 那一套）的状态，跟这个云端定时器无关，跳过
+      console.log('[cloudCrawlerDailyTrigger] branch=skip reason=pending-belongs-to-local-pipeline')
+      await heartbeat('skip-pending', 0)
       return { success: true, skipped: true, reason: 'pending 状态属于本地爬虫触发流程，本定时器不处理' }
     }
 
     if (!shouldStartNewRun(status.completedAt)) {
+      console.log('[cloudCrawlerDailyTrigger] branch=skip reason=within-20h-cooldown')
+      await heartbeat('skip-cooldown', 0)
       return { success: true, skipped: true, reason: '距离上次完成不到 20 小时，跳过，等下一次醒来再看' }
     }
 
+    console.log('[cloudCrawlerDailyTrigger] branch=start cursor=0')
+    await heartbeat('start', 0)
     const res = await cloud.callFunction({ name: 'cloudCrawler', data: { action: 'allApproved', cursor: 0, __internal: true, __token: INTERNAL_TOKEN } })
     await writeReport('triggered', 0, res.result)
     return { success: true, triggered: true, result: res.result }
   } catch (e) {
+    console.error('[cloudCrawlerDailyTrigger] failed', e)
+    await heartbeat('error', 0)
     await safeReportError(e)
     return { success: false, error: e.message }
+  }
+}
+
+// 每次醒来都盖写一次心跳字段（只更新这两个字段，不影响 status/progress 等其它字段），
+// 这样即使这一轮什么正事都没做（跳过），也能在数据库/管理页里看出"定时器还在正常醒来"，
+// 跟"定时器压根没被云端调用"区分开。
+async function heartbeat(branch, cursor) {
+  try {
+    await db.collection(COL).doc(DOC).update({ data: { lastTriggerAt: db.serverDate(), lastTriggerBranch: branch, lastTriggerCursor: Number(cursor || 0) } })
+  } catch (e) {
+    // doc 还不存在（从没跑过一次真正的爬虫）时 update 会失败，忽略即可，等第一次 patchStatus 建好文档后心跳自然能写进去
   }
 }
 

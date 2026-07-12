@@ -1,5 +1,28 @@
 let _pollTimer: any = null
 
+function toMillis(v: any): number {
+  if (!v) return 0
+  if (typeof v === 'string') { const t = Date.parse(v); return Number.isNaN(t) ? 0 : t }
+  if (typeof v === 'object' && v.$date) return Number(v.$date) || 0
+  return 0
+}
+function formatAgo(ms: number): string {
+  const diff = Date.now() - ms
+  if (diff < 0) return '刚刚'
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'
+  return Math.floor(diff / 3600000) + ' 小时前'
+}
+const HEARTBEAT_BRANCH_LABELS: Record<string, string> = {
+  start: '开始新一轮全量爬取',
+  continue: '续跑批次中',
+  'skip-pending': '跳过（等待本地爬虫流程）',
+  'skip-cooldown': '跳过（24 小时内已完成过一轮）',
+  error: '触发失败',
+}
+// 定时器每 5 分钟醒一次；超过这个时长没有心跳，基本可以判定触发器没在正常调用
+const HEARTBEAT_STALE_MS = 8 * 60 * 1000
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -7,6 +30,8 @@ Page({
 
     crawlerStatus:           null as any,
     crawlerTriggering:       false,
+    heartbeatText:           '暂无记录',
+    heartbeatStale:          false,
 
     crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync',
     crawlerParam:       '',
@@ -54,7 +79,12 @@ Page({
           else if (s.status === 'done' || s.status === 'aborted') { if (elapsed > 3000) shouldClear = true }
           else if (elapsed > 90000) { shouldClear = true; wx.showToast({ title: '启动超时，请检查云函数', icon: 'none' }) }
         }
-        this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear })
+        const heartbeatMs = toMillis(s.lastTriggerAt)
+        const heartbeatText = heartbeatMs
+          ? `${formatAgo(heartbeatMs)} · ${HEARTBEAT_BRANCH_LABELS[s.lastTriggerBranch] || s.lastTriggerBranch || '未知'}`
+          : '暂无记录（定时器可能还没成功调用过）'
+        const heartbeatStale = !heartbeatMs || (Date.now() - heartbeatMs) > HEARTBEAT_STALE_MS
+        this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear, heartbeatText, heartbeatStale })
         if (!this.data.crawlerTriggering && s.status !== 'running') this._startPoll(4000)
       },
     })
