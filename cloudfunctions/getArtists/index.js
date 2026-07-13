@@ -107,5 +107,14 @@ async function fetchAlbumCounts() {
   })
   return map
 }
-function firstLetter(name){for(const ch of Array.from(String(name||'').trim())){if(/[A-Za-z]/.test(ch))return ch.toUpperCase();if(/[\u4e00-\u9fff]/.test(ch))return pinyinInitial(ch)}return '#'}
+function firstLetter(name) {
+  const raw = String(name || '').trim()
+  if (!raw) return '#'
+
+  const first = Array.from(raw)[0]
+  if (/[A-Za-z]/.test(first)) return first.toUpperCase()
+  if (/\d/.test(first)) return '#'
+  if (/[\u4e00-\u9fff]/.test(first)) return pinyinInitial(first)
+  return '#'
+}
 function pinyinInitial(ch){let letter='#';for(const [initial,startChar] of PINYIN_STARTS){if(ch.localeCompare(startChar,'zh-Hans-CN-u-co-pinyin')>=0)letter=initial;else break}return letter}
