@@ -8,25 +8,25 @@
     </view>
     <text class="logo-zh">BEATWEEN</text>
     <text class="logo-en">韵镜</text>
-    <text class="tagline">{{isUpdating ? '更新你的微信头像与昵称' : '授权微信头像与昵称，加入说唱评分社区'}}</text>
+    <text class="tagline">{{isUpdating ? '更新你的头像与昵称' : '设置头像与昵称，加入说唱评分社区'}}</text>
   </view>
 
   <view class="avatar-section">
     <view class="avatar-frame">
-      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <button class="avatar-btn" bindtap="onChooseAvatar">
         <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
         <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view>
       </button>
     </view>
-    <text class="avatar-hint">点击授权微信头像</text>
+    <text class="avatar-hint">点击选择并裁剪头像</text>
   </view>
 
   <view class="nick-section">
-    <text class="nick-label">微信昵称</text>
+    <text class="nick-label">昵称</text>
     <input
       type="nickname"
       class="nick-input"
-      placeholder="点击使用微信昵称"
+      placeholder="输入或使用微信昵称"
       placeholder-class="nick-ph"
       bindinput="onNickInput"
       value="{{nickName}}"
@@ -34,8 +34,8 @@
   </view>
 
   <view class="login-btn {{loading ? 'loading' : ''}}" bindtap="onLogin">
-    <text>{{loading ? '处理中...' : (isUpdating ? '保存微信资料' : '授权并登录')}}</text>
+    <text>{{loading ? '处理中...' : (isUpdating ? '保存资料' : '保存并登录')}}</text>
   </view>
 
-  <text class="hint">头像与昵称仅用于你的韵镜个人主页和社区互动</text>
+  <text class="hint">头像会按正方形裁剪，仅用于韵镜个人主页和社区互动</text>
 </view>
