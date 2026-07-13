@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+const _ = db.command
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
@@ -9,6 +10,7 @@ exports.main = async (event) => {
   if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
   if (action === 'list') return list(event.status || 'pending')
   if (action === 'listHidden') return listHidden()
+  if (action === 'setHiddenState') return setHiddenState(event.albumId, !!event.approved, OPENID)
   if (action === 'decide') return decide(event.id, event.decision, OPENID)
   if (action === 'batchDecide') return batchDecide(event.ids || [], event.decision, OPENID)
   if (action === 'decideHidden') return decideHidden(event.id, event.decision, OPENID)
@@ -41,20 +43,49 @@ async function list(status) {
 }
 
 async function listHidden() {
-  const r = await db.collection('albums').where({ approved: false }).limit(100).get()
-  const list = (r.data || []).filter(album => !album.deletedByAdmin).map(album => ({
+  const where = { approved: false, hiddenByAdmin: true }
+  const [countRes, listRes] = await Promise.all([
+    db.collection('albums').where(where).count(),
+    db.collection('albums').where(where).orderBy('hiddenAt', 'desc').limit(100).get(),
+  ])
+  const list = (listRes.data || []).map(album => ({
     ...album,
-    hiddenReason: album.hiddenReason || album.candidateReason || (album.movedToCandidate ? '已移入专辑审核' : '当前未对用户显示'),
+    hiddenReason: album.hiddenReason || '管理员从专辑管理中隐藏',
   }))
-  return { success: true, list, total: list.length }
+  return { success: true, list, total: countRes.total }
 }
 
 async function stats() {
   const [pending, hidden] = await Promise.all([
     db.collection('album_candidates').where({ status: 'pending' }).count(),
-    db.collection('albums').where({ approved: false }).count(),
+    db.collection('albums').where({ approved: false, hiddenByAdmin: true }).count(),
   ])
   return { success: true, pending: pending.total, hidden: hidden.total }
+}
+
+async function setHiddenState(albumId, approved, openId) {
+  if (!albumId) return { success: false, error: 'albumId required' }
+  const doc = await db.collection('albums').doc(albumId).get()
+  if (!doc.data) return { success: false, error: 'album not found' }
+
+  const data = approved
+    ? {
+        approved: true,
+        hiddenByAdmin: _.remove(),
+        hiddenAt: _.remove(),
+        hiddenBy: _.remove(),
+        hiddenReason: _.remove(),
+      }
+    : {
+        approved: false,
+        hiddenByAdmin: true,
+        hiddenAt: db.serverDate(),
+        hiddenBy: openId,
+        hiddenReason: '管理员从专辑管理中隐藏',
+      }
+
+  await db.collection('albums').doc(albumId).update({ data })
+  return { success: true, approved }
 }
 
 async function batchDecide(ids, decision, openId) {
@@ -93,8 +124,8 @@ async function decideHidden(id, decision, openId) {
   const doc = await db.collection('albums').doc(id).get()
   if (!doc.data) return { success: false, error: 'album not found' }
   if (decision === 'keep' || decision === 'show') {
+    await setHiddenState(id, true, openId)
     await db.collection('albums').doc(id).update({ data: {
-      approved: true,
       movedToCandidate: false,
       restoredFromHiddenAt: db.serverDate(),
       restoredFromHiddenBy: openId,
@@ -149,6 +180,10 @@ async function decide(id, decision, openId) {
       await db.collection('albums').doc(originalId).update({ data: {
         approved: true,
         movedToCandidate: false,
+        hiddenByAdmin: _.remove(),
+        hiddenAt: _.remove(),
+        hiddenBy: _.remove(),
+        hiddenReason: _.remove(),
         restoredFromCandidateAt: db.serverDate(),
         restoredFromCandidateBy: openId,
       } })
@@ -158,6 +193,10 @@ async function decide(id, decision, openId) {
         await db.collection('albums').doc(exists.data[0]._id).update({ data: {
           approved: true,
           movedToCandidate: false,
+          hiddenByAdmin: _.remove(),
+          hiddenAt: _.remove(),
+          hiddenBy: _.remove(),
+          hiddenReason: _.remove(),
           restoredFromCandidateAt: db.serverDate(),
           restoredFromCandidateBy: openId,
         } })
