@@ -21,6 +21,25 @@
 .topbar-title  { font-family: var(--font-bebas); font-size: 40rpx; color: var(--white); letter-spacing: 3rpx; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420rpx; }
 .topbar-sub    { font-family: var(--font-bebas); font-size: 22rpx; color: var(--accent); letter-spacing: 6rpx; flex-shrink: 0; }
 
+.mode-tabs {
+  display: flex;
+  flex-shrink: 0;
+  background: var(--black);
+  border-bottom: 2rpx solid var(--gray-light);
+}
+.mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--gray-mid);
+  border-bottom: 4rpx solid transparent;
+}
+.mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
 .search-bar {
   padding: 16rpx 24rpx;
   background: var(--black);

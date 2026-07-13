@@ -142,6 +142,7 @@ exports.main = async (event, context) => {
   if (action === 'stats')                return await stats()
   if (action === 'refresh_albums')       return await refreshAlbums(event.candidateId)
   if (action === 'list_admin_albums')    return await listAdminAlbums(event.artistId, event.artistName)
+  if (action === 'search_admin_albums')  return await searchAdminAlbums(event.keyword || '')
   if (action === 'toggle_album_approved') return await toggleAlbumApproved(event.albumId, !!event.approved)
   if (action === 'cleanup_singles')      return await cleanupSingles()
 
@@ -305,6 +306,23 @@ async function listAdminAlbums(artistId, artistName) {
       total: list.length,
       source: 'netease',
     }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── search_admin_albums ────────────────────────────────────────────────────────
+async function searchAdminAlbums(keyword) {
+  const kw = String(keyword || '').trim()
+  if (!kw) return { success: true, list: [], total: 0 }
+  try {
+    const re = db.RegExp({ regexp: kw, options: 'i' })
+    const result = await db.collection('albums')
+      .where(_.or([{ title: re }, { artist: re }]))
+      .orderBy('releaseYear', 'desc')
+      .limit(60)
+      .get()
+    return { success: true, list: result.data, total: result.data.length }
   } catch (e) {
     return { success: false, error: e.message }
   }

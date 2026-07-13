@@ -11,22 +11,37 @@
     </view>
   </view>
 
-  <!-- ══ ARTIST LIST ══════════════════════════════════════════════════════════ -->
+  <!-- ══ ARTIST LIST / TITLE SEARCH ═══════════════════════════════════════════ -->
   <block wx:if="{{view === 'artists'}}">
+    <view class="mode-tabs">
+      <view class="mode-tab {{searchMode === 'artist' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="artist"><text>按艺人</text></view>
+      <view class="mode-tab {{searchMode === 'title' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="title"><text>按专辑名</text></view>
+    </view>
+
     <view class="search-bar">
       <view class="search-input-wrap">
         <text class="search-icon">⌕</text>
         <input
+          wx:if="{{searchMode === 'artist'}}"
           class="search-input"
           placeholder="搜索已批准艺人…"
           value="{{artistKeyword}}"
           bindinput="onArtistSearch"
           placeholder-style="color:#666"
         />
+        <input
+          wx:else
+          class="search-input"
+          placeholder="搜索专辑名称…"
+          value="{{titleKeyword}}"
+          bindinput="onTitleSearch"
+          placeholder-style="color:#666"
+        />
       </view>
     </view>
 
     <scroll-view
+      wx:if="{{searchMode === 'artist'}}"
       class="content"
       scroll-y
       enhanced
@@ -127,6 +142,62 @@
         </view>
         <view wx:elif="{{!artistHasMore && artistList.length > 0}}" class="list-end">
           <text class="list-end-text">── 已全部加载 ──</text>
+        </view>
+      </block>
+    </scroll-view>
+
+    <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+      <block wx:if="{{titleLoading && titleResults.length === 0}}">
+        <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
+          <view class="sk skel-cover"></view>
+          <view class="skel-body">
+            <view class="sk skel-name"></view>
+            <view class="sk skel-meta"></view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:elif="{{titleResults.length === 0}}" class="empty-state">
+        <text class="empty-icon">○</text>
+        <text class="empty-text">{{titleKeyword ? '没有匹配的专辑' : '输入专辑名称开始搜索'}}</text>
+      </view>
+
+      <block wx:else>
+        <view wx:for="{{titleResults}}" wx:key="_id" class="album-row">
+          <view class="album-cover-wrap">
+            <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="album-cover-fallback">
+              <text class="album-cover-icon">♪</text>
+            </view>
+            <view wx:if="{{!item.approved}}" class="cover-hidden-badge">
+              <text class="cover-hidden-text">隐藏</text>
+            </view>
+          </view>
+
+          <view class="album-info">
+            <text class="album-title">{{item.title}}</text>
+            <text class="album-artist">{{item.artist}}</text>
+            <view class="album-meta-row">
+              <text class="album-meta">{{item.releaseYear}}</text>
+              <view wx:if="{{item.trackCount > 0}}" class="meta-dot"></view>
+              <text wx:if="{{item.trackCount > 0}}" class="album-meta">{{item.trackCount}} 首</text>
+              <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
+              <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
+            </view>
+          </view>
+
+          <view
+            class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
+            bindtap="onToggleApproved"
+            data-id="{{item._id}}"
+            data-approved="{{item.approved}}"
+          >
+            <text class="toggle-text">{{item.approved ? '显示' : '隐藏'}}</text>
+          </view>
+        </view>
+
+        <view class="list-end">
+          <text class="list-end-text">── 共 {{titleResults.length}} 张 ──</text>
         </view>
       </block>
     </scroll-view>

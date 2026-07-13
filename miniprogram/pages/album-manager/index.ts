@@ -36,6 +36,7 @@ interface CleanupPreview {
 import { getThemeClass } from '../../utils/theme'
 
 let _searchTimer: any = null
+let _titleSearchTimer: any = null
 
 Page({
   data: {
@@ -43,12 +44,16 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     view: 'artists' as 'artists' | 'albums',
+    searchMode: 'artist' as 'artist' | 'title',
     artistList: [] as Artist[],
     artistLoading: false,
     artistHasMore: false,
     artistPage: 1,
     artistPageSize: 30,
     artistKeyword: '',
+    titleKeyword: '',
+    titleResults: [] as Album[],
+    titleLoading: false,
     cleanupLoading: false,
     cleanupPreview: null as CleanupPreview | null,
     cleanupResult: null as any,
@@ -107,6 +112,34 @@ Page({
     this.setData({ artistKeyword: keyword, artistList: [], artistPage: 1 })
     clearTimeout(_searchTimer)
     _searchTimer = setTimeout(() => this._loadArtists(1), 400)
+  },
+
+  onSearchModeTap(e: WechatMiniprogram.TouchEvent) {
+    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' }).mode
+    if (mode === this.data.searchMode) return
+    this.setData({ searchMode: mode })
+  },
+
+  onTitleSearch(e: WechatMiniprogram.Input) {
+    const keyword = e.detail.value || ''
+    this.setData({ titleKeyword: keyword })
+    clearTimeout(_titleSearchTimer)
+    _titleSearchTimer = setTimeout(() => this._searchByTitle(keyword), 400)
+  },
+
+  _searchByTitle(keyword: string) {
+    const kw = keyword.trim()
+    if (!kw) { this.setData({ titleResults: [], titleLoading: false }); return }
+    this.setData({ titleLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'search_admin_albums', keyword: kw },
+      success: (res: any) => {
+        const r = res.result || {}
+        this.setData({ titleResults: r.success ? (r.list || []) : [], titleLoading: false })
+      },
+      fail: () => this.setData({ titleLoading: false }),
+    })
   },
 
   onReachBottom() {
@@ -207,8 +240,10 @@ Page({
         const toggling = { ...this.data.toggling }
         delete toggling[id]
         if (res.result?.success) {
-          const albumList = this.data.albumList.map((a: Album) => a._id === id ? { ...a, approved: newApproved } : a)
-          this.setData({ albumList, toggling })
+          const patch = (a: Album) => a._id === id ? { ...a, approved: newApproved } : a
+          const albumList = this.data.albumList.map(patch)
+          const titleResults = this.data.titleResults.map(patch)
+          this.setData({ albumList, titleResults, toggling })
           wx.showToast({ title: newApproved ? '已显示' : '已隐藏', icon: 'success' })
         } else {
           this.setData({ toggling })
@@ -224,5 +259,5 @@ Page({
     })
   },
 
-  onUnload() { clearTimeout(_searchTimer) },
+  onUnload() { clearTimeout(_searchTimer); clearTimeout(_titleSearchTimer) },
 })
