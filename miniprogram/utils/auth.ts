@@ -1,12 +1,26 @@
+const LOGGED_OUT_KEY = 'barscope_logged_out'
+
+export const markLoggedIn = () => {
+  wx.removeStorageSync(LOGGED_OUT_KEY)
+}
+
+export const logout = () => {
+  wx.setStorageSync(LOGGED_OUT_KEY, true)
+  const app = getApp<IAppOption>()
+  app.globalData.userInfo = null
+  app.globalData.userType = 'normal'
+  app.globalData.isAdmin = false
+}
+
 export const initAuth = (): Promise<void> =>
   new Promise((resolve) => {
+    if (wx.getStorageSync(LOGGED_OUT_KEY)) { resolve(); return }
     if (!wx.cloud) { resolve(); return }
     wx.cloud.callFunction({
       name: 'getUserInfo',
       success: (res: any) => {
         const app    = getApp<IAppOption>()
         const result = res.result
-        // getUserInfo returns { success, user } — only restore session if success
         if (result?.success && result.user) {
           const u = result.user
           app.globalData.userInfo = {
