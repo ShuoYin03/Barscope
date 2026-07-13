@@ -76,6 +76,7 @@ async function submitManual(event, openId) {
   const company = String(event.company || '').trim()
   const description = String(event.description || '').trim()
   const trackNames = Array.isArray(event.tracks) ? event.tracks.map(x => String(x || '').trim()).filter(Boolean).slice(0,100) : []
+  const artistIds = Array.isArray(event.artistIds) ? event.artistIds.map(x => String(x || '').trim()).filter(Boolean).slice(0,20) : []
   if (!title || !artist) return { success:false, error:'请填写专辑名和歌手' }
   if (!coverUrl) return { success:false, error:'请上传专辑封面' }
   if (releaseDate && !/^\d{4}-\d{2}-\d{2}$/.test(releaseDate)) return { success:false, error:'发行日期格式应为 YYYY-MM-DD' }
@@ -94,8 +95,8 @@ async function submitManual(event, openId) {
     title,
     artist,
     primaryArtist:artist.split(/[\/，,、&]/)[0].trim(),
-    neteaseArtistId:'',
-    artistIds:[],
+    neteaseArtistId:artistIds[0] || '',
+    artistIds,
     releaseDate,
     releaseYear,
     coverUrl,
