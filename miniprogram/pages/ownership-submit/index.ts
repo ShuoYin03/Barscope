@@ -55,10 +55,15 @@ Page({
       const album=albumResult.success?albumResult.album:null
       const allArtists:ArtistPick[]=artistsResult.success?(artistsResult.list||[]):[]
 
+      // Prefer the explicit owner set; fall back to the full participant list for un-migrated albums.
       const ownerIds=new Set<string>()
       if(album){
-        if(Array.isArray(album.artistIds)) album.artistIds.forEach((id:any)=>{if(id)ownerIds.add(String(id))})
-        if(album.neteaseArtistId) ownerIds.add(String(album.neteaseArtistId))
+        if(Array.isArray(album.ownerArtistIds)&&album.ownerArtistIds.length){
+          album.ownerArtistIds.forEach((id:any)=>{if(id)ownerIds.add(String(id))})
+        }else{
+          if(Array.isArray(album.artistIds)) album.artistIds.forEach((id:any)=>{if(id)ownerIds.add(String(id))})
+          if(album.neteaseArtistId) ownerIds.add(String(album.neteaseArtistId))
+        }
       }
 
       let selectedArtists=allArtists

@@ -28,13 +28,27 @@ async function decide(id, decision, openId){
       : [{artistId:item.targetArtistId,artistName:item.targetArtistName}]
     const clean = targets.map(x=>({artistId:String(x&&x.artistId||'').trim(),artistName:String(x&&x.artistName||'').trim()})).filter(x=>x.artistId&&x.artistName)
     if(!clean.length) return {success:false,error:'missing target artists'}
-    const artistIds = Array.from(new Set(clean.map(x=>x.artistId)))
-    const artistNames = clean.filter((x,i,a)=>a.findIndex(y=>y.artistId===x.artistId)===i).map(x=>x.artistName)
+    // The admin's selection defines the OWNER set. The participant list (artistIds) — which drives the
+    // "+N" tag and Feat classification — must keep every collaborator, so we union owners into the
+    // album's existing participants rather than shrinking it to the owners.
+    const owners = clean.filter((x,i,a)=>a.findIndex(y=>y.artistId===x.artistId)===i)
+    const ownerArtistIds = owners.map(x=>x.artistId)
+    const ownerNames = owners.map(x=>x.artistName)
+    const albumDoc = (await db.collection('albums').doc(albumId).get()).data || {}
+    const existingIds = Array.isArray(albumDoc.artistIds) ? albumDoc.artistIds.map(String) : []
+    const addedOwners = owners.filter(o=>!existingIds.includes(o.artistId))
+    const artistIds = existingIds.concat(addedOwners.map(o=>o.artistId))
+    // Keep artist-string ↔ artistIds index alignment (buildNameById relies on it): append new owner names.
+    const artist = existingIds.length
+      ? [String(albumDoc.artist||'').trim(), ...addedOwners.map(o=>o.artistName)].filter(Boolean).join(' / ')
+      : ownerNames.join(' / ')
     await db.collection('albums').doc(albumId).update({ data:{
-      artist:artistNames.join(' / '),
-      primaryArtist:artistNames[0],
-      neteaseArtistId:artistIds[0],
+      artist,
+      primaryArtist:ownerNames[0],
+      neteaseArtistId:ownerArtistIds[0],
+      ownerArtistIds,
       artistIds,
+      isMultiArtist:ownerArtistIds.length>1,
       ownershipCorrectedAt:db.serverDate(),
       ownershipCorrectedBy:openId,
       ownershipSource:'user-admin-correction',
