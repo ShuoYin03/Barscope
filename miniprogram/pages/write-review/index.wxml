@@ -16,24 +16,24 @@
     <view class="dial-section">
       <view class="vinyl-score-disc">
         <view class="vinyl-score-label">
-          <text class="vinyl-score-num">{{rating > 0 ? (rating === 10 ? '10' : rating + '.0') : '—'}}</text>
+          <text class="vinyl-score-num">{{ratingDisplay}}</text>
           <text class="vinyl-score-cap">SCORE</text>
         </view>
         <view class="vinyl-score-spindle" />
       </view>
 
-      <text class="dial-hint">{{rating > 0 ? rating + ' / 10' : '点击下方数字评分'}}</text>
+      <text class="dial-hint">{{rating > 0 ? ratingDisplay + ' / 10' : '支持 0.5 分档评分'}}</text>
 
-      <!-- 1-10 number buttons -->
+      <!-- 1-10 scores in 0.5 increments -->
       <view class="num-grid">
         <view
-          wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}"
-          wx:key="*this"
-          class="num-btn {{rating === item ? 'sel' : (item < rating ? 'fill' : '')}}"
+          wx:for="{{scoreOptions}}"
+          wx:key="value"
+          class="num-btn {{rating === item.value ? 'sel' : (item.value < rating ? 'fill' : '')}}"
           bindtap="onRateNum"
-          data-n="{{item}}"
+          data-n="{{item.value}}"
         >
-          <text>{{item}}</text>
+          <text>{{item.label}}</text>
         </view>
       </view>
     </view>
