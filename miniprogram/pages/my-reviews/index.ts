@@ -13,7 +13,8 @@ Page({
     statusBarHeight: 20,
     topbarHeight: 64,
     reviews: [] as UserReview[],
-    loading: true
+    loading: true,
+    deletingId: ''
   },
 
   onLoad() {
@@ -63,5 +64,41 @@ Page({
   onReviewTap(e: WechatMiniprogram.TouchEvent) {
     const albumId = (e.currentTarget.dataset as { id: string }).id
     if (albumId) wx.navigateTo({ url: `/pages/album-detail/index?id=${albumId}` })
+  },
+
+  onDeleteTap(e: WechatMiniprogram.TouchEvent) {
+    const reviewId = (e.currentTarget.dataset as { id: string }).id
+    if (!reviewId || this.data.deletingId) return
+
+    wx.showModal({
+      title: '删除评论',
+      content: '删除后无法恢复，确认删除这条评论吗？',
+      confirmText: '删除',
+      confirmColor: '#E5532D',
+      success: modalRes => {
+        if (!modalRes.confirm) return
+        this.deleteReview(reviewId)
+      }
+    })
+  },
+
+  deleteReview(reviewId: string) {
+    this.setData({ deletingId: reviewId })
+    wx.cloud.callFunction({
+      name: 'deleteReview',
+      data: { reviewId },
+      success: (res: any) => {
+        const result = res.result || {}
+        if (!result.success) {
+          wx.showToast({ title: result.error || '删除失败', icon: 'none' })
+          return
+        }
+        const reviews = (this.data.reviews as UserReview[]).filter(item => item._id !== reviewId)
+        this.setData({ reviews })
+        wx.showToast({ title: '已删除', icon: 'success' })
+      },
+      fail: () => wx.showToast({ title: '删除失败，请稍后重试', icon: 'none' }),
+      complete: () => this.setData({ deletingId: '' })
+    })
   }
 })
