@@ -1,15 +1,5 @@
 import { getThemeClass } from '../../utils/theme'
 
-interface ScoreOption {
-  value: number
-  label: string
-}
-
-const SCORE_OPTIONS: ScoreOption[] = Array.from({ length: 19 }, (_, index) => {
-  const value = 1 + index * 0.5
-  return { value, label: Number.isInteger(value) ? String(value) : value.toFixed(1) }
-})
-
 Page({
   data: {
     statusBarHeight: 20,
@@ -19,7 +9,7 @@ Page({
     albumTitle: '',
     rating: 0,
     ratingDisplay: '—',
-    scoreOptions: SCORE_OPTIONS,
+    sliderValue: 5,
     content: '',
     submitting: false,
   },
@@ -42,11 +32,12 @@ Page({
     wx.navigateBack()
   },
 
-  onRateNum(e: WechatMiniprogram.TouchEvent) {
-    const rating = Number((e.currentTarget.dataset as { n: number }).n)
+  onRateChange(e: WechatMiniprogram.SliderChange) {
+    const rating = Math.round(Number(e.detail.value) * 2) / 2
     this.setData({
       rating,
-      ratingDisplay: Number.isInteger(rating) ? rating.toFixed(1) : String(rating),
+      sliderValue: rating,
+      ratingDisplay: rating.toFixed(1),
     })
   },
 
