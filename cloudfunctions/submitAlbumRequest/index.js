@@ -103,6 +103,7 @@ async function submitManual(event, openId) {
     company,
     description,
     tracks,
+    trackCount:tracks.length,
     avgScore:0,
     reviewCount:0,
     genres:[],

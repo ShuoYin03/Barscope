@@ -21,6 +21,6 @@
       </view>
     </view>
   </view>
-  <view class="card"><text class="label">原因</text><textarea class="textarea" placeholder="例如：该专辑由多位 rapper 共创 / 当前归属不完整" placeholder-style="color:#766f68" value="{{reason}}" bindinput="onReasonInput" /></view>
+  <view class="card"><text class="label">原因</text><textarea class="textarea" placeholder="例如：该专辑由多位 rapper 共创 / 当前归属不完整" placeholder-style="color:#766f68" value="{{reason}}" bindinput="onReasonInput" maxlength="-1" /></view>
   <view class="submit" bindtap="onSubmit">提交管理员审核</view>
 </view>
