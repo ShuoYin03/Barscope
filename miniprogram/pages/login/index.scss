@@ -12,21 +12,21 @@
 
 .back-btn {
   position: absolute;
-  top: 18rpx;
-  left: 28rpx;
-  height: 64rpx;
-  padding: 0 20rpx;
+  left: 18rpx;
+  min-width: 104rpx;
+  padding: 0 14rpx;
   border: 2rpx solid var(--gray-light);
   border-radius: 999rpx;
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  justify-content: center;
+  gap: 4rpx;
   background: var(--off-white);
   z-index: 10;
   box-sizing: border-box;
 }
-.back-icon { font-size: 30rpx; color: var(--accent); line-height: 1; }
-.back-label { font-size: 22rpx; color: var(--white); letter-spacing: 2rpx; }
+.back-icon { font-size: 30rpx; color: var(--accent); line-height: 1; margin-top: -2rpx; }
+.back-label { font-size: 20rpx; color: var(--white); letter-spacing: 1rpx; line-height: 1; }
 
 .logo-area {
   display: flex;
