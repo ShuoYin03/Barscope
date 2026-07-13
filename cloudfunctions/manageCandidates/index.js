@@ -71,7 +71,7 @@ function normalizeAlbum(raw, fallbackArtist) {
   if (trackCount < 3)                                   return null
 
   const title = raw.name.trim()
-  return { title, artist, primaryArtist, neteaseArtistId, artistIds, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount, titleLetter: firstLetter(title) }
+  return { title, artist, primaryArtist, neteaseArtistId, artistIds, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount, titleLetter: firstLetter(title), isMultiArtist: artistIds.length > 1 }
 }
 
 async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
@@ -154,6 +154,7 @@ exports.main = async (event, context) => {
   if (action === 'list_all_albums')      return await listAllAlbums(event.letter || '', event.page || 1, event.pageSize || 60)
   if (action === 'album_letter_counts')  return await albumLetterCounts()
   if (action === 'backfill_album_letters') return await backfillAlbumLetters(event.skip || 0)
+  if (action === 'list_multi_artist_albums') return await listMultiArtistAlbums(event.page || 1, event.pageSize || 60)
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
 
   return { success: false, error: 'unknown action' }
@@ -370,16 +371,30 @@ async function albumLetterCounts() {
   }
 }
 
-// One-time migration for albums created before titleLetter existed. Idempotent —
-// safe to re-run. Client pages through with `skip` until `done`.
+// One-time migration for albums created before titleLetter/isMultiArtist existed.
+// Idempotent — safe to re-run. Client pages through with `skip` until `done`.
 async function backfillAlbumLetters(skip) {
   try {
     const pageSize = 300
-    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, title: true }).get()
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, title: true, artistIds: true }).get()
     const docs = result.data || []
     if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
-    await Promise.allSettled(docs.map(d => db.collection('albums').doc(d._id).update({ data: { titleLetter: firstLetter(d.title) } })))
+    await Promise.allSettled(docs.map(d => db.collection('albums').doc(d._id).update({ data: { titleLetter: firstLetter(d.title), isMultiArtist: Array.isArray(d.artistIds) && d.artistIds.length > 1 } })))
     return { success: true, done: false, processed: skip + docs.length, updated: docs.length, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// Albums with more than one artistId — surfaced separately so admins can audit
+// co-creation attribution without paging through the whole letter-sorted library.
+async function listMultiArtistAlbums(page, pageSize) {
+  try {
+    const query = db.collection('albums').where({ isMultiArtist: true })
+    const total = Number((await query.count()).total || 0)
+    const start = (page - 1) * pageSize
+    const result = await query.orderBy('title', 'asc').skip(start).limit(pageSize).get()
+    return { success: true, list: result.data, total, page, pageSize }
   } catch (e) {
     return { success: false, error: e.message }
   }

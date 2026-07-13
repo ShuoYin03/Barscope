@@ -4,11 +4,14 @@
     <view class="review-meta"><view class="name-row"><text class="review-user">{{review.userName}}</text><text wx:if="{{review.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{review.timeAgo}}</text></view>
     <text wx:if="{{showAlbum}}" class="album-badge">{{review.albumTitle}}</text><text class="review-score">{{review.score}}</text>
   </view>
-  <text class="review-text">{{review.content}}</text>
+  <text class="review-text {{expanded ? '' : 'clamped'}}" catchtap="onToggleExpand">{{review.content}}</text>
+  <view wx:if="{{hasLongContent}}" class="review-expand-toggle" catchtap="onToggleExpand">
+    <text>{{expanded ? '收起' : '展开全部'}}</text><text class="review-expand-arrow">{{expanded ? '↑' : '↓'}}</text>
+  </view>
   <view class="review-footer">
     <view class="like-btn {{(localLiked || review.likedByMe) ? 'liked' : ''}}" catchtap="onLike"><text>{{(localLiked || review.likedByMe) ? '♥' : '♡'}} {{review.likes}}</text></view>
     <text class="sep"> | </text>
-    <view class="reply-btn" catchtap="onReply"><text>💬 {{review.replyCount}}条 · 回复</text></view>
+    <view class="reply-btn" catchtap="onReply"><text>↩ {{review.replyCount}}条 · 回复</text></view>
     <text class="sep"> | </text>
     <view class="reply-btn" catchtap="onManage"><text>··· 操作</text></view>
   </view>

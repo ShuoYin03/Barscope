@@ -20,9 +20,9 @@
         </view>
       </view>
       <view class="rating-summary">
-        <view class="rating-summary-cell rating-summary-score"><text class="rating-summary-eyebrow">共 {{album.reviewCount}} 人打分</text><view class="rating-summary-main"><text class="rating-summary-label">均分</text><text class="rating-summary-value">{{album.avgScore}}</text></view></view>
+        <view class="rating-summary-cell"><text class="rating-summary-eyebrow">共 {{album.reviewCount}} 人打分</text><text class="rating-summary-value">{{album.avgScore}}</text></view>
         <view class="rating-summary-divider"></view>
-        <view class="rating-summary-cell rating-summary-review"><text class="rating-summary-eyebrow">精选评论</text><text class="rating-summary-value">{{reviews.length}}</text></view>
+        <view class="rating-summary-cell"><text class="rating-summary-eyebrow">精选评论</text><text class="rating-summary-value">{{reviews.length}}</text></view>
       </view>
     </view>
     <view class="album-section"><view class="section-head"><text class="section-label">SIDE A — 专辑简介</text></view><block wx:if="{{album.description}}"><text class="desc-text">{{descriptionExpanded ? album.description : descriptionPreview}}</text><view wx:if="{{hasLongDescription}}" class="desc-toggle" bindtap="onDescriptionToggle"><text>{{descriptionExpanded ? '收起' : '展开更多'}}</text><text class="desc-toggle-arrow">{{descriptionExpanded ? '↑' : '↓'}}</text></view></block><view wx:elif="{{trackSyncing}}" class="placeholder-row"><text class="placeholder-text">正在同步专辑简介…</text></view><view wx:else class="placeholder-row"><text class="placeholder-text">暂无专辑简介</text></view></view>
@@ -32,6 +32,18 @@
     <view class="album-section"><view class="section-head"><text class="section-label">SIDE X — 纠错</text></view><navigator class="guest-picker" url="/pages/ownership-submit/index?albumId={{album.id}}&title={{album.title}}"><view class="guest-picker-copy"><text class="guest-picker-title">修改专辑归属</text><text class="guest-picker-desc">认为该专辑应归属到其他 rapper 主页时，提交管理员复核</text></view><text class="guest-picker-arrow">›</text></navigator><view class="guest-picker" bindtap="onMoveAlbumToCandidate"><view class="guest-picker-copy"><text class="guest-picker-title">移入专辑候选区</text><text class="guest-picker-desc">认为该专辑不应收录时，可提交给管理员复核</text></view><text class="guest-picker-arrow">›</text></view></view>
   </scroll-view>
   <view wx:if="{{artistSheetVisible}}" class="artist-sheet-mask" bindtap="onCloseArtistSheet"><view class="artist-sheet" catchtap="noop"><view class="artist-sheet-handle" /><text class="artist-sheet-title">{{artistSheetTitle}}</text><view wx:for="{{artistSheetList}}" wx:key="id" class="artist-sheet-row" bindtap="onSheetArtistTap" data-id="{{item.id}}" data-name="{{item.name}}"><view class="artist-sheet-avatar"><image wx:if="{{item.avatarUrl}}" class="artist-sheet-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view><view class="artist-sheet-copy"><text class="artist-sheet-name">{{item.name}}</text><text class="artist-sheet-note">{{item.note}}</text></view><text class="artist-sheet-go">›</text></view><view class="artist-sheet-cancel" bindtap="onCloseArtistSheet"><text>取消</text></view></view></view>
+  <view wx:if="{{replySheetVisible}}" class="reply-sheet-mask" bindtap="onCloseReplySheet">
+    <view class="reply-sheet" catchtap="noop">
+      <view class="reply-sheet-handle" />
+      <text class="reply-sheet-title">回复 <text>{{replyTargetName}}</text></text>
+      <textarea class="reply-sheet-textarea" placeholder="写下你的回复" placeholder-style="color:#6f6762" value="{{replyContent}}" bindinput="onReplyContentInput" maxlength="300" auto-focus />
+      <text class="reply-sheet-count">{{replyContent.length}}/300</text>
+      <view class="reply-sheet-actions">
+        <view class="reply-sheet-cancel" bindtap="onCloseReplySheet"><text>取消</text></view>
+        <view class="reply-sheet-submit {{replySubmitting ? 'btn-disabled' : ''}}" bindtap="onSubmitReply"><text>{{replySubmitting ? '发送中…' : '发送'}}</text></view>
+      </view>
+    </view>
+  </view>
   <view wx:if="{{!loading && !album}}" class="loading-state"><text class="loading-text">专辑不存在</text></view>
   <view wx:if="{{album}}" class="bottom-bar"><view class="btn-fav {{isFavorited ? 'is-fav' : ''}}" bindtap="onFavoriteToggle"><text class="btn-fav-icon">{{isFavorited ? '★' : '☆'}}</text></view><view class="btn-write" bindtap="onWriteReview"><text>＋ 写评论</text></view></view>
 </view>

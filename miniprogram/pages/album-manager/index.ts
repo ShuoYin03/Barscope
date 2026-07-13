@@ -49,7 +49,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     view: 'artists' as 'artists' | 'albums',
-    searchMode: 'artist' as 'artist' | 'title' | 'all',
+    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi',
     artistList: [] as Artist[],
     artistLoading: false,
     artistHasMore: false,
@@ -80,6 +80,13 @@ Page({
     allBatchWorking: false,
     backfilling: false,
     backfillDone: 0,
+
+    multiList: [] as Album[],
+    multiLoading: false,
+    multiPage: 1,
+    multiPageSize: 60,
+    multiTotal: 0,
+    multiHasMore: false,
   },
 
   onLoad() {
@@ -140,10 +147,39 @@ Page({
   },
 
   onSearchModeTap(e: WechatMiniprogram.TouchEvent) {
-    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' }).mode
+    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' }).mode
     if (mode === this.data.searchMode) return
     this.setData({ searchMode: mode })
     if (mode === 'all' && !this.data.allLetters.length) this._loadLetterCounts()
+    if (mode === 'multi' && !this.data.multiList.length) this._loadMultiArtistAlbums(1)
+  },
+
+  // ── 多人合作专辑 ──────────────────────────────────────────────────────
+  _loadMultiArtistAlbums(page: number) {
+    this.setData({ multiLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'list_multi_artist_albums', page, pageSize: this.data.multiPageSize },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ multiLoading: false }); return }
+        const incoming = (r.list || []) as Album[]
+        const newList = page === 1 ? incoming : [...this.data.multiList, ...incoming]
+        this.setData({
+          multiList: newList,
+          multiTotal: r.total || 0,
+          multiPage: page,
+          multiHasMore: newList.length < (r.total || 0),
+          multiLoading: false,
+        })
+      },
+      fail: () => this.setData({ multiLoading: false }),
+    })
+  },
+
+  onMultiReachBottom() {
+    if (this.data.searchMode !== 'multi' || !this.data.multiHasMore || this.data.multiLoading) return
+    this._loadMultiArtistAlbums(this.data.multiPage + 1)
   },
 
   // ── 全部专辑：字母表浏览 + 批量操作 ──────────────────────────────────────
@@ -241,8 +277,10 @@ Page({
             const r = res.result || {}
             if (!r.success) { wx.showToast({ title: r.error || '操作失败', icon: 'none' }); return }
             const idSet = new Set(ids)
-            const allList = this.data.allList.map(a => idSet.has(a._id) ? { ...a, approved, selected: false } : a)
-            this.setData({ allList, allSelectedCount: 0 })
+            const patch = (a: Album) => idSet.has(a._id) ? { ...a, approved, selected: false } : a
+            const allList = this.data.allList.map(patch)
+            const multiList = this.data.multiList.map(patch)
+            this.setData({ allList, multiList, allSelectedCount: 0 })
             wx.showToast({ title: `已处理 ${r.succeeded || 0} 张`, icon: 'success' })
           },
           fail: () => { wx.hideLoading(); this.setData({ allBatchWorking: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
@@ -426,7 +464,8 @@ Page({
           const albumList = this.data.albumList.map(patch)
           const titleResults = this.data.titleResults.map(patch)
           const allList = this.data.allList.map(patch)
-          this.setData({ albumList, titleResults, allList, toggling })
+          const multiList = this.data.multiList.map(patch)
+          this.setData({ albumList, titleResults, allList, multiList, toggling })
           wx.showToast({ title: newApproved ? '已显示' : '已隐藏', icon: 'success' })
           this._loadArtists(1)
         } else {

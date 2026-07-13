@@ -145,7 +145,8 @@ function firstLetter(name){ for(const ch of Array.from(String(name||'').trim()))
 
 function albumFromCandidate(candidate, openId) {
   const { _id, status, addedAt, decidedAt, albumOriginalId, originalAlbumId, reportReason, reportSource, reportedBy, movedFromAlbumsAt, decision, decidedBy, candidateReason, ...album } = candidate
-  return { ...album, approved: true, movedToCandidate: false, titleLetter: firstLetter(album.title), restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId }
+  const isMultiArtist = Array.isArray(album.artistIds) && album.artistIds.length > 1
+  return { ...album, approved: true, movedToCandidate: false, titleLetter: firstLetter(album.title), isMultiArtist, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId }
 }
 
 async function decide(id, decision, openId) {

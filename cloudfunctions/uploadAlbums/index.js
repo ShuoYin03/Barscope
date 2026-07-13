@@ -21,12 +21,12 @@ exports.main = async event => {
     if (existingMap[a.sourceId]) action === 'upsert' ? toUpdate.push(a) : skipped++
     else toInsert.push(a)
   })
-  const insertOps = toInsert.map(a => db.collection('albums').add({ data:Object.assign({ approved:false, titleLetter:firstLetter(a.title) }, a) }))
+  const insertOps = toInsert.map(a => db.collection('albums').add({ data:Object.assign({ approved:false, titleLetter:firstLetter(a.title), isMultiArtist:Array.isArray(a.artistIds) && a.artistIds.length > 1 }, a) }))
   const updateOps = toUpdate.map(a => {
     const fields = { coverUrl:a.coverUrl, releaseYear:a.releaseYear, releaseDate:a.releaseDate, genres:a.genres, artist:a.artist }
     if (a.primaryArtist) fields.primaryArtist = a.primaryArtist
     if (a.neteaseArtistId) fields.neteaseArtistId = a.neteaseArtistId
-    if (Array.isArray(a.artistIds) && a.artistIds.length) fields.artistIds = a.artistIds.map(String)
+    if (Array.isArray(a.artistIds) && a.artistIds.length) { fields.artistIds = a.artistIds.map(String); fields.isMultiArtist = a.artistIds.length > 1 }
     return db.collection('albums').doc(existingMap[a.sourceId]).update({ data:fields })
   })
   const results = await Promise.allSettled(insertOps.concat(updateOps))
