@@ -139,9 +139,13 @@ async function removeRelated(collection, field, value) {
   }
 }
 
+const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾'],['F','发'],['G','噶'],['H','哈'],['J','击'],['K','喀'],['L','垃'],['M','妈'],['N','拿'],['O','哦'],['P','啪'],['Q','期'],['R','然'],['S','撒'],['T','塌'],['W','挖'],['X','昔'],['Y','压'],['Z','匝']]
+function pinyinInitial(ch){ let letter='#'; for(const [initial,startChar] of PINYIN_STARTS){ if(ch.localeCompare(startChar,'zh-Hans-CN-u-co-pinyin')>=0)letter=initial; else break } return letter }
+function firstLetter(name){ for(const ch of Array.from(String(name||'').trim())){ if(/[A-Za-z]/.test(ch))return ch.toUpperCase(); if(/[一-鿿]/.test(ch))return pinyinInitial(ch) } return '#' }
+
 function albumFromCandidate(candidate, openId) {
   const { _id, status, addedAt, decidedAt, albumOriginalId, originalAlbumId, reportReason, reportSource, reportedBy, movedFromAlbumsAt, decision, decidedBy, candidateReason, ...album } = candidate
-  return { ...album, approved: true, movedToCandidate: false, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId }
+  return { ...album, approved: true, movedToCandidate: false, titleLetter: firstLetter(album.title), restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId }
 }
 
 async function decide(id, decision, openId) {

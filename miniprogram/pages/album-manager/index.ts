@@ -20,7 +20,10 @@ interface Album {
   avgScore: number
   reviewCount: number
   trackCount: number
+  selected?: boolean
 }
+
+interface LetterCount { letter: string; count: number }
 
 interface DuplicateSample {
   key: string
@@ -46,7 +49,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     view: 'artists' as 'artists' | 'albums',
-    searchMode: 'artist' as 'artist' | 'title',
+    searchMode: 'artist' as 'artist' | 'title' | 'all',
     artistList: [] as Artist[],
     artistLoading: false,
     artistHasMore: false,
@@ -63,6 +66,20 @@ Page({
     albumList: [] as Album[],
     albumLoading: false,
     toggling: {} as Record<string, boolean>,
+
+    allLetters: [] as LetterCount[],
+    allActiveLetter: '',
+    allList: [] as Album[],
+    allLoading: false,
+    allPage: 1,
+    allPageSize: 60,
+    allTotal: 0,
+    allHasMore: false,
+    allSelectMode: false,
+    allSelectedCount: 0,
+    allBatchWorking: false,
+    backfilling: false,
+    backfillDone: 0,
   },
 
   onLoad() {
@@ -123,9 +140,141 @@ Page({
   },
 
   onSearchModeTap(e: WechatMiniprogram.TouchEvent) {
-    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' }).mode
+    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' }).mode
     if (mode === this.data.searchMode) return
     this.setData({ searchMode: mode })
+    if (mode === 'all' && !this.data.allLetters.length) this._loadLetterCounts()
+  },
+
+  // ── 全部专辑：字母表浏览 + 批量操作 ──────────────────────────────────────
+  _loadLetterCounts() {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'album_letter_counts' },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) return
+        const allLetters: LetterCount[] = (r.counts || []).map((x: any) => ({ letter: x.letter, count: x.total || 0 }))
+        const firstNonEmpty = allLetters.find(x => x.count > 0)
+        const letter = this.data.allActiveLetter || (firstNonEmpty ? firstNonEmpty.letter : 'A')
+        this.setData({ allLetters, allActiveLetter: letter })
+        this._loadAllAlbums(letter, 1)
+      },
+    })
+  },
+
+  onAllLetterTap(e: WechatMiniprogram.TouchEvent) {
+    const letter = (e.currentTarget.dataset as { letter: string }).letter
+    if (!letter || letter === this.data.allActiveLetter) return
+    this.setData({ allActiveLetter: letter, allList: [], allPage: 1, allHasMore: false })
+    this._loadAllAlbums(letter, 1)
+  },
+
+  _loadAllAlbums(letter: string, page: number) {
+    this.setData({ allLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'list_all_albums', letter, page, pageSize: this.data.allPageSize },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ allLoading: false }); return }
+        const incoming = (r.list || []) as Album[]
+        const newList = page === 1 ? incoming : [...this.data.allList, ...incoming]
+        this.setData({
+          allList: newList,
+          allTotal: r.total || 0,
+          allPage: page,
+          allHasMore: newList.length < (r.total || 0),
+          allLoading: false,
+        })
+      },
+      fail: () => this.setData({ allLoading: false }),
+    })
+  },
+
+  onAllReachBottom() {
+    if (this.data.searchMode !== 'all' || !this.data.allHasMore || this.data.allLoading) return
+    this._loadAllAlbums(this.data.allActiveLetter, this.data.allPage + 1)
+  },
+
+  onToggleAllSelectMode() {
+    const allSelectMode = !this.data.allSelectMode
+    const allList = this.data.allList.map(a => ({ ...a, selected: false }))
+    this.setData({ allSelectMode, allList, allSelectedCount: 0 })
+  },
+
+  onAllCardTap(e: WechatMiniprogram.TouchEvent) {
+    if (!this.data.allSelectMode) return
+    const id = (e.currentTarget.dataset as { id: string }).id
+    const allList = this.data.allList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
+    this.setData({ allList, allSelectedCount: allList.filter(a => a.selected).length })
+  },
+
+  onAllSelectAll() {
+    const shouldSelect = this.data.allSelectedCount === 0
+    const allList = this.data.allList.map(a => ({ ...a, selected: shouldSelect }))
+    this.setData({ allList, allSelectedCount: shouldSelect ? allList.length : 0 })
+  },
+
+  onAllBatchShow() { this._batchToggleApproved(true) },
+  onAllBatchHide() { this._batchToggleApproved(false) },
+
+  _batchToggleApproved(approved: boolean) {
+    if (this.data.allBatchWorking) return
+    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
+    wx.showModal({
+      title: approved ? `显示 ${ids.length} 张专辑？` : `隐藏 ${ids.length} 张专辑？`,
+      content: approved ? '所选专辑将重新对用户显示。' : '所选专辑将从专辑库隐藏，用户端不再可见（不会删除数据，可随时恢复）。',
+      confirmText: approved ? '全部显示' : '全部隐藏',
+      confirmColor: '#C94E25',
+      success: (modal) => {
+        if (!modal.confirm) return
+        this.setData({ allBatchWorking: true })
+        wx.showLoading({ title: '处理中…', mask: true })
+        wx.cloud.callFunction({
+          name: 'manageCandidates',
+          data: { action: 'batch_toggle_approved', ids, approved },
+          success: (res: any) => {
+            wx.hideLoading()
+            this.setData({ allBatchWorking: false })
+            const r = res.result || {}
+            if (!r.success) { wx.showToast({ title: r.error || '操作失败', icon: 'none' }); return }
+            const idSet = new Set(ids)
+            const allList = this.data.allList.map(a => idSet.has(a._id) ? { ...a, approved, selected: false } : a)
+            this.setData({ allList, allSelectedCount: 0 })
+            wx.showToast({ title: `已处理 ${r.succeeded || 0} 张`, icon: 'success' })
+          },
+          fail: () => { wx.hideLoading(); this.setData({ allBatchWorking: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+        })
+      },
+    })
+  },
+
+  onBackfillLetters() {
+    if (this.data.backfilling) return
+    this.setData({ backfilling: true, backfillDone: 0 })
+    this._runBackfillStep(0)
+  },
+
+  _runBackfillStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'backfill_album_letters', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ backfilling: false }); wx.showToast({ title: r.error || '索引失败', icon: 'none' }); return }
+        this.setData({ backfillDone: r.processed || 0 })
+        if (r.done) {
+          this.setData({ backfilling: false })
+          wx.showToast({ title: '索引完成', icon: 'success' })
+          this._loadLetterCounts()
+          return
+        }
+        this._runBackfillStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ backfilling: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
   },
 
   onTitleSearch(e: WechatMiniprogram.Input) {
@@ -276,7 +425,8 @@ Page({
           const patch = (a: Album) => a._id === id ? { ...a, approved: newApproved } : a
           const albumList = this.data.albumList.map(patch)
           const titleResults = this.data.titleResults.map(patch)
-          this.setData({ albumList, titleResults, toggling })
+          const allList = this.data.allList.map(patch)
+          this.setData({ albumList, titleResults, allList, toggling })
           wx.showToast({ title: newApproved ? '已显示' : '已隐藏', icon: 'success' })
           this._loadArtists(1)
         } else {

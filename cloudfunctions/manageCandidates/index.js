@@ -47,6 +47,11 @@ async function fetchNeteaseAlbums(artistId) {
   return albums
 }
 
+const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾'],['F','发'],['G','噶'],['H','哈'],['J','击'],['K','喀'],['L','垃'],['M','妈'],['N','拿'],['O','哦'],['P','啪'],['Q','期'],['R','然'],['S','撒'],['T','塌'],['W','挖'],['X','昔'],['Y','压'],['Z','匝']]
+const LETTER_ORDER='ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
+function pinyinInitial(ch){ let letter='#'; for(const [initial,startChar] of PINYIN_STARTS){ if(ch.localeCompare(startChar,'zh-Hans-CN-u-co-pinyin')>=0)letter=initial; else break } return letter }
+function firstLetter(name){ for(const ch of Array.from(String(name||'').trim())){ if(/[A-Za-z]/.test(ch))return ch.toUpperCase(); if(/[一-鿿]/.test(ch))return pinyinInitial(ch) } return '#' }
+
 function normalizeAlbum(raw, fallbackArtist) {
   const primaryArtist    = ((raw.artist || {}).name || '').trim() || fallbackArtist
   const neteaseArtistId  = (raw.artist && raw.artist.id) ? String(raw.artist.id) : null
@@ -65,7 +70,8 @@ function normalizeAlbum(raw, fallbackArtist) {
   if (SKIP_KEYWORDS.some(kw => raw.name.includes(kw))) return null
   if (trackCount < 3)                                   return null
 
-  return { title: raw.name.trim(), artist, primaryArtist, neteaseArtistId, artistIds, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount }
+  const title = raw.name.trim()
+  return { title, artist, primaryArtist, neteaseArtistId, artistIds, releaseYear: year, coverUrl: cover, genres: [], sourceId: id, source: 'netease', avgScore: 0, reviewCount: 0, trackCount, titleLetter: firstLetter(title) }
 }
 
 async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
@@ -145,6 +151,10 @@ exports.main = async (event, context) => {
   if (action === 'search_admin_albums')  return await searchAdminAlbums(event.keyword || '')
   if (action === 'toggle_album_approved') return await toggleAlbumApproved(event.albumId, !!event.approved)
   if (action === 'cleanup_singles')      return await cleanupSingles()
+  if (action === 'list_all_albums')      return await listAllAlbums(event.letter || '', event.page || 1, event.pageSize || 60)
+  if (action === 'album_letter_counts')  return await albumLetterCounts()
+  if (action === 'backfill_album_letters') return await backfillAlbumLetters(event.skip || 0)
+  if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
 
   return { success: false, error: 'unknown action' }
 }
@@ -326,6 +336,61 @@ async function searchAdminAlbums(keyword) {
   } catch (e) {
     return { success: false, error: e.message }
   }
+}
+
+// ── list_all_albums / album_letter_counts / backfill_album_letters ──────────────
+// Browsing the whole library alphabetically by scanning+sorting at request time
+// doesn't scale (that's exactly what timed out the search cloud function — see
+// getAlbums). Instead every album carries a precomputed titleLetter (A-Z, # for
+// anything not starting with a Latin letter or CJK character), set at write time
+// by every place that creates an album doc, so browsing a letter is a cheap
+// targeted query instead of a full-collection scan.
+async function listAllAlbums(letter, page, pageSize) {
+  if (!letter) return { success: false, error: 'missing letter' }
+  try {
+    const query = db.collection('albums').where({ titleLetter: letter })
+    const total = Number((await query.count()).total || 0)
+    const start = (page - 1) * pageSize
+    const result = await query.orderBy('title', 'asc').skip(start).limit(pageSize).get()
+    return { success: true, list: result.data, total, page, pageSize }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function albumLetterCounts() {
+  try {
+    const counts = await Promise.all(LETTER_ORDER.split('').map(async letter => {
+      const total = Number((await db.collection('albums').where({ titleLetter: letter }).count()).total || 0)
+      return { letter, total }
+    }))
+    return { success: true, counts }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// One-time migration for albums created before titleLetter existed. Idempotent —
+// safe to re-run. Client pages through with `skip` until `done`.
+async function backfillAlbumLetters(skip) {
+  try {
+    const pageSize = 300
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, title: true }).get()
+    const docs = result.data || []
+    if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
+    await Promise.allSettled(docs.map(d => db.collection('albums').doc(d._id).update({ data: { titleLetter: firstLetter(d.title) } })))
+    return { success: true, done: false, processed: skip + docs.length, updated: docs.length, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function batchToggleApproved(ids, approved) {
+  const cleanIds = (Array.isArray(ids) ? ids : []).map(String).filter(Boolean).slice(0, 200)
+  if (!cleanIds.length) return { success: false, error: 'no ids' }
+  const results = await Promise.allSettled(cleanIds.map(id => db.collection('albums').doc(id).update({ data: { approved } })))
+  const succeeded = results.filter(r => r.status === 'fulfilled').length
+  return { success: true, succeeded, failed: cleanIds.length - succeeded }
 }
 
 // ── toggle_album_approved ─────────────────────────────────────────────────────

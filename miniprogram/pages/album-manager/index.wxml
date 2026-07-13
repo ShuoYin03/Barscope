@@ -16,9 +16,10 @@
     <view class="mode-tabs">
       <view class="mode-tab {{searchMode === 'artist' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="artist"><text>按艺人</text></view>
       <view class="mode-tab {{searchMode === 'title' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="title"><text>按专辑名</text></view>
+      <view class="mode-tab {{searchMode === 'all' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="all"><text>全部</text></view>
     </view>
 
-    <view class="search-bar">
+    <view class="search-bar" wx:if="{{searchMode !== 'all'}}">
       <view class="search-input-wrap">
         <text class="search-icon">⌕</text>
         <input
@@ -146,7 +147,7 @@
       </block>
     </scroll-view>
 
-    <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <scroll-view wx:elif="{{searchMode === 'title'}}" class="content" scroll-y enhanced show-scrollbar="{{false}}">
       <block wx:if="{{titleLoading && titleResults.length === 0}}">
         <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
           <view class="sk skel-cover"></view>
@@ -201,6 +202,105 @@
         </view>
       </block>
     </scroll-view>
+
+    <!-- ── 全部专辑（按字母表浏览 + 批量操作） ── -->
+    <block wx:else>
+      <view class="letter-tabs-wrap">
+        <scroll-view class="letter-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+          <view
+            wx:for="{{allLetters}}"
+            wx:key="letter"
+            class="letter-tab {{allActiveLetter === item.letter ? 'active' : ''}}"
+            bindtap="onAllLetterTap"
+            data-letter="{{item.letter}}"
+          >
+            <text>{{item.letter}}</text>
+            <text wx:if="{{item.count}}" class="letter-tab-count">{{item.count}}</text>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="all-action-bar">
+        <view class="all-action-btn" bindtap="onToggleAllSelectMode">
+          <text>{{allSelectMode ? '取消批量' : '批量选择'}}</text>
+        </view>
+        <block wx:if="{{allSelectMode}}">
+          <view class="all-action-btn" bindtap="onAllSelectAll"><text>{{allSelectedCount ? '取消全选' : '全选'}}</text></view>
+          <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchShow"><text>批量显示</text></view>
+          <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchHide"><text>批量隐藏</text></view>
+        </block>
+        <view wx:else class="all-action-btn ghost {{backfilling ? 'btn-disabled' : ''}}" bindtap="onBackfillLetters">
+          <text>{{backfilling ? ('索引中 ' + backfillDone) : '补全字母索引'}}</text>
+        </view>
+      </view>
+
+      <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onAllReachBottom">
+        <block wx:if="{{allLoading && allList.length === 0}}">
+          <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
+            <view class="sk skel-cover"></view>
+            <view class="skel-body">
+              <view class="sk skel-name"></view>
+              <view class="sk skel-meta"></view>
+            </view>
+          </view>
+        </block>
+
+        <view wx:elif="{{allList.length === 0}}" class="empty-state">
+          <text class="empty-icon">○</text>
+          <text class="empty-text">该字母下暂无专辑</text>
+        </view>
+
+        <block wx:else>
+          <view
+            wx:for="{{allList}}"
+            wx:key="_id"
+            class="album-row {{allSelectMode ? 'selectable' : ''}} {{item.selected ? 'selected' : ''}}"
+            bindtap="onAllCardTap"
+            data-id="{{item._id}}"
+          >
+            <view wx:if="{{allSelectMode}}" class="select-box {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
+            <view class="album-cover-wrap">
+              <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+              <view wx:else class="album-cover-fallback">
+                <text class="album-cover-icon">♪</text>
+              </view>
+              <view wx:if="{{!item.approved}}" class="cover-hidden-badge">
+                <text class="cover-hidden-text">隐藏</text>
+              </view>
+            </view>
+
+            <view class="album-info">
+              <text class="album-title">{{item.title}}</text>
+              <text class="album-artist">{{item.artist}}</text>
+              <view class="album-meta-row">
+                <text class="album-meta">{{item.releaseYear}}</text>
+                <view wx:if="{{item.trackCount > 0}}" class="meta-dot"></view>
+                <text wx:if="{{item.trackCount > 0}}" class="album-meta">{{item.trackCount}} 首</text>
+                <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
+                <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
+              </view>
+            </view>
+
+            <view
+              wx:if="{{!allSelectMode}}"
+              class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
+              catchtap="onToggleApproved"
+              data-id="{{item._id}}"
+              data-approved="{{item.approved}}"
+            >
+              <text class="toggle-text">{{item.approved ? '显示' : '隐藏'}}</text>
+            </view>
+          </view>
+
+          <view wx:if="{{allLoading}}" class="load-more">
+            <text class="load-more-text">加载中…</text>
+          </view>
+          <view wx:elif="{{!allHasMore && allList.length > 0}}" class="list-end">
+            <text class="list-end-text">── 共 {{allTotal}} 张 ──</text>
+          </view>
+        </block>
+      </scroll-view>
+    </block>
   </block>
 
   <!-- ══ ALBUM LIST ══════════════════════════════════════════════════════════ -->
