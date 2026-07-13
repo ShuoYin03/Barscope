@@ -11,13 +11,21 @@ const HIGHER_BROTHERS_IDS = new Set(['1132392', '27868624', '29303235', '2930423
 function normalize(v){ return String(v || '').trim().toLowerCase().replace(/[\s._\-·'’]/g, '') }
 function searchForms(name){
   const raw = String(name || '')
-  const full = pinyin(raw, { toneType:'none', type:'array' })
-  return [normalize(raw), normalize(full.join('')), normalize(full.join(' ')), normalize(full.map(x => x.charAt(0)).join(''))]
+  try {
+    const full = pinyin(raw, { toneType:'none', type:'array' })
+    return [normalize(raw), normalize(full.join('')), normalize(full.join(' ')), normalize(full.map(x => x.charAt(0)).join(''))]
+  } catch (e) {
+    return [normalize(raw)]
+  }
 }
+// Converts BOTH the keyword and the candidate name to pinyin before comparing, so a
+// simplified-script query (脸) matches a traditional-script name (臉是熊) and vice
+// versa — both resolve to the same pinyin reading regardless of which script was typed.
 function matchesKeyword(name, keyword){
-  const q = normalize(keyword)
-  if (!q) return true
-  return searchForms(name).some(x => x.includes(q))
+  const needles = searchForms(keyword).filter(Boolean)
+  if (!needles.length) return true
+  const haystacks = searchForms(name)
+  return needles.some(n => haystacks.some(h => h.includes(n)))
 }
 function cleanBrands(values){
   const seen = new Set()
