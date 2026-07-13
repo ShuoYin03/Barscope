@@ -50,10 +50,7 @@
 
     <!-- ── SIDE A — TOP CHARTS (H-A text rows) ────────────────────── -->
     <view class="section-block">
-      <view class="side-a-rule" />
-      <view class="side-a-head">
-        <text class="side-a-label">SIDE A — TOP CHARTS</text>
-      </view>
+      <section-header side="A" title="TOP CHARTS" />
       <view wx:if="{{loading}}" class="ca-list">
         <view class="ca-rows">
           <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
@@ -79,7 +76,7 @@
 
     <!-- ── SECTION 02: NEW RELEASES ────────────────────────────────── -->
     <view class="section-block">
-      <section-header num="02" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
+      <section-header side="B" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
       <view wx:if="{{loading}}" class="grid2">
         <view wx:for="{{[1,2]}}" wx:key="*this" class="skel-cell">
           <view class="sk" style="width:60rpx;height:64rpx;margin-bottom:12rpx;" />
@@ -105,7 +102,7 @@
 
     <!-- ── SECTION 04: RECENT REVIEWS ─────────────────────────────── -->
     <view class="section-block">
-      <section-header num="04" title="最新评论" more="{{true}}" bind:more="onReviewMore" />
+      <section-header side="C" title="最新评论" more="{{true}}" bind:more="onReviewMore" />
       <view wx:if="{{loading}}" class="reviews-list">
         <view wx:for="{{[1,2,3]}}" wx:key="*this" class="review-item">
           <view class="review-header"><view class="sk" style="width:80rpx;height:80rpx;border-radius:50%;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:120rpx;height:24rpx;" /><view class="sk" style="width:80rpx;height:20rpx;" /></view><view class="sk" style="width:88rpx;height:26rpx;flex-shrink:0;align-self:center;" /><view class="sk" style="width:56rpx;height:36rpx;flex-shrink:0;align-self:center;" /></view>

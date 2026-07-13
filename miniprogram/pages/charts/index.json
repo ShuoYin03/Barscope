@@ -1,6 +1,7 @@
 {
   "renderer": "skyline",
   "usingComponents": {
-    "bottom-nav": "/components/bottom-nav/index"
+    "bottom-nav": "/components/bottom-nav/index",
+    "section-header": "/components/section-header/index"
   }
 }

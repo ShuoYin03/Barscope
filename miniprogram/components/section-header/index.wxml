@@ -1,11 +1,8 @@
 <view class="section-hd">
   <view class="section-rule" />
   <view class="section-row">
-    <view class="section-left">
-      <text class="section-num">{{num}}</text>
-      <text class="section-title">{{title}}</text>
-    </view>
-    <view class="section-groove" />
+    <text class="section-label">SIDE {{side}} — {{title}}</text>
+    <view class="section-spacer" />
     <view wx:if="{{more}}" class="section-more-wrap" bindtap="onMore">
       <text class="section-more">更多 →</text>
     </view>

@@ -61,23 +61,7 @@
 .chart-list { background: var(--black); }
 
 /* SIDE A / SIDE B dividers */
-.side-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 28rpx 32rpx 12rpx;
-  background: var(--black);
-}
-.side-row.b { border-top: 2rpx solid var(--accent); margin-top: 4rpx; }
-.side-text {
-  font-size: 18rpx;
-  font-weight: 700;
-  letter-spacing: 4rpx;
-  color: var(--gray-mid);
-}
-.side-row.b .side-text { color: var(--accent); }
-.side-rule { flex: 1; height: 1px; background: var(--gray-light); }
-.side-row.b .side-rule { background: var(--accent); opacity: 0.4; }
+/* 分区标题（SIDE A / SIDE B）统一由 <section-header> 组件渲染 */
 
 /* FOOTER */
 .list-end { padding: 32rpx; display: flex; justify-content: center; background: var(--black); }

@@ -1,48 +1,32 @@
+/* 全站统一的分区标题：即首页 SIDE A — TOP CHARTS 那一行的样式。
+   4rpx 粗灰线 + "SIDE X — 标题"（18rpx / 700 / 字距 6rpx / gray-mid），无右侧线。 */
 .section-hd {
-  padding: 0 44rpx;
   background: var(--black);
 }
 
 .section-rule {
-  height: 2rpx;
-  background: var(--gray-light);
+  border-top: 4rpx solid var(--gray-light);
+  margin: 16rpx 32rpx 0;
 }
 
 .section-row {
   display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 14rpx 0 16rpx;
-}
-
-.section-left {
-  display: flex;
   align-items: baseline;
-  gap: 14rpx;
-  flex-shrink: 0;
+  gap: 20rpx;
+  padding: 16rpx 32rpx 8rpx;
 }
 
-.section-num {
-  font-family: var(--font-bebas);
-  font-weight: 700;
-  font-size: 24rpx;
-  color: var(--gray-mid);
-  letter-spacing: 3rpx;
-  line-height: 1;
-}
-
-.section-title {
+.section-label {
   font-size: 18rpx;
   font-weight: 700;
+  letter-spacing: 6rpx;
   color: var(--gray-mid);
-  letter-spacing: 4rpx;
   line-height: 1;
 }
 
-.section-groove {
+/* 只作占位，把「更多 →」推到右侧（不再是可见的横线） */
+.section-spacer {
   flex: 1;
-  height: 1rpx;
-  background: var(--gray-light);
 }
 
 .section-more-wrap { flex-shrink: 0; }

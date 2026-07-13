@@ -161,20 +161,7 @@
 }
 
 /* ── SIDE A — TOP CHARTS (text rows) ── */
-.section-block { }
-.side-a-rule {
-  border-top: 4rpx solid var(--gray-light);
-  margin: 16rpx 32rpx 0;
-}
-.side-a-head {
-  padding: 16rpx 32rpx 8rpx;
-}
-.side-a-label {
-  font-size: 18rpx;
-  font-weight: 700;
-  letter-spacing: 6rpx;
-  color: var(--gray-mid);
-}
+/* 分区标题统一由 <section-header> 组件渲染，见 components/section-header */
 
 .ca-list { padding: 0 32rpx; }
 .ca-row {
