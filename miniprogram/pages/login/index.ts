@@ -4,6 +4,8 @@ import { markLoggedIn } from '../../utils/auth'
 Page({
   data: {
     statusBarHeight: 20,
+    capsuleTop: 26,
+    capsuleHeight: 32,
     themeClass: '',
     nickName: '',
     avatarUrl: '',
@@ -17,8 +19,23 @@ Page({
   onLoad() {
     const app = getApp<IAppOption>()
     const current = app.globalData.userInfo
+    let capsuleTop = app.globalData.statusBarHeight + 6
+    let capsuleHeight = 32
+
+    try {
+      const capsule = wx.getMenuButtonBoundingClientRect()
+      if (capsule?.top && capsule?.height) {
+        capsuleTop = capsule.top
+        capsuleHeight = capsule.height
+      }
+    } catch (error) {
+      console.warn('[personal-info] failed to read menu capsule', error)
+    }
+
     this.setData({
       statusBarHeight: app.globalData.statusBarHeight,
+      capsuleTop,
+      capsuleHeight,
       nickName: current?.nickName || '',
       avatarUrl: current?.avatarUrl || '',
       isUpdating: !!current,
