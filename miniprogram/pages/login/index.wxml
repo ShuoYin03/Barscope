@@ -1,5 +1,12 @@
 <view class="page {{themeClass}}" style="padding-top: {{statusBarHeight}}px">
-  <view class="back-btn" bindtap="onBack"><text class="back-icon">←</text><text class="back-label">返回</text></view>
+  <view
+    class="back-btn"
+    style="top: {{capsuleTop}}px; height: {{capsuleHeight}}px"
+    bindtap="onBack"
+  >
+    <text class="back-icon">‹</text>
+    <text class="back-label">返回</text>
+  </view>
 
   <view class="logo-area">
     <view class="logo-vinyl-disc">
