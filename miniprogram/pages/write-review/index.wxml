@@ -34,7 +34,7 @@
           activeColor="#D34E24"
           backgroundColor="#332B28"
           block-color="#F4EBDD"
-          block-size="24"
+          block-size="32"
           bindchanging="onRateChange"
           bindchange="onRateChange"
         />
