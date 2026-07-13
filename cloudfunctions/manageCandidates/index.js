@@ -248,25 +248,63 @@ async function listCandidates(status, page, pageSize, keyword) {
 // ── list_admin_albums ─────────────────────────────────────────────────────────
 async function listAdminAlbums(artistId, artistName) {
   try {
-    const escapedName = artistName ? artistName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : ''
-    const [r1, r2, r3] = await Promise.all([
-      artistId
-        ? db.collection('albums').where({ neteaseArtistId: String(artistId) }).orderBy('releaseYear', 'desc').limit(200).get()
-        : Promise.resolve({ data: [] }),
-      artistName
-        ? db.collection('albums').where({ primaryArtist: artistName }).orderBy('releaseYear', 'desc').limit(200).get()
-        : Promise.resolve({ data: [] }),
-      escapedName
-        ? db.collection('albums').where({ artist: db.RegExp({ regexp: escapedName, options: 'i' }) }).orderBy('releaseYear', 'desc').limit(200).get()
-        : Promise.resolve({ data: [] }),
-    ])
-    const seen = {}
-    const merged = []
-    r1.data.concat(r2.data).concat(r3.data).forEach(function(a) {
-      if (!seen[a._id]) { seen[a._id] = true; merged.push(a) }
-    })
-    merged.sort(function(a, b) { return (b.releaseYear || 0) - (a.releaseYear || 0) })
-    return { success: true, list: merged, total: merged.length }
+    if (!artistId) return { success: false, error: 'missing artistId' }
+
+    const id = String(artistId)
+    const rawAlbums = await fetchNeteaseAlbums(id)
+
+    // 网易云艺人主页返回的专辑 ID 是归属判断的唯一权威来源
+    const sourceIds = Array.from(new Set(
+      rawAlbums
+        .map(raw => normalizeAlbum(raw, artistName || ''))
+        .filter(Boolean)
+        .map(album => album.sourceId)
+        .filter(Boolean)
+    ))
+
+    // 网易云请求没有返回数据时，仅按严格 artistId 降级查询
+    if (!rawAlbums.length) {
+      const fallback = await db.collection('albums')
+        .where({ neteaseArtistId: id })
+        .orderBy('releaseYear', 'desc')
+        .limit(200)
+        .get()
+
+      return {
+        success: true,
+        list: fallback.data,
+        total: fallback.data.length,
+        source: 'database_fallback',
+      }
+    }
+
+    const albums = []
+
+    for (let i = 0; i < sourceIds.length; i += 100) {
+      const chunk = sourceIds.slice(i, i + 100)
+      const result = await db.collection('albums')
+        .where({ sourceId: _.in(chunk) })
+        .limit(chunk.length)
+        .get()
+
+      albums.push(...result.data)
+    }
+
+    const seen = new Set()
+    const list = albums
+      .filter(album => {
+        if (seen.has(album._id)) return false
+        seen.add(album._id)
+        return true
+      })
+      .sort((a, b) => (b.releaseYear || 0) - (a.releaseYear || 0))
+
+    return {
+      success: true,
+      list,
+      total: list.length,
+      source: 'netease',
+    }
   } catch (e) {
     return { success: false, error: e.message }
   }
