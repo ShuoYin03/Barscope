@@ -41,11 +41,11 @@
 /* RATING — vinyl dial */
 .dial-section {
   background: var(--black);
-  padding: 16rpx 32rpx 48rpx;
+  padding: 16rpx 24rpx 52rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22rpx;
+  gap: 26rpx;
 }
 
 .vinyl-score-disc {
@@ -103,15 +103,16 @@
 }
 
 .dial-hint {
-  font-size: 20rpx;
+  font-size: 26rpx;
   color: var(--gray-mid);
   letter-spacing: 2rpx;
 }
 
 /* SCORE AXIS */
 .score-axis-wrap {
-  width: 560rpx;
-  padding: 8rpx 0 0;
+  width: 640rpx;
+  max-width: 100%;
+  padding: 12rpx 0 0;
 }
 .score-axis {
   width: 100%;
@@ -120,21 +121,21 @@
 .score-axis-labels {
   display: flex;
   justify-content: space-between;
-  padding: 0 10rpx;
-  margin-top: 2rpx;
+  padding: 0 14rpx;
+  margin-top: 8rpx;
 }
 .score-axis-labels text {
   font-family: var(--font-bebas);
-  font-size: 24rpx;
+  font-size: 32rpx;
   color: var(--white);
   letter-spacing: 1rpx;
 }
 .score-axis-note {
   text-align: center;
-  margin-top: 8rpx;
+  margin-top: 14rpx;
 }
 .score-axis-note text {
-  font-size: 18rpx;
+  font-size: 23rpx;
   color: var(--gray-mid);
   letter-spacing: 2rpx;
 }
