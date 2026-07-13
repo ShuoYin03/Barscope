@@ -68,17 +68,26 @@ async function batchDecideHidden(ids, decision, openId) {
 async function runBatch(ids, handler) {
   const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '').trim()).filter(Boolean))).slice(0, 100)
   if (!uniqueIds.length) return { success: false, error: '请选择至少一张专辑' }
+
   let succeeded = 0
   const errors = []
-  for (const id of uniqueIds) {
-    try {
-      const result = await handler(id)
-      if (result && result.success) succeeded += 1
-      else errors.push({ id, error: result && result.error ? result.error : '操作失败' })
-    } catch (e) {
-      errors.push({ id, error: String(e && (e.message || e.errMsg) || e) })
-    }
+  const concurrency = 8
+
+  for (let i = 0; i < uniqueIds.length; i += concurrency) {
+    const chunk = uniqueIds.slice(i, i + concurrency)
+    const results = await Promise.allSettled(chunk.map(id => handler(id)))
+    results.forEach((result, index) => {
+      const id = chunk[index]
+      if (result.status === 'fulfilled' && result.value && result.value.success) succeeded += 1
+      else {
+        const error = result.status === 'rejected'
+          ? String(result.reason && (result.reason.message || result.reason.errMsg) || result.reason)
+          : String(result.value && result.value.error || '操作失败')
+        errors.push({ id, error })
+      }
+    })
   }
+
   return { success: errors.length === 0, partial: succeeded > 0 && errors.length > 0, succeeded, failed: errors.length, errors }
 }
 
@@ -86,6 +95,7 @@ async function decideHidden(id, decision, openId) {
   if (!id || !['keep', 'delete', 'show'].includes(decision)) return { success: false, error: 'invalid decision' }
   const doc = await db.collection('albums').doc(id).get()
   if (!doc.data) return { success: false, error: 'album not found' }
+
   if (decision === 'keep' || decision === 'show') {
     await db.collection('albums').doc(id).update({ data: {
       approved: true,
@@ -95,20 +105,24 @@ async function decideHidden(id, decision, openId) {
     } })
     return { success: true }
   }
-  await removeRelated('reviews', 'albumId', id)
-  await removeRelated('favorites', 'albumId', id)
+
+  await Promise.all([
+    removeRelated('reviews', 'albumId', id),
+    removeRelated('favorites', 'albumId', id),
+  ])
   await db.collection('albums').doc(id).remove()
   return { success: true }
 }
 
 async function removeRelated(collection, field, value) {
-  while (true) {
+  try {
+    await db.collection(collection).where({ [field]: value }).remove()
+  } catch (e) {
+    console.warn(`bulk remove ${collection} failed`, value, e.message)
     const r = await db.collection(collection).where({ [field]: value }).limit(100).get()
-    if (!r.data || !r.data.length) break
-    for (const item of r.data) {
-      try { await db.collection(collection).doc(item._id).remove() } catch (e) { console.warn(`remove ${collection} failed`, item._id, e.message) }
-    }
-    if (r.data.length < 100) break
+    await Promise.all((r.data || []).map(item => db.collection(collection).doc(item._id).remove().catch(err => {
+      console.warn(`remove ${collection} failed`, item._id, err.message)
+    })))
   }
 }
 
@@ -141,12 +155,28 @@ async function decide(id, decision, openId) {
 
   if (normalized === 'delete') {
     if (originalId) {
-      try { await db.collection('albums').doc(originalId).remove() } catch (e) { await db.collection('albums').doc(originalId).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
+      await Promise.all([
+        removeRelated('reviews', 'albumId', originalId),
+        removeRelated('favorites', 'albumId', originalId),
+      ])
+      try {
+        await db.collection('albums').doc(originalId).remove()
+      } catch (e) {
+        await db.collection('albums').doc(originalId).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } })
+      }
     } else if (candidate.sourceId) {
       const exists = await db.collection('albums').where({ sourceId: String(candidate.sourceId) }).limit(20).get()
-      for (const a of exists.data || []) {
-        try { await db.collection('albums').doc(a._id).remove() } catch (e) { await db.collection('albums').doc(a._id).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
-      }
+      await Promise.all((exists.data || []).map(async a => {
+        await Promise.all([
+          removeRelated('reviews', 'albumId', a._id),
+          removeRelated('favorites', 'albumId', a._id),
+        ])
+        try {
+          await db.collection('albums').doc(a._id).remove()
+        } catch (e) {
+          await db.collection('albums').doc(a._id).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } })
+        }
+      }))
     }
   }
 
