@@ -19,8 +19,8 @@
       <scroll-view class="brand-options" scroll-y>
         <view wx:if="{{brandOptions.length===0}}" class="brand-empty">暂无已有厂牌</view>
         <view class="brand-grid">
-          <view wx:for="{{brandOptions}}" wx:key="*this" class="brand-option {{selectedBrands.includes(item) ? 'selected' : ''}}" bindtap="onToggleBrand" data-brand="{{item}}">
-            <text>{{item}}</text><text wx:if="{{selectedBrands.includes(item)}}" class="brand-check">✓</text>
+          <view wx:for="{{brandOptions}}" wx:key="name" class="brand-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleBrand" data-brand="{{item.name}}">
+            <text>{{item.name}}</text><text wx:if="{{item.selected}}" class="brand-check">✓</text>
           </view>
         </view>
       </scroll-view>
