@@ -54,6 +54,16 @@ Page({
     const list = this.data.list.map(item => ({ ...item, selected: allSelected }))
     this.setData({ list, selectedIds, allSelected })
   },
+  _callBatchChunk(action: string, ids: string[], decision: 'keep' | 'delete') {
+    return new Promise<any>((resolve, reject) => {
+      wx.cloud.callFunction({
+        name: 'manageAlbumCandidates',
+        data: { action, ids, decision },
+        success: (res: any) => resolve(res.result || {}),
+        fail: reject,
+      } as any)
+    })
+  },
   batchDecide(e: WechatMiniprogram.TouchEvent) {
     const decision = String((e.currentTarget.dataset as any).decision || '') as 'keep' | 'delete'
     const ids = this.data.selectedIds.slice()
@@ -65,25 +75,47 @@ Page({
       content: isKeep ? (hidden ? '所选专辑将重新对用户显示。' : '所选专辑会重新进入正式专辑库。') : '所选专辑及其关联数据将被删除，此操作不可撤销。',
       confirmText: isKeep ? (hidden ? '全部显示' : '全部保留') : '全部删除',
       confirmColor: '#C94E25',
-      success: (modal) => {
+      success: async (modal) => {
         if (!modal.confirm) return
         this.setData({ processing: true })
-        wx.showLoading({ title: isKeep ? (hidden ? '批量显示中…' : '批量保留中…') : '批量删除中…', mask: true })
-        wx.cloud.callFunction({
-          name: 'manageAlbumCandidates',
-          data: { action: hidden ? 'batchDecideHidden' : 'batchDecide', ids, decision },
-          success: (res: any) => {
-            wx.hideLoading()
-            this.setData({ processing: false })
-            const r = res.result || {}
-            if (r.success || r.partial) {
-              const failed = Number(r.failed || 0)
-              wx.showToast({ title: failed ? `完成，${failed} 张失败` : `已处理 ${Number(r.succeeded || ids.length)} 张`, icon: failed ? 'none' : 'success', duration: 2200 })
-              this.loadCandidates()
-            } else wx.showToast({ title: r.error || '批量操作失败', icon: 'none' })
-          },
-          fail: () => { wx.hideLoading(); this.setData({ processing: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
-        } as any)
+        const action = hidden ? 'batchDecideHidden' : 'batchDecide'
+        const chunkSize = 5
+        let succeeded = 0
+        let failed = 0
+        let networkFailed = false
+
+        try {
+          for (let i = 0; i < ids.length; i += chunkSize) {
+            const chunk = ids.slice(i, i + chunkSize)
+            wx.showLoading({
+              title: `${Math.min(i + chunk.length, ids.length)}/${ids.length} 处理中`,
+              mask: true,
+            })
+            try {
+              const r = await this._callBatchChunk(action, chunk, decision)
+              succeeded += Number(r.succeeded || (r.success ? chunk.length : 0))
+              failed += Number(r.failed || (!r.success && !r.partial ? chunk.length : 0))
+            } catch (err) {
+              networkFailed = true
+              failed += chunk.length
+              console.error('batch chunk failed', chunk, err)
+            }
+          }
+        } finally {
+          wx.hideLoading()
+          this.setData({ processing: false })
+        }
+
+        if (succeeded > 0) {
+          wx.showToast({
+            title: failed ? `成功 ${succeeded}，失败 ${failed}` : `已处理 ${succeeded} 张`,
+            icon: failed ? 'none' : 'success',
+            duration: 2600,
+          })
+          this.loadCandidates()
+        } else {
+          wx.showToast({ title: networkFailed ? '网络错误，请稍后重试' : '批量操作失败', icon: 'none' })
+        }
       },
     })
   },
