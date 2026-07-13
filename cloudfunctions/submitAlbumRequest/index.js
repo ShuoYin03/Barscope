@@ -68,34 +68,64 @@ async function searchAndSubmit(event, openId) {
   return { success:true, existed:false, albumTitle:String(picked.name || keyword), sourceId, submissionMode:'netease' }
 }
 
+function sanitizeArtistRef(a) {
+  const id = Number(a && a.id) || 0
+  const name = String(a && a.name || '').trim()
+  return name ? { id, name } : null
+}
+
+function collectGuests(tracks) {
+  const map = new Map()
+  tracks.forEach(track => (track.guests || []).forEach(g => {
+    const key = g.id ? String(g.id) : g.name
+    if (!map.has(key)) map.set(key, { id:g.id || 0, name:g.name, count:0, trackNos:[] })
+    const x = map.get(key)
+    x.count++
+    x.trackNos.push(track.no)
+  }))
+  return Array.from(map.values()).sort((a,b) => b.count - a.count || a.name.localeCompare(b.name))
+}
+
 async function submitManual(event, openId) {
   const title = String(event.title || '').trim()
-  const artist = String(event.artist || '').trim()
   const releaseDate = String(event.releaseDate || '').trim()
   const coverUrl = String(event.coverUrl || '').trim()
   const company = String(event.company || '').trim()
   const description = String(event.description || '').trim()
-  const trackNames = Array.isArray(event.tracks) ? event.tracks.map(x => String(x || '').trim()).filter(Boolean).slice(0,100) : []
   const artistIds = Array.isArray(event.artistIds) ? event.artistIds.map(x => String(x || '').trim()).filter(Boolean).slice(0,20) : []
-  if (!title || !artist) return { success:false, error:'请填写专辑名和歌手' }
+  const selectedArtists = (Array.isArray(event.selectedArtists) ? event.selectedArtists.map(sanitizeArtistRef).filter(Boolean) : []).slice(0,20)
+  const trackInputs = Array.isArray(event.tracks) ? event.tracks.slice(0,100) : []
+
+  if (!title) return { success:false, error:'请填写专辑名' }
+  if (!selectedArtists.length) return { success:false, error:'请至少选择一位已收录歌手' }
   if (!coverUrl) return { success:false, error:'请上传专辑封面' }
   if (releaseDate && !/^\d{4}-\d{2}-\d{2}$/.test(releaseDate)) return { success:false, error:'发行日期格式应为 YYYY-MM-DD' }
-  if (!trackNames.length) return { success:false, error:'请至少填写一首曲目' }
+
+  const tracks = trackInputs.map((t, index) => {
+    const name = String(t && t.name || '').trim()
+    const guests = (Array.isArray(t && t.guests) ? t.guests.map(sanitizeArtistRef).filter(Boolean) : []).slice(0,20)
+    return { no:index + 1, name, artists:selectedArtists, guests, hasFeaturing:guests.length > 0 }
+  }).filter(t => t.name)
+  if (!tracks.length) return { success:false, error:'请至少填写一首曲目' }
+
+  const artist = selectedArtists.map(a => a.name).join(' / ')
+  const primaryArtist = selectedArtists[0].name
+  const neteaseArtistId = artistIds[0] || String(selectedArtists[0].id || '')
+  const featuringGuests = collectGuests(tracks)
 
   const existing = await db.collection('album_candidates').where({ title, artist, status:'pending' }).limit(1).get()
   if (existing.data.length) return { success:true, existed:true, status:'pending', albumTitle:title }
 
   const sourceId = `manual_${Date.now()}_${Math.random().toString(36).slice(2,8)}`
   const releaseYear = releaseDate ? Number(releaseDate.slice(0,4)) : 0
-  const tracks = trackNames.map((name, index) => ({ no:index + 1, name, artistText:artist, artists:[] }))
   await db.collection('album_candidates').add({ data:{
     sourceId,
     submissionMode:'manual',
     manualSubmission:true,
     title,
     artist,
-    primaryArtist:artist.split(/[\/，,、&]/)[0].trim(),
-    neteaseArtistId:artistIds[0] || '',
+    primaryArtist,
+    neteaseArtistId,
     artistIds,
     releaseDate,
     releaseYear,
@@ -104,6 +134,7 @@ async function submitManual(event, openId) {
     description,
     tracks,
     trackCount:tracks.length,
+    featuringGuests,
     avgScore:0,
     reviewCount:0,
     genres:[],
