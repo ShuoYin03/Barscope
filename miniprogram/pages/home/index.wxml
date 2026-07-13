@@ -116,7 +116,7 @@
       <view wx:else class="reviews-list">
         <view wx:for="{{reviews}}" wx:key="id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}">
           <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.score}}</text></view>
-          <text class="review-text">{{item.content}}</text><view class="review-footer"><text>❤ {{item.likes}}</text><text class="sep"> | </text><text>💬 {{item.replyCount}}条回复</text></view>
+          <text class="review-text">{{item.content}}</text><view class="review-footer"><text>♡ {{item.likes}}</text><text class="sep"> | </text><text>↩ {{item.replyCount}}条回复</text></view>
         </view>
       </view>
     </view>
