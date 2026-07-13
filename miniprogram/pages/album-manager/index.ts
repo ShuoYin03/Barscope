@@ -4,6 +4,8 @@ interface Artist {
   artistName: string
   picUrl: string
   albumSize: number
+  approvedAlbumCount: number
+  hiddenAlbumCount: number
   fansSize: number
 }
 
@@ -82,24 +84,30 @@ Page({
   },
 
   _loadArtists(page: number) {
+    if (page > 1) return
     this.setData({ artistLoading: true })
     wx.cloud.callFunction({
-      name: 'manageCandidates',
+      name: 'getArtists',
       data: {
-        action: 'list',
-        status: 'approved',
-        page,
-        pageSize: this.data.artistPageSize,
         keyword: this.data.artistKeyword,
+        limit: 1000,
       },
       success: (res: any) => {
         const r = res.result || {}
         if (!r.success) { this.setData({ artistLoading: false }); return }
-        const newList = page === 1 ? r.list : [...this.data.artistList, ...r.list]
         this.setData({
-          artistList: newList,
-          artistPage: page,
-          artistHasMore: r.list.length === this.data.artistPageSize,
+          artistList: (r.list || []).map((item: any) => ({
+            _id: item.id,
+            artistId: Number(item.artistId || 0),
+            artistName: item.artistName || '',
+            picUrl: item.picUrl || '',
+            albumSize: Number(item.albumSize || 0),
+            approvedAlbumCount: Number(item.approvedAlbumCount || 0),
+            hiddenAlbumCount: Number(item.hiddenAlbumCount || 0),
+            fansSize: Number(item.fansSize || 0),
+          })),
+          artistPage: 1,
+          artistHasMore: false,
           artistLoading: false,
         })
       },
@@ -143,8 +151,7 @@ Page({
   },
 
   onReachBottom() {
-    if (this.data.view !== 'artists' || !this.data.artistHasMore || this.data.artistLoading) return
-    this._loadArtists(this.data.artistPage + 1)
+    return
   },
 
   onPullDownRefresh() {
@@ -221,8 +228,6 @@ Page({
       data: { action: 'list_admin_albums', artistId: artist.artistId, artistName: artist.artistName },
     }).catch(() => ({ result: { success: false, list: [] } }))
 
-    // 再按艺人名检索数据库，把已经从网易云艺人页下架、被过滤或属于历史导入的
-    // 隐藏专辑一起补进管理列表。最终按 _id 去重，避免重复显示。
     const databaseCall = wx.cloud.callFunction({
       name: 'manageCandidates',
       data: { action: 'search_admin_albums', keyword: artist.artistName },
@@ -273,6 +278,7 @@ Page({
           const titleResults = this.data.titleResults.map(patch)
           this.setData({ albumList, titleResults, toggling })
           wx.showToast({ title: newApproved ? '已显示' : '已隐藏', icon: 'success' })
+          this._loadArtists(1)
         } else {
           this.setData({ toggling })
           wx.showToast({ title: res.result?.error || '操作失败', icon: 'none' })
