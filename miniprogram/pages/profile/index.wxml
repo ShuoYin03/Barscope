@@ -2,7 +2,11 @@
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="topbar-left">
       <text class="topbar-title">PROFILE</text>
-      <view class="theme-toggle" bindtap="onToggleTheme"><text class="theme-toggle-icon">◐</text></view>
+      <view class="theme-switch" bindtap="onToggleTheme">
+        <view class="theme-switch-item {{themeMode === 'light' ? 'active' : ''}}"><text class="theme-switch-icon">☀</text></view>
+        <view class="theme-switch-divider"></view>
+        <view class="theme-switch-item {{themeMode === 'dark' ? 'active' : ''}}"><text class="theme-switch-icon">☾</text></view>
+      </view>
     </view>
   </view>
   <view wx:if="{{!isLoggedIn}}" class="gate-content"><view class="vinyl-gate-disc"><view class="vinyl-gate-label"><text class="gate-disc-icon">○</text></view></view><text class="gate-title">登录查看个人主页</text><text class="gate-sub">追踪你的评分记录，加入韵镜社区</text><view class="gate-btn" bindtap="onLogin"><text>立即登录</text></view></view>
