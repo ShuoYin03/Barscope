@@ -40,7 +40,6 @@
 .theme-switch-item.active .theme-switch-icon { color: var(--black); }
 .theme-switch-divider { width: 2rpx; height: 24rpx; background: var(--gray-light); }
 
-/* GATE */
 .gate-content {
   flex: 1;
   display: flex;
@@ -170,5 +169,19 @@
 .pending-badge { background: var(--accent); min-width: 38rpx; height: 38rpx; display: flex; align-items: center; justify-content: center; padding: 0 10rpx; }
 .pending-num { font-size: 20rpx; font-weight: 700; color: var(--black); }
 .menu-arrow { font-size: 28rpx; color: var(--gray-light); flex-shrink: 0; }
-.logout-row { margin: 32rpx 32rpx 48rpx; padding: 24rpx 0; border: 2rpx solid var(--accent); display: flex; align-items: center; justify-content: center; }
-.logout-text { font-size: 27rpx; font-weight: 700; color: var(--accent); letter-spacing: 2rpx; }
+.logout-row {
+  margin: 32rpx 32rpx 140rpx;
+  height: 92rpx;
+  border: 2rpx solid var(--gray-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: var(--black);
+}
+.logout-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2rpx;
+}
