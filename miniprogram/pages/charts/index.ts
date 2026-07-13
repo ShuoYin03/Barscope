@@ -18,10 +18,13 @@ interface ChartEntry {
   scoreFill: string
 }
 
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
+    themeClass: '',
     period:  'weekly' as Period,
     periods: [
       { key: 'weekly',  label: '周榜' },
@@ -45,6 +48,7 @@ Page({
     if (typeof this.getTabBar === 'function') {
       this.getTabBar()?.setData({ selected: 1 })
     }
+    this.setData({ themeClass: getThemeClass() })
   },
 
   _loadCharts(period: Period) {

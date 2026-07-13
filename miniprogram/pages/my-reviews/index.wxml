@@ -1,0 +1,48 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="topbar-title">MY REVIEWS</text>
+    <text class="topbar-sub">{{reviews.length}} 条</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="state"><text>LOADING...</text></view>
+
+  <view wx:elif="{{reviews.length === 0}}" class="state">
+    <text class="empty-mark">✦</text>
+    <text class="empty-title">还没有发表过评论</text>
+    <text class="empty-sub">为喜欢的专辑留下第一条评价吧</text>
+  </view>
+
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="side-row"><text class="side-text">SIDE A — 我的评论 · {{reviews.length}}</text></view>
+    <view
+      wx:for="{{reviews}}"
+      wx:key="_id"
+      class="review-card"
+      bindtap="onReviewTap"
+      data-id="{{item.albumId}}"
+    >
+      <view class="review-head">
+        <view class="disc"><view class="disc-label" /></view>
+        <view class="review-meta">
+          <text class="album-title">{{item.albumTitle}}</text>
+          <text class="review-time">{{item.timeAgo}}</text>
+        </view>
+        <text class="rating">{{item.ratingText}}</text>
+      </view>
+      <text class="review-content">{{item.content}}</text>
+      <view class="review-foot">
+        <text>♡ {{item.likes}}</text>
+        <view class="review-actions">
+          <text class="album-link">查看专辑 →</text>
+          <text
+            class="delete-btn {{deletingId === item._id ? 'deleting' : ''}}"
+            catchtap="onDeleteTap"
+            data-id="{{item._id}}"
+          >{{deletingId === item._id ? '删除中…' : '删除'}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="list-end"><text>— END OF SIDE A —</text></view>
+  </scroll-view>
+</view>

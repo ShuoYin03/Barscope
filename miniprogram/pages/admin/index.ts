@@ -13,13 +13,15 @@ interface Candidate {
   addedAt: string
 }
 
+import { getThemeClass } from '../../utils/theme'
+
 const formatFans = (n: number): string => { if (!n) return ''; if (n >= 10000) return `${(n / 10000).toFixed(1)}万粉`; return `${n} 粉` }
 type TabKey = 'pending' | 'approved' | 'declined'
 let _searchTimer: any = null
 
 Page({
   data: {
-    statusBarHeight: 20, topbarHeight: 64,
+    statusBarHeight: 20, topbarHeight: 64, themeClass: '',
     activeTab: 'pending' as TabKey,
     tabs: [{ key: 'pending', label: '待审核', count: 0 }, { key: 'approved', label: '已批准', count: 0 }, { key: 'declined', label: '已拒绝', count: 0 }],
     list: [] as Candidate[], loading: false, hasMore: false, page: 1, pageSize: 20,
@@ -27,6 +29,7 @@ Page({
     selectMode: false, selected: {} as Record<string, boolean>, batchDeciding: false, exporting: false,
   },
   onLoad(options: Record<string, string>) { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }); this._loadStats(); const valid: TabKey[] = ['pending', 'approved', 'declined']; const tab = options && options.tab as TabKey; const initial: TabKey = valid.indexOf(tab) >= 0 ? tab : 'pending'; this.setData({ activeTab: initial }); this._loadList(initial, 1) },
+  onShow() { this.setData({ themeClass: getThemeClass() }) },
   _loadStats() { wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'stats' }, success: (res: any) => { const r = res.result; if (!r.success) return; const tabs = this.data.tabs.map((t: any) => ({ ...t, count: r[t.key] || 0 })); this.setData({ tabs }) } }) },
   onTabTap(e: WechatMiniprogram.TouchEvent) { const key = (e.currentTarget.dataset as { key: TabKey }).key; if (key === this.data.activeTab) return; this.setData({ activeTab: key, list: [], page: 1, keyword: '', selectMode: false, selected: {} }); this._loadList(key, 1) },
   _loadList(status: TabKey, page: number) { this.setData({ loading: true }); wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'list', status, page, pageSize: this.data.pageSize, keyword: this.data.keyword }, success: (res: any) => { const r = res.result; if (!r.success) { this.setData({ loading: false }); return }; const newList = (page === 1 ? r.list : [...this.data.list, ...r.list]).map((item: any) => ({ ...item, fansText: formatFans(item.fansSize || 0) })); this.setData({ list: newList, page, hasMore: r.list.length === this.data.pageSize, loading: false }) }, fail: () => this.setData({ loading: false }) }) },

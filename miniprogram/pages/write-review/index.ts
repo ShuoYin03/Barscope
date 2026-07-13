@@ -1,10 +1,15 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight: 64,
+    themeClass: '',
     albumId: '',
     albumTitle: '',
     rating: 0,
+    ratingDisplay: '—',
+    sliderValue: 5,
     content: '',
     submitting: false,
   },
@@ -19,13 +24,21 @@ Page({
     })
   },
 
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
+  },
+
   onBack() {
     wx.navigateBack()
   },
 
-  onRateNum(e: WechatMiniprogram.TouchEvent) {
-    const n = Number((e.currentTarget.dataset as { n: number }).n)
-    this.setData({ rating: n })
+  onRateChange(e: WechatMiniprogram.SliderChange) {
+    const rating = Math.round(Number(e.detail.value) * 2) / 2
+    this.setData({
+      rating,
+      sliderValue: rating,
+      ratingDisplay: rating.toFixed(1),
+    })
   },
 
   onContentInput(e: WechatMiniprogram.Input) {

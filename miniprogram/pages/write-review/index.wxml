@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="back-btn" bindtap="onBack">
@@ -16,24 +16,35 @@
     <view class="dial-section">
       <view class="vinyl-score-disc">
         <view class="vinyl-score-label">
-          <text class="vinyl-score-num">{{rating > 0 ? (rating === 10 ? '10' : rating + '.0') : '—'}}</text>
+          <text class="vinyl-score-num">{{ratingDisplay}}</text>
           <text class="vinyl-score-cap">SCORE</text>
         </view>
         <view class="vinyl-score-spindle" />
       </view>
 
-      <text class="dial-hint">{{rating > 0 ? rating + ' / 10' : '点击下方数字评分'}}</text>
+      <text class="dial-hint">{{rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数'}}</text>
 
-      <!-- 1-10 number buttons -->
-      <view class="num-grid">
-        <view
-          wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}"
-          wx:key="*this"
-          class="num-btn {{rating === item ? 'sel' : (item < rating ? 'fill' : '')}}"
-          bindtap="onRateNum"
-          data-n="{{item}}"
-        >
-          <text>{{item}}</text>
+      <view class="score-axis-wrap">
+        <slider
+          class="score-axis"
+          min="1"
+          max="10"
+          step="0.5"
+          value="{{sliderValue}}"
+          activeColor="#D34E24"
+          backgroundColor="#332B28"
+          block-color="#F4EBDD"
+          block-size="32"
+          bindchanging="onRateChange"
+          bindchange="onRateChange"
+        />
+        <view class="score-axis-labels">
+          <text>1</text>
+          <text>5.5</text>
+          <text>10</text>
+        </view>
+        <view class="score-axis-note">
+          <text>每格 0.5 分</text>
         </view>
       </view>
     </view>

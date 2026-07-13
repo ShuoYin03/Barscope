@@ -41,11 +41,11 @@
 /* RATING — vinyl dial */
 .dial-section {
   background: var(--black);
-  padding: 16rpx 32rpx 40rpx;
+  padding: 16rpx 24rpx 52rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22rpx;
+  gap: 26rpx;
 }
 
 .vinyl-score-disc {
@@ -103,38 +103,42 @@
 }
 
 .dial-hint {
-  font-size: 20rpx;
+  font-size: 26rpx;
   color: var(--gray-mid);
   letter-spacing: 2rpx;
 }
 
-/* 1-10 number buttons */
-.num-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8rpx;
-  width: 560rpx;
+/* SCORE AXIS */
+.score-axis-wrap {
+  width: 640rpx;
+  max-width: 100%;
+  padding: 12rpx 0 0;
 }
-.num-btn {
-  width: 104rpx;
-  height: 104rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--black);
-  border: 2rpx solid var(--gray-light);
+.score-axis {
+  width: 100%;
+  margin: 0;
 }
-.num-btn text {
+.score-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 14rpx;
+  margin-top: 8rpx;
+}
+.score-axis-labels text {
   font-family: var(--font-bebas);
-  font-size: 40rpx;
-  color: var(--gray-mid);
-  line-height: 1;
+  font-size: 32rpx;
+  color: var(--white);
+  letter-spacing: 1rpx;
 }
-.num-btn.fill { background: var(--gray-light); }
-.num-btn.fill text { color: var(--white); }
-.num-btn.sel { background: var(--accent); border-color: var(--accent); }
-.num-btn.sel text { color: var(--black); }
+.score-axis-note {
+  text-align: center;
+  margin-top: 14rpx;
+}
+.score-axis-note text {
+  font-size: 23rpx;
+  color: var(--gray-mid);
+  letter-spacing: 2rpx;
+}
 
 /* CONTENT INPUT */
 .input-section {

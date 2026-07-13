@@ -1,0 +1,52 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="topbar-back" bindtap="onBack"><text class="back-arrow">←</text></view>
+    <view class="topbar-titles">
+      <text class="topbar-title">HIDDEN ALBUMS</text>
+      <text class="topbar-sub">{{total}} 张</text>
+    </view>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onReachBottom">
+    <block wx:if="{{loading && list.length === 0}}">
+      <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
+        <view class="sk skel-cover"></view>
+        <view class="skel-body"><view class="sk skel-name"></view><view class="sk skel-meta"></view></view>
+      </view>
+    </block>
+
+    <view wx:elif="{{list.length === 0}}" class="empty-state">
+      <text class="empty-icon">○</text>
+      <text class="empty-text">当前没有隐藏专辑</text>
+    </view>
+
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="_id" class="album-row">
+        <view class="album-cover-wrap">
+          <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="album-cover-fallback"><text class="album-cover-icon">♪</text></view>
+          <view class="cover-hidden-badge"><text class="cover-hidden-text">隐藏</text></view>
+        </view>
+
+        <view class="album-info">
+          <text class="album-title">{{item.title}}</text>
+          <text class="album-artist">{{item.artist || item.primaryArtist}}</text>
+          <view class="album-meta-row">
+            <text class="album-meta">{{item.releaseYear || '年份未知'}}</text>
+            <view wx:if="{{item.trackCount > 0}}" class="meta-dot"></view>
+            <text wx:if="{{item.trackCount > 0}}" class="album-meta">{{item.trackCount}} 首</text>
+            <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
+            <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
+          </view>
+        </view>
+
+        <view class="show-btn {{toggling[item._id] ? 'btn-disabled' : ''}}" bindtap="onShowAlbum" data-id="{{item._id}}">
+          <text class="show-btn-text">显示</text>
+        </view>
+      </view>
+
+      <view wx:if="{{loading}}" class="load-more"><text class="load-more-text">加载中…</text></view>
+      <view wx:elif="{{!hasMore}}" class="list-end"><text class="list-end-text">── 共 {{total}} 张 ──</text></view>
+    </block>
+  </scroll-view>
+</view>

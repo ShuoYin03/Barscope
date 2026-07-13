@@ -1,3 +1,5 @@
+import { getThemeClass } from '../../utils/theme'
+
 const FALLBACK_TICKER_SONGS = [
   'BEATWEEN · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
@@ -18,12 +20,12 @@ function safeCallFunction(name: string, data: Record<string, any>) {
 }
 
 Page({
-  data: { statusBarHeight: 20, topbarHeight: 64, tickerSongs: FALLBACK_TICKER_SONGS, loading: true, hero: null as any, heroScoreFill: '0%', heroKicker: '今日热评专辑', heroRotating: false, chartItems: [] as any[], newReleases: [] as any[], reviews: [] as any[], totalAlbums: 0, totalArtists: 0, totalReviews: 0 },
+  data: { statusBarHeight: 20, topbarHeight: 64, themeClass: '', tickerSongs: FALLBACK_TICKER_SONGS, loading: true, hero: null as any, heroScoreFill: '0%', heroKicker: '今日热评专辑', heroRotating: false, chartItems: [] as any[], newReleases: [] as any[], reviews: [] as any[], totalAlbums: 0, totalArtists: 0, totalReviews: 0 },
   _heroRotationList: [] as any[],
   _heroRotationIndex: -1,
   _heroRotationTimer: null as any,
   onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }) },
-  onShow() { if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 }); this._loadData() },
+  onShow() { if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 }); this.setData({ themeClass: getThemeClass() }); this._loadData() },
   onHide() { this._stopHeroRotation() },
   onUnload() { this._stopHeroRotation() },
   _startHeroRotation() {

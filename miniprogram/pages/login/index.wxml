@@ -1,6 +1,14 @@
-<view class="page" style="padding-top: {{statusBarHeight}}px">
+<view class="page {{themeClass}}" style="padding-top: {{statusBarHeight}}px">
+  <view
+    class="back-btn"
+    style="top: {{capsuleTop}}px; height: {{capsuleHeight}}px"
+    bindtap="onBack"
+  >
+    <text class="back-icon">‹</text>
+    <text class="back-label">返回</text>
+  </view>
+
   <view class="logo-area">
-    <!-- Vinyl disc logo (spinning) -->
     <view class="logo-vinyl-disc">
       <view class="logo-vinyl-label">
         <text class="logo-vinyl-text">韵</text>
@@ -9,7 +17,7 @@
     </view>
     <text class="logo-zh">BEATWEEN</text>
     <text class="logo-en">韵镜</text>
-    <text class="tagline">华语说唱最大评分社区</text>
+    <text class="tagline">{{isUpdating ? '更新你的个人信息' : '授权头像和昵称，加入说唱评分社区'}}</text>
   </view>
 
   <view class="avatar-section">
@@ -19,11 +27,11 @@
         <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view>
       </button>
     </view>
-    <text class="avatar-hint">点击选择微信头像</text>
+    <text class="avatar-hint">点击授权并裁剪头像</text>
   </view>
 
   <view class="nick-section">
-    <text class="nick-label">你的昵称</text>
+    <text class="nick-label">昵称</text>
     <input
       type="nickname"
       class="nick-input"
@@ -35,8 +43,8 @@
   </view>
 
   <view class="login-btn {{loading ? 'loading' : ''}}" bindtap="onLogin">
-    <text>{{loading ? '登录中...' : '微信一键登录'}}</text>
+    <text>{{loading ? '处理中...' : (isUpdating ? '保存资料' : '授权并登录')}}</text>
   </view>
 
-  <text class="hint">登录后可评分、收藏、发表评论</text>
+  <text class="hint">头像与昵称仅用于韵镜个人主页和社区互动</text>
 </view>

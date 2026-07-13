@@ -1,26 +1,43 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">OWNERSHIP</text></view>
+
   <view class="card"><text class="label">专辑</text><text class="album">{{title}}</text></view>
+
   <view class="card">
-    <text class="label">应该归属到哪些 rapper？（可多选）</text>
-    <input class="input" placeholder="搜索已收录 rapper" placeholder-style="color:#766f68" value="{{artistKeyword}}" bindinput="onTargetInput" />
-    <text wx:if="{{selectedArtists.length}}" class="picked-note">已选择 {{selectedArtists.length}} 位 rapper</text>
-    <text wx:elif="{{artistSearching}}" class="picked-note">搜索中…</text>
-    <view wx:if="{{selectedArtists.length}}" class="artist-results">
+    <text class="label">当前归属</text>
+    <text class="picked-note">先删除错误归属，再按需添加缺少的 rapper</text>
+
+    <view wx:if="{{ownershipLoading}}" class="picked-note">正在读取当前归属…</view>
+
+    <view wx:elif="{{selectedArtists.length}}" class="artist-results current-owners">
       <view wx:for="{{selectedArtists}}" wx:key="artistId" class="artist-row selected" bindtap="onRemoveArtist" data-id="{{item.artistId}}">
         <view class="artist-avatar"><image wx:if="{{item.picUrl}}" class="artist-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.letter || item.artistName[0]}}</text></view>
-        <view class="artist-copy"><text class="artist-name">{{item.artistName}}</text><text class="artist-meta">{{item.albumSize || 0}} 张专辑</text></view>
-        <text class="artist-check">移除</text>
+        <view class="artist-copy">
+          <text class="artist-name">{{item.artistName}}</text>
+          <text class="artist-meta">{{item.original ? '当前已归属' : '本次新增'}} · {{item.albumSize || 0}} 张专辑</text>
+        </view>
+        <text class="artist-check remove">删除</text>
       </view>
     </view>
+
+    <view wx:else class="picked-note">暂未识别到当前归属，请在下方选择</view>
+  </view>
+
+  <view class="card">
+    <text class="label">添加 rapper（可多选）</text>
+    <input class="input" placeholder="搜索已收录 rapper" placeholder-style="color:#766f68" value="{{artistKeyword}}" bindinput="onTargetInput" />
+    <text wx:if="{{artistSearching}}" class="picked-note">搜索中…</text>
+
     <view class="artist-results">
       <view wx:for="{{artistResults}}" wx:key="artistId" class="artist-row {{item.selected ? 'selected' : ''}}" bindtap="onPickArtist" data-id="{{item.artistId}}">
         <view class="artist-avatar"><image wx:if="{{item.picUrl}}" class="artist-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.letter || item.artistName[0]}}</text></view>
         <view class="artist-copy"><text class="artist-name">{{item.artistName}}</text><text class="artist-meta">{{item.albumSize || 0}} 张专辑</text></view>
-        <text class="artist-check">{{item.selected ? '已选' : '选择'}}</text>
+        <text class="artist-check">{{item.selected ? '已归属' : '添加'}}</text>
       </view>
     </view>
   </view>
-  <view class="card"><text class="label">原因</text><textarea class="textarea" placeholder="例如：该专辑由多位 rapper 共创 / 当前归属不完整" placeholder-style="color:#766f68" value="{{reason}}" bindinput="onReasonInput" /></view>
+
+  <view class="card"><text class="label">原因（选填）</text><textarea class="textarea" placeholder="例如：删除误归属歌手 / 补充共同创作 rapper" placeholder-style="color:#766f68" value="{{reason}}" bindinput="onReasonInput" maxlength="-1" /></view>
+
   <view class="submit" bindtap="onSubmit">提交管理员审核</view>
 </view>

@@ -1,29 +1,72 @@
+import { getThemeClass } from '../../utils/theme'
+import { markLoggedIn } from '../../utils/auth'
+
 Page({
   data: {
     statusBarHeight: 20,
+    capsuleTop: 26,
+    capsuleHeight: 32,
+    themeClass: '',
     nickName: '',
     avatarUrl: '',
     loading: false,
+    isUpdating: false,
   },
 
-  // Not part of `data` — these track the avatar upload that starts the
-  // moment it's picked, so it's usually already done by the time the user
-  // finishes typing their nickname and taps login.
   _avatarFileId: '',
   _avatarUploadPromise: null as Promise<string> | null,
 
   onLoad() {
-    this.setData({ statusBarHeight: getApp<IAppOption>().globalData.statusBarHeight })
+    const app = getApp<IAppOption>()
+    const current = app.globalData.userInfo
+    let capsuleTop = app.globalData.statusBarHeight + 6
+    let capsuleHeight = 32
+
+    try {
+      const capsule = wx.getMenuButtonBoundingClientRect()
+      if (capsule?.top && capsule?.height) {
+        capsuleTop = capsule.top
+        capsuleHeight = capsule.height
+      }
+    } catch (error) {
+      console.warn('[personal-info] failed to read menu capsule', error)
+    }
+
+    this.setData({
+      statusBarHeight: app.globalData.statusBarHeight,
+      capsuleTop,
+      capsuleHeight,
+      nickName: current?.nickName || '',
+      avatarUrl: current?.avatarUrl || '',
+      isUpdating: !!current,
+    })
   },
 
-  onChooseAvatar(e: any) {
-    const { avatarUrl } = e.detail
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
+  },
+
+  onBack() {
+    const pages = getCurrentPages()
+    if (pages.length > 1) {
+      wx.navigateBack()
+      return
+    }
+    wx.switchTab({ url: '/pages/profile/index' })
+  },
+
+  onChooseAvatar(e: WechatMiniprogram.CustomEvent<{ avatarUrl: string }>) {
+    if (this.data.loading) return
+    const avatarUrl = e.detail?.avatarUrl
+    if (!avatarUrl) return
+
     this.setData({ avatarUrl })
     this._avatarFileId = ''
     this._avatarUploadPromise = this._uploadAvatar(avatarUrl)
   },
 
   _uploadAvatar(filePath: string): Promise<string> {
+    if (String(filePath || '').startsWith('cloud://')) return Promise.resolve(filePath)
     const cloudPath = `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
     return wx.cloud.uploadFile({ cloudPath, filePath })
       .then((res) => { this._avatarFileId = res.fileID; return res.fileID })
@@ -36,7 +79,7 @@ Page({
 
   onLogin() {
     if (this.data.loading) return
-    if (!this.data.avatarUrl) { wx.showToast({ title: '请先选择微信头像', icon: 'none' }); return }
+    if (!this.data.avatarUrl) { wx.showToast({ title: '请先授权头像', icon: 'none' }); return }
     const nickName = this.data.nickName.trim()
     if (!nickName) { wx.showToast({ title: '请输入昵称', icon: 'none' }); return }
 
@@ -52,9 +95,8 @@ Page({
   },
 
   async _resolveAvatarThenLogin(nickName: string) {
-    // Selection already uploaded (or is uploading) in the background — this
-    // usually resolves instantly here since the user spent time typing.
     let fileId = this._avatarFileId || (this._avatarUploadPromise ? await this._avatarUploadPromise : '')
+    if (!fileId && String(this.data.avatarUrl).startsWith('cloud://')) fileId = this.data.avatarUrl
     if (!fileId) fileId = await this._uploadAvatar(this.data.avatarUrl)
 
     if (!fileId) {
@@ -87,9 +129,11 @@ Page({
           reviewCount: user.reviewCount || 0,
         }
         app.globalData.userType = user.type
+        app.globalData.isAdmin = user.type === 'admin'
+        markLoggedIn()
         this.setData({ loading: false })
-        wx.showToast({ title: '登录成功', icon: 'success' })
-        setTimeout(() => wx.navigateBack(), 1000)
+        wx.showToast({ title: this.data.isUpdating ? '资料已更新' : '登录成功', icon: 'success' })
+        setTimeout(() => wx.navigateBack(), 800)
       },
       fail: () => {
         this.setData({ loading: false })

@@ -20,12 +20,68 @@ page {
   font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
   background: var(--black);
   color: var(--white);
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-/* ── SKELETON LOADING ─────────────────────────────────────────────────────────
-   Usage: add class "sk" (light) or "sk-dark" (dark bg) to any element.
-   Set width/height via inline style or dedicated class.
-── */
+.theme-light {
+  --black: #F5EFE2;
+  --white: #16110D;
+  --off-white: #FFFDF8;
+  --gray-light: #DED3BF;
+  --gray-mid: #8A7D67;
+  --gray-dark: #C8BBA2;
+  --groove-a: #EDE4D2;
+  --groove-b: #E3D7BE;
+}
+
+/* Catch remaining legacy hard-coded dark surfaces in light mode. */
+.theme-light .hero-banner,
+.theme-light .reviews-list,
+.theme-light .album-list,
+.theme-light .artist-submit-row,
+.theme-light .suggestion-panel,
+.theme-light .search-inner,
+.theme-light .review-item,
+.theme-light .card,
+.theme-light .panel,
+.theme-light .modal-content {
+  background: var(--black) !important;
+  color: var(--white) !important;
+}
+.theme-light .hero-title,
+.theme-light .album-title,
+.theme-light .artist-submit-title,
+.theme-light .suggestion-name,
+.theme-light .review-title,
+.theme-light .card-title {
+  color: var(--white) !important;
+}
+.theme-light .hero-meta,
+.theme-light .album-artist,
+.theme-light .album-date,
+.theme-light .artist-submit-desc,
+.theme-light .suggestion-meta,
+.theme-light .suggestion-date,
+.theme-light .review-meta,
+.theme-light .card-subtitle {
+  color: var(--gray-mid) !important;
+}
+.theme-light .suggestion-row,
+.theme-light .album-row,
+.theme-light .artist-all-row,
+.theme-light .menu-row,
+.theme-light .review-item {
+  border-color: var(--gray-light) !important;
+}
+.theme-light .alphabet-index,
+.theme-light .month-index {
+  background: rgba(138, 125, 103, 0.14) !important;
+}
+.theme-light input,
+.theme-light textarea {
+  color: var(--white) !important;
+}
+
 @keyframes sk-shimmer {
   0%   { background-position: -600rpx 0; }
   100% { background-position:  600rpx 0; }
@@ -55,7 +111,6 @@ page {
   border-radius: 4rpx;
 }
 
-/* Shared skeleton row layout (chart rows / discover rows) */
 .skel-row {
   display: flex;
   align-items: center;
@@ -72,19 +127,11 @@ page {
   gap: 10rpx;
 }
 
-/* Shared skeleton grid cell (new releases / favorites) */
 .skel-cell {
   background: var(--off-white);
   padding: 28rpx 28rpx 24rpx;
 }
 
-/* ── VINYL COVER CARD ──────────────────────────────────────────────────────────
-   Square album cover with vinyl disc peeking from the right.
-   Usage: <view class="vinyl-cover-wrap">
-            <view class="vinyl-disc-peek" />
-            <image class="cover-sq" ... />   ← or <view class="cover-sq cover-sq-ph" />
-          </view>
-── */
 .vinyl-cover-wrap {
   position: relative;
   width: 160rpx;
@@ -111,17 +158,13 @@ page {
   width: 112rpx; height: 112rpx;
   border-radius: 50%;
   z-index: 1;
-  box-shadow: 0 0 0 2rpx #3a3230;
+  box-shadow: 0 0 0 2rpx var(--gray-dark);
   background:
     radial-gradient(ellipse 42% 58% at 36% 35%, rgba(255,255,255,0.11) 0%, transparent 58%),
     radial-gradient(circle at 50% 50%,
       #0e0b0d 0%, #0e0b0d 2%,
       var(--accent) 2.1%, var(--accent) 38%,
       #1c1618 39%,
-      #312b2e 40.5%, #1c1618 42%, #312b2e 43.5%, #1c1618 45%,
-      #312b2e 46.5%, #1c1618 48%, #312b2e 49.5%, #1c1618 51%,
-      #312b2e 28.5%, #1c1618 30%, #312b2e 31.5%, #1c1618 33%,
-      #312b2e 34.5%, #1c1618 36%, #312b2e 37.5%, #1c1618 39%,
       #312b2e 40.5%, #1c1618 42%, #312b2e 43.5%, #1c1618 45%,
       #312b2e 46.5%, #1c1618 48%, #312b2e 49.5%, #1c1618 51%,
       #312b2e 52.5%, #1c1618 54%, #312b2e 55.5%, #1c1618 57%,

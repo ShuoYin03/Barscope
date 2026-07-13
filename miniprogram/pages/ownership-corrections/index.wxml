@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">OWNERSHIP FIX</text></view>
   <view class="head"><view><text class="head-title">归属纠错审核</text><text class="head-desc">用户提交的专辑歌手归属修改会进入这里</text></view><text class="count">{{list.length}} 待处理</text></view>
   <scroll-view class="content" scroll-y>

@@ -6,9 +6,28 @@
   min-height: 100vh;
   background: var(--black);
   gap: 40rpx;
+  position: relative;
+  box-sizing: border-box;
 }
 
-/* Vinyl disc logo decoration */
+.back-btn {
+  position: absolute;
+  left: 18rpx;
+  min-width: 104rpx;
+  padding: 0 14rpx;
+  border: 2rpx solid var(--gray-light);
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  background: var(--off-white);
+  z-index: 10;
+  box-sizing: border-box;
+}
+.back-icon { font-size: 30rpx; color: var(--accent); line-height: 1; margin-top: -2rpx; }
+.back-label { font-size: 20rpx; color: var(--white); letter-spacing: 1rpx; line-height: 1; }
+
 .logo-area {
   display: flex;
   flex-direction: column;
@@ -109,10 +128,6 @@
   align-items: center;
   gap: 16rpx;
 }
-/* Circle shape lives on this plain view — the native <button>'s own box model
-   is unreliable (min-height/line-height baked into weui base styles), so it
-   was rendering non-square and turning border-radius:50% into an ellipse.
-   The button below just fills this frame at 100%/100%. */
 .avatar-frame {
   width: 200rpx;
   height: 200rpx;

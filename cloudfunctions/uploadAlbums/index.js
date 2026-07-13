@@ -3,6 +3,10 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾'],['F','发'],['G','噶'],['H','哈'],['J','击'],['K','喀'],['L','垃'],['M','妈'],['N','拿'],['O','哦'],['P','啪'],['Q','期'],['R','然'],['S','撒'],['T','塌'],['W','挖'],['X','昔'],['Y','压'],['Z','匝']]
+function pinyinInitial(ch){ let letter='#'; for(const [initial,startChar] of PINYIN_STARTS){ if(ch.localeCompare(startChar,'zh-Hans-CN-u-co-pinyin')>=0)letter=initial; else break } return letter }
+function firstLetter(name){ for(const ch of Array.from(String(name||'').trim())){ if(/[A-Za-z]/.test(ch))return ch.toUpperCase(); if(/[一-鿿]/.test(ch))return pinyinInitial(ch) } return '#' }
+
 /** Batch upsert albums, preserving album-level co-creators from crawler imports. */
 exports.main = async event => {
   const albums = event.albums || []
@@ -17,7 +21,7 @@ exports.main = async event => {
     if (existingMap[a.sourceId]) action === 'upsert' ? toUpdate.push(a) : skipped++
     else toInsert.push(a)
   })
-  const insertOps = toInsert.map(a => db.collection('albums').add({ data:Object.assign({ approved:false }, a) }))
+  const insertOps = toInsert.map(a => db.collection('albums').add({ data:Object.assign({ approved:false, titleLetter:firstLetter(a.title) }, a) }))
   const updateOps = toUpdate.map(a => {
     const fields = { coverUrl:a.coverUrl, releaseYear:a.releaseYear, releaseDate:a.releaseDate, genres:a.genres, artist:a.artist }
     if (a.primaryArtist) fields.primaryArtist = a.primaryArtist

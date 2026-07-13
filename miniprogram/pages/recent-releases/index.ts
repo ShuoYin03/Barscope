@@ -1,7 +1,10 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
+    themeClass:      '',
     list:            [] as any[],
     loading:         true,
   },
@@ -10,6 +13,10 @@ Page({
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
     this._loadList()
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   _loadList() {

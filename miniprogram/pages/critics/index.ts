@@ -7,12 +7,15 @@ interface CriticUser {
   joinedAt:    string
 }
 
+import { getThemeClass } from '../../utils/theme'
+
 let _searchTimer: any = null
 
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
+    themeClass:      '',
 
     list:      [] as CriticUser[],
     keyword:   '',
@@ -30,6 +33,10 @@ Page({
       topbarHeight:    app.globalData.topbarHeight,
     })
     this._loadList('', 1)
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   onBack() { wx.navigateBack() },

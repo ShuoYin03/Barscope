@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px"><view class="topbar-back" bindtap="onBack"><text class="back-arrow">←</text></view><view class="topbar-titles"><text class="topbar-title">CRAWLER</text><text class="topbar-sub">MGMT</text></view></view>
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="card"><view class="section-title">定时触发器（每 5 分钟）</view><view class="status-row"><view class="status-dot {{heartbeatStale ? 'error' : 'running'}}"></view><text class="status-text">{{heartbeatStale ? '可能已停止' : '正常运行'}}</text></view><text class="time-text" style="display:block;margin-top:12rpx;">最近一次醒来: {{heartbeatText}}</text></view>
