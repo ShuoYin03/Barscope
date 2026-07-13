@@ -1,3 +1,5 @@
+import { getThemeClass } from '../../utils/theme'
+
 let _pollTimer: any = null
 
 function toMillis(v: any): number {
@@ -27,6 +29,7 @@ Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
+    themeClass:      '',
 
     crawlerStatus:           null as any,
     crawlerTriggering:       false,
@@ -52,7 +55,7 @@ Page({
   },
 
   onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }) },
-  onShow() { this._startPoll() },
+  onShow() { this.setData({ themeClass: getThemeClass() }); this._startPoll() },
   onHide() { this._stopPoll() },
   onUnload() { this._stopPoll() },
   onBack() { wx.navigateBack() },

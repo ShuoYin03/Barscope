@@ -1,4 +1,5 @@
 import { initAuth } from './utils/auth'
+import { applyStoredTheme } from './utils/theme'
 import { BEBAS_NEUE_B64 } from './assets/fonts/bebas-b64'
 
 App<IAppOption>({
@@ -32,6 +33,7 @@ App<IAppOption>({
       fail: (e: any) => { console.warn('[font] Bebas failed', e) },
     } as any)
 
+    applyStoredTheme()
     initAuth()
   },
 })

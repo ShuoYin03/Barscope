@@ -33,12 +33,15 @@ interface CleanupPreview {
   samples: DuplicateSample[]
 }
 
+import { getThemeClass } from '../../utils/theme'
+
 let _searchTimer: any = null
 
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight: 64,
+    themeClass: '',
     view: 'artists' as 'artists' | 'albums',
     artistList: [] as Artist[],
     artistLoading: false,
@@ -62,6 +65,10 @@ Page({
       topbarHeight: app.globalData.topbarHeight,
     })
     this._loadArtists(1)
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   onBack() {

@@ -20,6 +20,23 @@ page {
   font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
   background: var(--black);
   color: var(--white);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ── LIGHT THEME ───────────────────────────────────────────────────────────
+   Applied via the "theme-light" class on each page's root view (see
+   miniprogram/utils/theme.ts). Same semantic variables, inverted palette —
+   --accent stays constant so the brand color reads the same in both modes.
+── */
+.theme-light {
+  --black: #F5EFE2;
+  --white: #16110D;
+  --off-white: #FFFFFF;
+  --gray-light: #E0D6C2;
+  --gray-mid: #8C7F6A;
+  --gray-dark: #C9BCA3;
+  --groove-a: #EDE4D2;
+  --groove-b: #E3D7BE;
 }
 
 /* ── SKELETON LOADING ─────────────────────────────────────────────────────────

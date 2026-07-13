@@ -1,6 +1,9 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
+    themeClass: '',
     list: [] as any[],
     total: 0,
     loading: true,
@@ -16,7 +19,7 @@ Page({
     this.setData({ statusBarHeight: app.globalData.statusBarHeight })
     this.loadCandidates()
   },
-  onShow() { this.loadCandidates() },
+  onShow() { this.setData({ themeClass: getThemeClass() }); this.loadCandidates() },
   switchMode(e: WechatMiniprogram.TouchEvent) {
     const mode = String((e.currentTarget.dataset as any).mode || '') as 'pending' | 'hidden'
     if (!mode || mode === this.data.mode || this.data.processing) return

@@ -16,6 +16,8 @@
   flex-shrink: 0;
 }
 .topbar-title { font-family: var(--font-bebas); font-size: 48rpx; color: var(--white); letter-spacing: 4rpx; line-height: 1; }
+.topbar-actions { display: flex; align-items: center; gap: 24rpx; }
+.topbar-theme { font-size: 34rpx; color: var(--gray-mid); line-height: 1; margin-bottom: 4rpx; }
 .topbar-set { font-size: 36rpx; color: var(--gray-mid); line-height: 1; margin-bottom: 4rpx; }
 
 /* GATE */

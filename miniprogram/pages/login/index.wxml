@@ -1,4 +1,4 @@
-<view class="page" style="padding-top: {{statusBarHeight}}px">
+<view class="page {{themeClass}}" style="padding-top: {{statusBarHeight}}px">
   <view class="logo-area">
     <!-- Vinyl disc logo (spinning) -->
     <view class="logo-vinyl-disc">

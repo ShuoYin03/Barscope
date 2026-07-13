@@ -1,6 +1,9 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
+    themeClass: '',
     nickName: '',
     avatarUrl: '',
     loading: false,
@@ -14,6 +17,10 @@ Page({
 
   onLoad() {
     this.setData({ statusBarHeight: getApp<IAppOption>().globalData.statusBarHeight })
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   onChooseAvatar(e: any) {

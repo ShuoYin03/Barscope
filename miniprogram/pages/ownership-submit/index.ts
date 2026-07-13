@@ -1,8 +1,11 @@
+import { getThemeClass } from '../../utils/theme'
+
 interface ArtistPick { artistId:string; artistName:string; picUrl:string; albumSize:number; letter:string; selected?:boolean }
 let _artistSearchTimer:any=null
 Page({
   data:{
     statusBarHeight:20,
+    themeClass:'',
     albumId:'',
     title:'',
     artistKeyword:'',
@@ -12,6 +15,7 @@ Page({
     reason:'',
   },
   onLoad(options){const app=getApp<IAppOption>();this.setData({statusBarHeight:app.globalData.statusBarHeight,albumId:String(options.albumId||''),title:decodeURIComponent(String(options.title||''))});this.searchArtists('')},
+  onShow(){this.setData({themeClass:getThemeClass()})},
   onTargetInput(e:WechatMiniprogram.Input){const artistKeyword=e.detail.value||'';this.setData({artistKeyword});if(_artistSearchTimer)clearTimeout(_artistSearchTimer);_artistSearchTimer=setTimeout(()=>this.searchArtists(artistKeyword),300)},
   searchArtists(keyword=''){this.setData({artistSearching:true});wx.cloud.callFunction({name:'getArtists',data:{keyword:String(keyword||'').trim(),limit:30},success:(res:any)=>{const r=res.result||{};const selectedIds=new Set(this.data.selectedArtists.map(a=>String(a.artistId)));const artistResults=(r.success?(r.list||[]):[]).map((a:ArtistPick)=>({...a,selected:selectedIds.has(String(a.artistId))}));this.setData({artistResults,artistSearching:false})},fail:(e:any)=>{console.error('[getArtists] fail', e);this.setData({artistSearching:false,artistResults:[]})}} as any)},
   onPickArtist(e:WechatMiniprogram.TouchEvent){const ds=e.currentTarget.dataset as any;const artistId=String(ds.id||'');if(!artistId)return;const selectedArtists=this.data.selectedArtists.slice();const index=selectedArtists.findIndex(a=>String(a.artistId)===artistId);if(index>=0)selectedArtists.splice(index,1);else{const found=this.data.artistResults.find(a=>String(a.artistId)===artistId);if(found)selectedArtists.push({...found,selected:true})}const selectedIds=new Set(selectedArtists.map(a=>String(a.artistId)));const artistResults=this.data.artistResults.map(a=>({...a,selected:selectedIds.has(String(a.artistId))}));this.setData({selectedArtists,artistResults})},

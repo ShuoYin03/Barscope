@@ -1,7 +1,10 @@
+import { getThemeClass } from '../../utils/theme'
+
 interface ArtistRow { id:string; artistId:string; artistName:string; picUrl:string; albumSize:number; brands:string[] }
 Page({
-  data:{ statusBarHeight:20, keyword:'', list:[] as ArtistRow[], loading:true },
+  data:{ statusBarHeight:20, themeClass:'', keyword:'', list:[] as ArtistRow[], loading:true },
   onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight}); this.loadArtists() },
+  onShow(){ this.setData({themeClass:getThemeClass()}) },
   loadArtists(){
     this.setData({loading:true})
     wx.cloud.callFunction({name:'getArtists',data:{keyword:this.data.keyword.trim(),limit:1000},success:(res:any)=>{const r=res.result||{};this.setData({list:r.success?(r.list||[]):[],loading:false})},fail:()=>{this.setData({loading:false});wx.showToast({title:'加载失败',icon:'none'})}} as any)

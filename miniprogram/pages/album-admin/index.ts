@@ -1,9 +1,12 @@
+import { getThemeClass } from '../../utils/theme'
+
 type AlbumAdminSection = 'library' | 'pending' | 'ownership'
 
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight: 64,
+    themeClass: '',
     pendingCount: 0,
     ownershipCount: 0,
     loading: false,
@@ -18,6 +21,7 @@ Page({
   },
 
   onShow() {
+    this.setData({ themeClass: getThemeClass() })
     this._loadCounts()
   },
 

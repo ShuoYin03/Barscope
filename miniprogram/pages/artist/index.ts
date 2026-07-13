@@ -19,9 +19,12 @@ function buildBioState(value: string) {
   }
 }
 
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
+    themeClass:      '',
     artistName:      '',
     initial:         '',
     bannerUrl:       '',
@@ -66,6 +69,10 @@ Page({
         this.setData({ bannerUrl, avatarUrl, bioExpanded: false, ...bioState })
       },
     } as any)
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   onBioToggle() {

@@ -1,6 +1,9 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
-  data:{statusBarHeight:20,running:false,checked:0,moved:0,failed:0,skipped:0,done:false,message:'准备就绪'},
+  data:{statusBarHeight:20,themeClass:'',running:false,checked:0,moved:0,failed:0,skipped:0,done:false,message:'准备就绪'},
   onLoad(){const app=getApp<IAppOption>();this.setData({statusBarHeight:app.globalData.statusBarHeight})},
+  onShow(){this.setData({themeClass:getThemeClass()})},
   onBack(){wx.navigateBack()},
   onRun(){if(this.data.running)return;wx.showModal({title:'重新筛选专辑',content:'将检查现有专辑曲目：含“伴奏/Instrumental”等版本，或全专曲名相同的专辑，会移入候选区等待手动审核。',confirmText:'开始筛选',confirmColor:'#C94E25',success:r=>{if(r.confirm){this.setData({checked:0,moved:0,failed:0,skipped:0,done:false});this.runBatch()}}})},
   runBatch(){this.setData({running:true,message:'正在高速检查专辑曲目…'});wx.cloud.callFunction({name:'rescreenAlbums',data:{},success:(res:any)=>{const r=res.result||{};if(!r.success){this.setData({running:false,message:r.error||'筛选失败'});return}const checked=this.data.checked+Number(r.checked||0),moved=this.data.moved+Number(r.moved||0),failed=this.data.failed+Number(r.failed||0),skipped=this.data.skipped+Number(r.skipped||0);this.setData({checked,moved,failed,skipped,message:r.done?'筛选完成':'继续高速筛选中…'});if(r.done){this.setData({running:false,done:true});wx.showToast({title:`已移入 ${moved} 张`,icon:'success'});return}setTimeout(()=>this.runBatch(),2000)},fail:(e:any)=>{const detail=String((e&&e.errMsg)||'调用失败');console.error('[rescreenAlbums]',e);this.setData({running:false,message:detail});wx.showToast({title:'调用失败',icon:'none'})}} as any)}})

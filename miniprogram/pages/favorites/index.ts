@@ -20,10 +20,13 @@ function mapAlbum(a: any): FavAlbum {
   }
 }
 
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
+    themeClass:      '',
     isLoggedIn:      false,
     favorites:       [] as FavAlbum[],
     loading:         false,
@@ -41,6 +44,7 @@ Page({
     if (typeof this.getTabBar === 'function') {
       this.getTabBar()?.setData({ selected: 3 })
     }
+    this.setData({ themeClass: getThemeClass() })
     const app = getApp<IAppOption>()
     const loggedIn = !!app.globalData.userInfo
     this.setData({ isLoggedIn: loggedIn })

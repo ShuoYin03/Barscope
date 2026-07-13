@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">ARTISTS / 厂牌</text></view>
   <view class="search"><input placeholder="搜索 rapper" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
   <scroll-view class="content" scroll-y>

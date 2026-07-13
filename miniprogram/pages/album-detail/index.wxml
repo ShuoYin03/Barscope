@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <view wx:if="{{loading}}" class="loading-state" style="padding-top: {{topbarHeight}}px"><text class="loading-text">加载中…</text></view>
   <scroll-view wx:elif="{{album}}" class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="back-bar" style="padding-top: {{statusBarHeight}}px" bindtap="onBack"><text class="back-icon">←</text><text class="back-label">ALBUM</text></view>

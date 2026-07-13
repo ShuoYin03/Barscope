@@ -1,7 +1,10 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight: 64,
+    themeClass: '',
     albumId: '',
     albumTitle: '',
     rating: 0,
@@ -17,6 +20,10 @@ Page({
       albumId: options.albumId || '',
       albumTitle: decodeURIComponent(options.albumTitle || ''),
     })
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   onBack() {

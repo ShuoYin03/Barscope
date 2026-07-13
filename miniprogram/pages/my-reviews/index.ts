@@ -1,3 +1,5 @@
+import { getThemeClass } from '../../utils/theme'
+
 interface UserReview {
   _id: string
   albumId: string
@@ -12,6 +14,7 @@ Page({
   data: {
     statusBarHeight: 20,
     topbarHeight: 64,
+    themeClass: '',
     reviews: [] as UserReview[],
     loading: true,
     deletingId: ''
@@ -24,6 +27,10 @@ Page({
       topbarHeight: app.globalData.topbarHeight
     })
     this.loadReviews()
+  },
+
+  onShow() {
+    this.setData({ themeClass: getThemeClass() })
   },
 
   loadReviews() {

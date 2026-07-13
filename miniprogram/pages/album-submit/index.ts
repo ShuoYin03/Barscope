@@ -1,6 +1,9 @@
+import { getThemeClass } from '../../utils/theme'
+
 Page({
-  data:{statusBarHeight:20,topbarHeight:64,mode:'search' as 'search'|'manual',searchName:'',searching:false,submitting:false,title:'',artist:'',releaseDate:'',company:'',description:'',tracksText:'',coverUrl:'',localCover:''},
+  data:{statusBarHeight:20,topbarHeight:64,themeClass:'',mode:'search' as 'search'|'manual',searchName:'',searching:false,submitting:false,title:'',artist:'',releaseDate:'',company:'',description:'',tracksText:'',coverUrl:'',localCover:''},
   onLoad(){const app=getApp<IAppOption>();this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight})},
+  onShow(){this.setData({themeClass:getThemeClass()})},
   onBack(){wx.navigateBack()},
   onInput(e:WechatMiniprogram.Input){const field=String((e.currentTarget.dataset as any).field||'');if(field)this.setData({[field]:e.detail.value} as any)},
   onSearch(){const name=String(this.data.searchName||'').trim();if(!name){wx.showToast({title:'请输入专辑名称',icon:'none'});return}this.setData({searching:true});wx.cloud.callFunction({name:'submitAlbumRequest',data:{action:'search',name},success:(res:any)=>{const r=res.result||{};this.setData({searching:false});if(!r.success){wx.showToast({title:r.error||'查询失败',icon:'none'});return}if(r.needsManual){this.setData({mode:'manual',title:name});wx.showToast({title:'网易云未找到，请手动补充',icon:'none'});return}if(r.existed){wx.showToast({title:r.status==='approved'?'该专辑已收录':r.status==='pending'?'该专辑审核中':'已有记录',icon:'none'});return}wx.showToast({title:'已从网易云提交',icon:'success'});setTimeout(()=>wx.navigateBack(),700)},fail:()=>{this.setData({searching:false});wx.showToast({title:'查询失败',icon:'none'})}} as any)},
