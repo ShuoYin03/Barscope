@@ -8,8 +8,11 @@ exports.main = async (event) => {
   if (action === 'upsert') return upsert(event.candidates || [])
   if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
   if (action === 'list') return list(event.status || 'pending')
+  if (action === 'listHidden') return listHidden()
   if (action === 'decide') return decide(event.id, event.decision, OPENID)
   if (action === 'batchDecide') return batchDecide(event.ids || [], event.decision, OPENID)
+  if (action === 'decideHidden') return decideHidden(event.id, event.decision, OPENID)
+  if (action === 'batchDecideHidden') return batchDecideHidden(event.ids || [], event.decision, OPENID)
   if (action === 'stats') return stats()
   return { success: false, error: 'unknown action' }
 }
@@ -37,20 +40,39 @@ async function list(status) {
   return { success: true, list: r.data, total: r.data.length }
 }
 
+async function listHidden() {
+  const r = await db.collection('albums').where({ approved: false }).limit(100).get()
+  const list = (r.data || []).filter(album => !album.deletedByAdmin).map(album => ({
+    ...album,
+    hiddenReason: album.hiddenReason || album.candidateReason || (album.movedToCandidate ? '已移入专辑审核' : '当前未对用户显示'),
+  }))
+  return { success: true, list, total: list.length }
+}
+
 async function stats() {
-  const r = await db.collection('album_candidates').where({ status: 'pending' }).count()
-  return { success: true, pending: r.total }
+  const [pending, hidden] = await Promise.all([
+    db.collection('album_candidates').where({ status: 'pending' }).count(),
+    db.collection('albums').where({ approved: false }).count(),
+  ])
+  return { success: true, pending: pending.total, hidden: hidden.total }
 }
 
 async function batchDecide(ids, decision, openId) {
+  return runBatch(ids, id => decide(id, decision, openId))
+}
+
+async function batchDecideHidden(ids, decision, openId) {
+  return runBatch(ids, id => decideHidden(id, decision, openId))
+}
+
+async function runBatch(ids, handler) {
   const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '').trim()).filter(Boolean))).slice(0, 100)
   if (!uniqueIds.length) return { success: false, error: '请选择至少一张专辑' }
-  if (!['keep', 'delete', 'approve', 'decline'].includes(decision)) return { success: false, error: 'invalid decision' }
   let succeeded = 0
   const errors = []
   for (const id of uniqueIds) {
     try {
-      const result = await decide(id, decision, openId)
+      const result = await handler(id)
       if (result && result.success) succeeded += 1
       else errors.push({ id, error: result && result.error ? result.error : '操作失败' })
     } catch (e) {
@@ -58,6 +80,36 @@ async function batchDecide(ids, decision, openId) {
     }
   }
   return { success: errors.length === 0, partial: succeeded > 0 && errors.length > 0, succeeded, failed: errors.length, errors }
+}
+
+async function decideHidden(id, decision, openId) {
+  if (!id || !['keep', 'delete', 'show'].includes(decision)) return { success: false, error: 'invalid decision' }
+  const doc = await db.collection('albums').doc(id).get()
+  if (!doc.data) return { success: false, error: 'album not found' }
+  if (decision === 'keep' || decision === 'show') {
+    await db.collection('albums').doc(id).update({ data: {
+      approved: true,
+      movedToCandidate: false,
+      restoredFromHiddenAt: db.serverDate(),
+      restoredFromHiddenBy: openId,
+    } })
+    return { success: true }
+  }
+  await removeRelated('reviews', 'albumId', id)
+  await removeRelated('favorites', 'albumId', id)
+  await db.collection('albums').doc(id).remove()
+  return { success: true }
+}
+
+async function removeRelated(collection, field, value) {
+  while (true) {
+    const r = await db.collection(collection).where({ [field]: value }).limit(100).get()
+    if (!r.data || !r.data.length) break
+    for (const item of r.data) {
+      try { await db.collection(collection).doc(item._id).remove() } catch (e) { console.warn(`remove ${collection} failed`, item._id, e.message) }
+    }
+    if (r.data.length < 100) break
+  }
 }
 
 async function decide(id, decision, openId) {
