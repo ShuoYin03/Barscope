@@ -68,11 +68,9 @@ async function batchDecideHidden(ids, decision, openId) {
 async function runBatch(ids, handler) {
   const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '').trim()).filter(Boolean))).slice(0, 100)
   if (!uniqueIds.length) return { success: false, error: '请选择至少一张专辑' }
-
   let succeeded = 0
   const errors = []
   const concurrency = 8
-
   for (let i = 0; i < uniqueIds.length; i += concurrency) {
     const chunk = uniqueIds.slice(i, i + concurrency)
     const results = await Promise.allSettled(chunk.map(id => handler(id)))
@@ -87,7 +85,6 @@ async function runBatch(ids, handler) {
       }
     })
   }
-
   return { success: errors.length === 0, partial: succeeded > 0 && errors.length > 0, succeeded, failed: errors.length, errors }
 }
 
@@ -95,7 +92,6 @@ async function decideHidden(id, decision, openId) {
   if (!id || !['keep', 'delete', 'show'].includes(decision)) return { success: false, error: 'invalid decision' }
   const doc = await db.collection('albums').doc(id).get()
   if (!doc.data) return { success: false, error: 'album not found' }
-
   if (decision === 'keep' || decision === 'show') {
     await db.collection('albums').doc(id).update({ data: {
       approved: true,
@@ -105,7 +101,6 @@ async function decideHidden(id, decision, openId) {
     } })
     return { success: true }
   }
-
   await Promise.all([
     removeRelated('reviews', 'albumId', id),
     removeRelated('favorites', 'albumId', id),
@@ -123,6 +118,21 @@ async function removeRelated(collection, field, value) {
     await Promise.all((r.data || []).map(item => db.collection(collection).doc(item._id).remove().catch(err => {
       console.warn(`remove ${collection} failed`, item._id, err.message)
     })))
+  }
+}
+
+function albumFromCandidate(candidate, openId) {
+  const {
+    _id, status, addedAt, decidedAt, albumOriginalId, originalAlbumId,
+    reportReason, reportSource, reportedBy, movedFromAlbumsAt,
+    decision, decidedBy, candidateReason, ...album
+  } = candidate
+  return {
+    ...album,
+    approved: true,
+    movedToCandidate: false,
+    restoredFromCandidateAt: db.serverDate(),
+    restoredFromCandidateBy: openId,
   }
 }
 
@@ -145,11 +155,17 @@ async function decide(id, decision, openId) {
     } else if (candidate.sourceId) {
       const exists = await db.collection('albums').where({ sourceId: String(candidate.sourceId) }).limit(1).get()
       if (exists.data.length) {
-        await db.collection('albums').doc(exists.data[0]._id).update({ data: { approved: true, movedToCandidate: false, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
+        await db.collection('albums').doc(exists.data[0]._id).update({ data: {
+          approved: true,
+          movedToCandidate: false,
+          restoredFromCandidateAt: db.serverDate(),
+          restoredFromCandidateBy: openId,
+        } })
       } else {
-        const { _id, status, addedAt, decidedAt, albumOriginalId, originalAlbumId, reportReason, reportSource, reportedBy, movedFromAlbumsAt, ...album } = candidate
-        await db.collection('albums').add({ data: { ...album, approved: true, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
+        await db.collection('albums').add({ data: albumFromCandidate(candidate, openId) })
       }
+    } else {
+      await db.collection('albums').add({ data: albumFromCandidate(candidate, openId) })
     }
   }
 
