@@ -29,11 +29,42 @@ Page({
     this.setData({ themeClass: getThemeClass() })
   },
 
-  onChooseAvatar(e: any) {
-    const { avatarUrl } = e.detail
-    this.setData({ avatarUrl })
-    this._avatarFileId = ''
-    this._avatarUploadPromise = this._uploadAvatar(avatarUrl)
+  async onChooseAvatar() {
+    if (this.data.loading) return
+
+    try {
+      const chooseResult = await wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+      })
+
+      const sourcePath = chooseResult.tempFiles?.[0]?.tempFilePath
+      if (!sourcePath) return
+
+      let avatarUrl = sourcePath
+      const cropImage = (wx as any).cropImage
+
+      if (typeof cropImage === 'function') {
+        try {
+          const cropResult = await cropImage({
+            src: sourcePath,
+            cropScale: '1:1',
+          })
+          avatarUrl = cropResult.tempFilePath || sourcePath
+        } catch (cropError) {
+          console.warn('[profile] avatar crop cancelled or failed', cropError)
+          return
+        }
+      }
+
+      this.setData({ avatarUrl })
+      this._avatarFileId = ''
+      this._avatarUploadPromise = this._uploadAvatar(avatarUrl)
+    } catch (error) {
+      console.warn('[profile] avatar selection cancelled or failed', error)
+    }
   },
 
   _uploadAvatar(filePath: string): Promise<string> {
@@ -50,9 +81,9 @@ Page({
 
   onLogin() {
     if (this.data.loading) return
-    if (!this.data.avatarUrl) { wx.showToast({ title: '请先选择微信头像', icon: 'none' }); return }
+    if (!this.data.avatarUrl) { wx.showToast({ title: '请先选择头像', icon: 'none' }); return }
     const nickName = this.data.nickName.trim()
-    if (!nickName) { wx.showToast({ title: '请输入微信昵称', icon: 'none' }); return }
+    if (!nickName) { wx.showToast({ title: '请输入昵称', icon: 'none' }); return }
 
     this.setData({ loading: true })
 
