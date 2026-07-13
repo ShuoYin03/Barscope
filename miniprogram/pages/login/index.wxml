@@ -1,4 +1,6 @@
 <view class="page {{themeClass}}" style="padding-top: {{statusBarHeight}}px">
+  <view class="back-btn" bindtap="onBack"><text class="back-icon">←</text><text class="back-label">返回</text></view>
+
   <view class="logo-area">
     <view class="logo-vinyl-disc">
       <view class="logo-vinyl-label">
@@ -8,17 +10,17 @@
     </view>
     <text class="logo-zh">BEATWEEN</text>
     <text class="logo-en">韵镜</text>
-    <text class="tagline">{{isUpdating ? '更新你的头像与昵称' : '设置头像与昵称，加入说唱评分社区'}}</text>
+    <text class="tagline">{{isUpdating ? '更新你的个人信息' : '授权头像和昵称，加入说唱评分社区'}}</text>
   </view>
 
   <view class="avatar-section">
     <view class="avatar-frame">
-      <button class="avatar-btn" bindtap="onChooseAvatar">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
         <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
         <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view>
       </button>
     </view>
-    <text class="avatar-hint">点击选择并裁剪头像</text>
+    <text class="avatar-hint">点击授权并裁剪头像</text>
   </view>
 
   <view class="nick-section">
@@ -26,7 +28,7 @@
     <input
       type="nickname"
       class="nick-input"
-      placeholder="输入或使用微信昵称"
+      placeholder="点击使用微信昵称"
       placeholder-class="nick-ph"
       bindinput="onNickInput"
       value="{{nickName}}"
@@ -34,8 +36,8 @@
   </view>
 
   <view class="login-btn {{loading ? 'loading' : ''}}" bindtap="onLogin">
-    <text>{{loading ? '处理中...' : (isUpdating ? '保存资料' : '保存并登录')}}</text>
+    <text>{{loading ? '处理中...' : (isUpdating ? '保存资料' : '授权并登录')}}</text>
   </view>
 
-  <text class="hint">头像会按正方形裁剪，仅用于韵镜个人主页和社区互动</text>
+  <text class="hint">头像与昵称仅用于韵镜个人主页和社区互动</text>
 </view>
