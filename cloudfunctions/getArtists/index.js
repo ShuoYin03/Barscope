@@ -20,9 +20,6 @@ function searchForms(name){
 }
 function hasCJK(v){ return /[一-鿿]/.test(String(v || '')) }
 function pinyinSyllables(v){ try { return pinyin(String(v || ''), { toneType:'none', type:'array' }).map(s => normalize(s)) } catch (e) { return [] } }
-// Whole-syllable subsequence match, not a substring check on the concatenated pinyin
-// blob — "lian" (脸) is itself a substring of unrelated syllables like "liang" (梁),
-// so blob-substring matching false-positives against unrelated names.
 function syllableSubsequenceMatch(targetSyllables, querySyllables){
   if (!querySyllables.length) return false
   for (let i = 0; i <= targetSyllables.length - querySyllables.length; i++) {
@@ -36,8 +33,6 @@ function matchesKeyword(name, keyword){
   const q = normalize(keyword)
   if (!q) return true
   if (searchForms(name).some(x => x.includes(q))) return true
-  // If the query itself contains Chinese characters, also try a syllable-exact match
-  // so 脸/臉 (same reading, opposite script) can find each other.
   if (hasCJK(keyword) && syllableSubsequenceMatch(pinyinSyllables(name), pinyinSyllables(keyword))) return true
   return false
 }
@@ -53,7 +48,7 @@ exports.main = async event => {
     const conditions = { status: 'approved' }
     const [res, albumCountMap] = await Promise.all([
       db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true, brand:true, brands:true }).limit(1000).get(),
-      fetchApprovedAlbumCounts(),
+      fetchAlbumCounts(),
     ])
     const all = (res.data || []).filter(a => a.artistId && a.artistName)
     const filtered = keyword ? all.filter(a => matchesKeyword(a.artistName, keyword)) : all
@@ -64,7 +59,20 @@ exports.main = async event => {
       const legacyBrand = BRAND_MAP[artistId] || ''
       const brands = managedBrands.length ? managedBrands : (legacyBrand ? [legacyBrand] : [])
       if (HIGHER_BROTHERS_IDS.has(artistId) && !brands.includes('成都集团')) brands.push('成都集团')
-      return { id:a._id, artistId, artistName, picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '', albumSize:albumCountMap.get(artistId) || 0, fansSize:Number(a.fansSize || 0), letter:firstLetter(artistName), brand:brands[0] || '', brands }
+      const stats = albumCountMap.get(artistId) || { total:0, approved:0, hidden:0 }
+      return {
+        id:a._id,
+        artistId,
+        artistName,
+        picUrl:a.avatarUrl || a.picUrl || a.coverUrl || '',
+        albumSize:stats.total,
+        approvedAlbumCount:stats.approved,
+        hiddenAlbumCount:stats.hidden,
+        fansSize:Number(a.fansSize || 0),
+        letter:firstLetter(artistName),
+        brand:brands[0] || '',
+        brands,
+      }
     }).sort((a,b) => {
       const la = LETTER_ORDER.indexOf(a.letter) >= 0 ? LETTER_ORDER.indexOf(a.letter) : 26
       const lb = LETTER_ORDER.indexOf(b.letter) >= 0 ? LETTER_ORDER.indexOf(b.letter) : 26
@@ -74,14 +82,14 @@ exports.main = async event => {
   } catch (e) { return { success:false, error:e.message } }
 }
 
-async function fetchApprovedAlbumCounts() {
-  const countResult = await db.collection('albums').where({ approved:true }).count()
+async function fetchAlbumCounts() {
+  const countResult = await db.collection('albums').count()
   const total = Number(countResult.total || 0)
   const pageSize = 100
   const pages = Math.ceil(total / pageSize)
   const batches = []
   for (let page = 0; page < pages; page++) {
-    batches.push(db.collection('albums').where({ approved:true }).field({ _id:true, neteaseArtistId:true, artistIds:true }).skip(page * pageSize).limit(pageSize).get())
+    batches.push(db.collection('albums').field({ _id:true, neteaseArtistId:true, artistIds:true, approved:true }).skip(page * pageSize).limit(pageSize).get())
   }
   const rows = (await Promise.all(batches)).flatMap(x => x.data || [])
   const map = new Map()
@@ -89,7 +97,13 @@ async function fetchApprovedAlbumCounts() {
     const ids = new Set()
     if (album.neteaseArtistId) ids.add(String(album.neteaseArtistId))
     if (Array.isArray(album.artistIds)) album.artistIds.forEach(id => { if (id) ids.add(String(id)) })
-    ids.forEach(id => map.set(id, (map.get(id) || 0) + 1))
+    ids.forEach(id => {
+      const current = map.get(id) || { total:0, approved:0, hidden:0 }
+      current.total += 1
+      if (album.approved === false) current.hidden += 1
+      else current.approved += 1
+      map.set(id, current)
+    })
   })
   return map
 }
