@@ -35,8 +35,8 @@
     </view>
     <view wx:else class="chart-list">
       <block wx:for="{{list}}" wx:key="rank">
-        <section-header wx:if="{{index === 0}}" side="A" title="TOP CHARTS" />
-        <section-header wx:if="{{item.rank === 6}}" side="B" title="6–10" />
+        <view wx:if="{{index === 0}}" class="chart-side"><section-header side="A" title="TOP CHARTS" /></view>
+        <view wx:if="{{item.rank === 6}}" class="chart-side"><section-header side="B" title="6–10" /></view>
         <view
           class="chart-item"
           bindtap="onAlbumTap"

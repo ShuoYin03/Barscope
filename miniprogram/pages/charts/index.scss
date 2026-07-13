@@ -61,7 +61,13 @@
 .chart-list { background: var(--black); }
 
 /* SIDE A / SIDE B dividers */
-/* 分区标题（SIDE A / SIDE B）统一由 <section-header> 组件渲染 */
+/* 分区标题（SIDE A / SIDE B）统一由 <section-header> 组件渲染。
+   榜单页的 topbar/筛选条用 44rpx 边距，这里给组件加一点下移+内缩，
+   让分区标题与页面 44rpx 边距对齐、并和上方筛选条拉开距离（仅榜单页，不影响主页）。 */
+.chart-side {
+  padding: 16rpx 0 0 12rpx;
+  background: var(--black);
+}
 
 /* FOOTER */
 .list-end { padding: 32rpx; display: flex; justify-content: center; background: var(--black); }
