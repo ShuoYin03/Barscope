@@ -84,20 +84,26 @@ async function searchAlbums({keyword,genre,year,month,page,pageSize}){
   // Fuzzy pass (pinyin / pinyin-initials / simplified-traditional via pinyin readings)
   // scans the whole approved library and is best-effort: if it fails for any reason
   // (bad record, timeout, etc.) fall back to the direct regex matches above rather
-  // than losing the whole search.
+  // than losing the whole search. It's also expensive (thousands of pinyin
+  // conversions as the catalog grows) and the cloud function has a hard execution
+  // timeout, so it only runs when the cheap direct regex match above found nothing —
+  // the overwhelming majority of real searches are a literal substring and are
+  // already satisfied by `direct` alone.
   let fuzzyList=[]
   let matchedArtistNames=[]
-  try {
-    const [artistRes,allAlbums]=await Promise.all([
-      db.collection('artist_candidates').where({status:'approved'}).field({_id:true,artistId:true,artistName:true}).limit(1000).get(),
-      fetchAllApprovedAlbums(),
-    ])
-    const matchedArtists=(artistRes.data||[]).filter(a=>a.artistId&&fuzzyMatch(a.artistName,keyword)).slice(0,50)
-    const matchedIds=new Set(matchedArtists.map(a=>String(a.artistId)))
-    matchedArtistNames=matchedArtists.map(x=>x.artistName)
-    fuzzyList=allAlbums.filter(a=>fuzzyMatch(a.title,keyword)||fuzzyMatch(a.artist,keyword)||fuzzyMatch(a.primaryArtist,keyword)||(Array.isArray(a.artistIds)&&a.artistIds.some(id=>matchedIds.has(String(id))))||matchedIds.has(String(a.neteaseArtistId||'')))
-  } catch(e) {
-    console.error('searchAlbums fuzzy pass failed, falling back to direct matches only:', e)
+  if (!directList.length) {
+    try {
+      const [artistRes,allAlbums]=await Promise.all([
+        db.collection('artist_candidates').where({status:'approved'}).field({_id:true,artistId:true,artistName:true}).limit(1000).get(),
+        fetchAllApprovedAlbums(),
+      ])
+      const matchedArtists=(artistRes.data||[]).filter(a=>a.artistId&&fuzzyMatch(a.artistName,keyword)).slice(0,50)
+      const matchedIds=new Set(matchedArtists.map(a=>String(a.artistId)))
+      matchedArtistNames=matchedArtists.map(x=>x.artistName)
+      fuzzyList=allAlbums.filter(a=>fuzzyMatch(a.title,keyword)||fuzzyMatch(a.artist,keyword)||fuzzyMatch(a.primaryArtist,keyword)||(Array.isArray(a.artistIds)&&a.artistIds.some(id=>matchedIds.has(String(id))))||matchedIds.has(String(a.neteaseArtistId||'')))
+    } catch(e) {
+      console.error('searchAlbums fuzzy pass failed, falling back to direct matches only:', e)
+    }
   }
 
   let filtered=dedupe(directList.concat(fuzzyList))
