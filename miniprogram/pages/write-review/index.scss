@@ -108,7 +108,7 @@
   letter-spacing: 2rpx;
 }
 
-/* 1-10 number buttons */
+/* 1-10 scores, including half points */
 .num-grid {
   display: flex;
   flex-wrap: wrap;
@@ -118,16 +118,17 @@
 }
 .num-btn {
   width: 104rpx;
-  height: 104rpx;
+  height: 82rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--black);
   border: 2rpx solid var(--gray-light);
+  box-sizing: border-box;
 }
 .num-btn text {
   font-family: var(--font-bebas);
-  font-size: 40rpx;
+  font-size: 34rpx;
   color: var(--gray-mid);
   line-height: 1;
 }
