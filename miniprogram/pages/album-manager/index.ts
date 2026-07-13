@@ -215,15 +215,43 @@ Page({
 
   _loadAlbums(artist: Artist) {
     this.setData({ albumLoading: true })
-    wx.cloud.callFunction({
+
+    const discographyCall = wx.cloud.callFunction({
       name: 'manageCandidates',
       data: { action: 'list_admin_albums', artistId: artist.artistId, artistName: artist.artistName },
-      success: (res: any) => {
-        const r = res.result || {}
-        if (!r.success) { this.setData({ albumLoading: false }); return }
-        this.setData({ albumList: r.list || [], albumLoading: false })
-      },
-      fail: () => this.setData({ albumLoading: false }),
+    }).catch(() => ({ result: { success: false, list: [] } }))
+
+    // 再按艺人名检索数据库，把已经从网易云艺人页下架、被过滤或属于历史导入的
+    // 隐藏专辑一起补进管理列表。最终按 _id 去重，避免重复显示。
+    const databaseCall = wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'search_admin_albums', keyword: artist.artistName },
+    }).catch(() => ({ result: { success: false, list: [] } }))
+
+    Promise.all([discographyCall, databaseCall]).then((responses: any[]) => {
+      const discographyResult = responses[0]?.result || {}
+      const databaseResult = responses[1]?.result || {}
+
+      if (!discographyResult.success && !databaseResult.success) {
+        this.setData({ albumLoading: false })
+        return
+      }
+
+      const merged = [
+        ...(discographyResult.success ? (discographyResult.list || []) : []),
+        ...(databaseResult.success ? (databaseResult.list || []) : []),
+      ] as Album[]
+
+      const seen = new Set<string>()
+      const list = merged
+        .filter((album) => {
+          if (!album || !album._id || seen.has(album._id)) return false
+          seen.add(album._id)
+          return true
+        })
+        .sort((a, b) => (b.releaseYear || 0) - (a.releaseYear || 0))
+
+      this.setData({ albumList: list, albumLoading: false })
     })
   },
 
