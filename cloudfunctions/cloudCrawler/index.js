@@ -7,7 +7,7 @@ const _ = db.command
 
 const COL = 'crawlerStatus'
 const DOC = 'singleton'
-const CHUNK = 15
+const CHUNK = 20
 const INTERNAL_TOKEN = 'cc_internal_v1'
 const DETAIL_CONCURRENCY = 8
 const ARTIST_CONCURRENCY = 3
@@ -81,7 +81,7 @@ async function runAllApproved(cursor) {
       processedCount += 1; dated += artistDated
       await appendLog(logLine)
       const now = await getStatus(); const p = now.progress || {}
-      await patchStatus({ progress: { totalArtists: total, processedArtists: cursor + processedCount, albumsFound: Number(p.albumsFound || 0) + added, candidatesFound: Number(p.candidatesFound || 0) + candidates } })
+      await patchStatus({ lastProgressAt: db.serverDate(), progress: { totalArtists: total, processedArtists: cursor + processedCount, albumsFound: Number(p.albumsFound || 0) + added, candidatesFound: Number(p.candidatesFound || 0) + candidates } })
       if ((await getStatus()).abort) aborted = true
     })
   })
@@ -91,11 +91,28 @@ async function runAllApproved(cursor) {
     return { success: true, status: 'aborted', processed: cursor + processedCount, total }
   }
   const processed = Math.min(cursor + CHUNK, total)
-  if (processed < total) return { success: true, status: 'running', processed, total, dated } // 不再自己递归调用下一批，靠 cloudCrawlerDailyTrigger 定时唤醒继续，避免整条链条卡在一次同步调用里撞超时
+  if (processed < total) {
+    // 链式：本批已处理完，立刻 fire-and-forget 触发下一批（不 await 其完整执行），让整轮全量一批接一批自己跑完，
+    // 而不是每批都干等 5 分钟定时器。为什么不 await：await 会把整条链嵌套在这一次同步调用里，几批之后必然撞 60s 超时。
+    await selfInvokeNext(processed)
+    return { success: true, status: 'running', processed, total, dated }
+  }
   const status = await getStatus(), p = status.progress || {}
   await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: [] } })
   await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)
   return { success: true, status: 'done', total, newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), dated }
+}
+
+// 触发下一批 cloudCrawler。刻意不 await 其完整执行（见上方调用处注释）：
+// 只等一小会儿让"调用下一批"这个请求真正发出去，降低"容器 return 后被冻结、导致下一批没被真正触发"的概率。
+// "return 之后未 await 的异步是否仍执行"官方并无明确保证，所以这里只是尽量提高成功率，
+// 真正的兜底是 cloudCrawlerDailyTrigger 里的看门狗：链条一旦卡住（超时无进度）会接力恢复。
+async function selfInvokeNext(cursor) {
+  try {
+    const p = cloud.callFunction({ name: 'cloudCrawler', data: { action: 'allApproved', cursor, __internal: true, __token: INTERNAL_TOKEN } })
+    if (p && typeof p.catch === 'function') p.catch(() => {}) // 吞掉链上 rejection，避免 unhandledRejection
+  } catch (e) {}
+  await new Promise(r => setTimeout(r, 800))
 }
 
 async function finishAbort(status, total) {

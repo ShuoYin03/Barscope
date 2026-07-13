@@ -237,14 +237,13 @@
 
 /* ── 2-COL GRID ── */
 .grid2 {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2rpx;
   background: var(--gray-light);
 }
 
 .grid2-cell {
-  width: calc(50% - 1rpx);
   box-sizing: border-box;
   background: var(--off-white);
   padding: 28rpx 28rpx 24rpx;
@@ -365,18 +364,23 @@
 
 .review-avatar.is-critic { background: var(--accent); }
 
-.review-meta { flex: 1; }
+.review-meta { flex: 1; min-width: 0; }
 
 .review-name-row {
   display: flex;
   align-items: center;
   gap: 10rpx;
+  min-width: 0;
 }
 
 .review-user {
   font-size: 24rpx;
   font-weight: 600;
   color: var(--white);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .critic-badge {
@@ -401,7 +405,13 @@
   color: var(--black);
   background: var(--accent);
   padding: 4rpx 14rpx;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 220rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
   align-self: center;
 }
 
