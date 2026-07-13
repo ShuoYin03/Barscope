@@ -12,10 +12,8 @@
       <view class="side-row b"><text class="side-text">SIDE B — ADMIN</text></view>
       <view class="menu-row" bindtap="onAdminCandidates"><text class="menu-icon">✦</text><text class="menu-label">艺人候选审核</text><view wx:if="{{pendingCount > 0}}" class="pending-badge"><text class="pending-num">{{pendingCount}}</text></view><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminArtistBrands"><text class="menu-icon">⌁</text><text class="menu-label">ARTISTS / 厂牌</text><text class="menu-arrow">→</text></view>
-      <view class="menu-row" bindtap="onAdminAlbumFlags"><text class="menu-icon">⚑</text><text class="menu-label">专辑审核</text><view wx:if="{{albumFlagCount > 0}}" class="pending-badge"><text class="pending-num">{{albumFlagCount}}</text></view><text class="menu-arrow">→</text></view>
-      <view class="menu-row" bindtap="onAdminOwnershipCorrections"><text class="menu-icon">⇄</text><text class="menu-label">归属纠错审核</text><view wx:if="{{ownershipCorrectionCount > 0}}" class="pending-badge"><text class="pending-num">{{ownershipCorrectionCount}}</text></view><text class="menu-arrow">→</text></view>
+      <view class="menu-row" bindtap="onAdminAlbums"><text class="menu-icon">◉</text><text class="menu-label">专辑管理</text><view wx:if="{{albumAdminCount > 0}}" class="pending-badge"><text class="pending-num">{{albumAdminCount}}</text></view><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCrawlerReports"><text class="menu-icon">☷</text><text class="menu-label">运行报告</text><text class="menu-arrow">→</text></view>
-      <view class="menu-row" bindtap="onAdminAlbums"><text class="menu-icon">◉</text><text class="menu-label">专辑管理</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCrawler"><text class="menu-icon">⟳</text><text class="menu-label">爬虫管理</text><text class="menu-arrow">→</text></view>
       <view class="menu-row" bindtap="onAdminCritics"><text class="menu-icon">★</text><text class="menu-label">乐评人认证</text><text class="menu-arrow">→</text></view>
     </block>
