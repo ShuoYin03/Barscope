@@ -18,14 +18,28 @@ function searchForms(name){
     return [normalize(raw)]
   }
 }
-// Converts BOTH the keyword and the candidate name to pinyin before comparing, so a
-// simplified-script query (脸) matches a traditional-script name (臉是熊) and vice
-// versa — both resolve to the same pinyin reading regardless of which script was typed.
+function hasCJK(v){ return /[一-鿿]/.test(String(v || '')) }
+function pinyinSyllables(v){ try { return pinyin(String(v || ''), { toneType:'none', type:'array' }).map(s => normalize(s)) } catch (e) { return [] } }
+// Whole-syllable subsequence match, not a substring check on the concatenated pinyin
+// blob — "lian" (脸) is itself a substring of unrelated syllables like "liang" (梁),
+// so blob-substring matching false-positives against unrelated names.
+function syllableSubsequenceMatch(targetSyllables, querySyllables){
+  if (!querySyllables.length) return false
+  for (let i = 0; i <= targetSyllables.length - querySyllables.length; i++) {
+    let ok = true
+    for (let j = 0; j < querySyllables.length; j++) { if (targetSyllables[i + j] !== querySyllables[j]) { ok = false; break } }
+    if (ok) return true
+  }
+  return false
+}
 function matchesKeyword(name, keyword){
-  const needles = searchForms(keyword).filter(Boolean)
-  if (!needles.length) return true
-  const haystacks = searchForms(name)
-  return needles.some(n => haystacks.some(h => h.includes(n)))
+  const q = normalize(keyword)
+  if (!q) return true
+  if (searchForms(name).some(x => x.includes(q))) return true
+  // If the query itself contains Chinese characters, also try a syllable-exact match
+  // so 脸/臉 (same reading, opposite script) can find each other.
+  if (hasCJK(keyword) && syllableSubsequenceMatch(pinyinSyllables(name), pinyinSyllables(keyword))) return true
+  return false
 }
 function cleanBrands(values){
   const seen = new Set()

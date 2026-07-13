@@ -18,25 +18,51 @@ function unratedFilters(genre,year,month){return Object.assign(baseFilters(genre
 function letterRegExp(letter){const l=String(letter||'').toUpperCase();return l==='#'?db.RegExp({regexp:'^[^A-Za-z]',options:''}):db.RegExp({regexp:`^${l}`,options:'i'})}
 function normalize(v){return String(v||'').trim().toLowerCase().replace(/[\s._\-·'’/]/g,'')}
 function pinyinForms(v){try{const parts=pinyin(String(v||''),{toneType:'none',type:'array'});return[normalize(v),normalize(parts.join('')),normalize(parts.map(x=>x.charAt(0)).join(''))]}catch(e){return[normalize(v)]}}
-// Compares pinyin forms on BOTH sides — not just the target — so a simplified-script
-// query (脸) matches a traditional-script title (臉是熊) and vice versa, since both
-// resolve to the same pinyin reading ("lian") regardless of which script was typed.
-function fuzzyMatch(v,q){const needles=pinyinForms(q).filter(Boolean);if(!needles.length)return false;const haystacks=pinyinForms(v);return needles.some(n=>haystacks.some(h=>h.includes(n)))}
+function hasCJK(v){return /[一-鿿]/.test(String(v||''))}
+function pinyinSyllables(v){try{return pinyin(String(v||''),{toneType:'none',type:'array'}).map(s=>normalize(s))}catch(e){return[]}}
+// Whole-syllable subsequence match: query 脸 -> ["lian"] must appear as consecutive
+// syllables in the target, e.g. 臉是熊 -> ["lian","shi","xiong"]. This is deliberately
+// NOT a substring check on the concatenated pinyin blob, because "lian" is itself a
+// substring of unrelated syllables like "liang" (梁) — that collision is what caused
+// simplified/traditional matching to false-positive against unrelated names.
+function syllableSubsequenceMatch(targetSyllables,querySyllables){
+  if(!querySyllables.length)return false
+  for(let i=0;i<=targetSyllables.length-querySyllables.length;i++){
+    let ok=true
+    for(let j=0;j<querySyllables.length;j++){if(targetSyllables[i+j]!==querySyllables[j]){ok=false;break}}
+    if(ok)return true
+  }
+  return false
+}
+// Base match: literal substring / full-pinyin blob / pinyin-initials against the raw
+// (un-converted) query — unchanged from before, so pinyin-typed queries like "lian"
+// keep working exactly as they did. On top of that, if the query itself contains
+// Chinese characters, also try a syllable-exact match so 脸/臉 (same reading, opposite
+// script) can find each other without the "lian"-inside-"liang" false positive above.
+function fuzzyMatch(v,q){
+  const needle=normalize(q)
+  if(needle&&pinyinForms(v).some(x=>x.includes(needle)))return true
+  if(hasCJK(q)&&syllableSubsequenceMatch(pinyinSyllables(v),pinyinSyllables(q)))return true
+  return false
+}
 function relevance(a,q){
   const n=normalize(q),title=normalize(a.title),artist=normalize(a.artist),primary=normalize(a.primaryArtist)
   const titleForms=pinyinForms(a.title),artistForms=pinyinForms(`${a.artist||''} ${a.primaryArtist||''}`)
-  const qForms=pinyinForms(q).filter(Boolean)
-  const anyForm=(forms,pred)=>qForms.some(qf=>forms.some(f=>pred(f,qf)))
   if(title===n)return 100
   if(title.startsWith(n))return 90
   if(title.includes(n))return 80
-  if(anyForm(titleForms,(f,qf)=>f.startsWith(qf)))return 75
-  if(anyForm(titleForms,(f,qf)=>f.includes(qf)))return 70
+  if(titleForms.some(x=>x.startsWith(n)))return 75
+  if(titleForms.some(x=>x.includes(n)))return 70
   if(artist===n||primary===n)return 60
   if(artist.startsWith(n)||primary.startsWith(n))return 55
   if(artist.includes(n)||primary.includes(n))return 50
-  if(anyForm(artistForms,(f,qf)=>f.startsWith(qf)))return 45
-  if(anyForm(artistForms,(f,qf)=>f.includes(qf)))return 40
+  if(artistForms.some(x=>x.startsWith(n)))return 45
+  if(artistForms.some(x=>x.includes(n)))return 40
+  if(hasCJK(q)){
+    const qSyl=pinyinSyllables(q)
+    if(syllableSubsequenceMatch(pinyinSyllables(a.title),qSyl))return 65
+    if(syllableSubsequenceMatch(pinyinSyllables(`${a.artist||''} ${a.primaryArtist||''}`),qSyl))return 35
+  }
   return 0
 }
 
