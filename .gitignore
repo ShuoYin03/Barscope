@@ -9,3 +9,5 @@ crawler/albums_raw.json
 *.log
 project.private.config.json
 .gstack/
+
+crawler/backups/
