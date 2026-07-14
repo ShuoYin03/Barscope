@@ -77,15 +77,15 @@ exports.main = async (event) => {
     const normalized = list.map(a => ({
       albumId: a._id,
       title: a.title || '',
-      artist: a.primaryArtist || a.artist || '',
-      displayArtist: a.primaryArtist || a.artist || '',
+      artist: a.artist || a.primaryArtist || '',
+      displayArtist: a.artist || a.primaryArtist || '',
       releaseDate: a._releaseDay || a._sortDay,
       releaseYear: a.releaseYear || Number((a._sortDay || '').slice(0, 4)) || currentYear,
       coverUrl: a.coverUrl || '',
       reviewCount: a.reviewCount || 0,
       avgScore: a.avgScore || 0,
       trackCount: a.trackCount || 0,
-      tickerText: `${a.primaryArtist || a.artist || ''} · ${a.title || ''}`,
+      tickerText: `${a.artist || a.primaryArtist || ''} · ${a.title || ''}`,
       isThisWeek: false,
     }))
 
