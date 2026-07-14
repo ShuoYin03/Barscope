@@ -1,0 +1,49 @@
+.page{height:100vh;display:flex;flex-direction:column;background:var(--black);color:var(--white);overflow:hidden}
+.topbar{display:flex;align-items:center;gap:22rpx;padding:0 32rpx;height:92rpx;flex-shrink:0;border-bottom:2rpx solid var(--accent);box-sizing:border-box}
+.back{font-size:42rpx;color:var(--accent)}
+.title{font-family:var(--font-bebas);font-size:40rpx;letter-spacing:5rpx}
+.album-name{padding:20rpx 32rpx 0;flex-shrink:0}
+.album-name text{font-size:26rpx;font-weight:700;color:var(--gray-mid)}
+.state{flex:1;display:flex;align-items:center;justify-content:center;color:var(--gray-mid)}
+.content{flex:1;min-height:0;padding:0 32rpx}
+
+.track-card{margin-top:24rpx;padding:24rpx;border:2rpx solid var(--gray-light);background:#120d0b}
+.track-card-top{display:flex;align-items:center;gap:20rpx}
+.move-col{display:flex;flex-direction:column;align-items:center;gap:6rpx;flex-shrink:0}
+.move-btn{width:48rpx;height:36rpx;display:flex;align-items:center;justify-content:center;border:2rpx solid var(--gray-light);color:var(--accent);font-size:20rpx}
+.move-btn.disabled{opacity:.3}
+.move-no{font-family:var(--font-bebas);font-size:22rpx;color:var(--gray-mid)}
+.track-name-input{flex:1;height:74rpx;border:2rpx solid var(--gray-light);padding:0 20rpx;color:var(--white);font-size:26rpx;font-weight:700}
+.track-guests-row{display:flex;align-items:center;gap:12rpx;margin-top:20rpx;padding-top:18rpx;border-top:2rpx solid var(--gray-light)}
+.track-guests-label{flex-shrink:0;font-size:20rpx;color:var(--gray-mid);font-weight:800;letter-spacing:1rpx}
+.guest-chips{flex:1;display:flex;flex-wrap:wrap;gap:8rpx;min-width:0}
+.guest-chip{padding:6rpx 14rpx;border:2rpx solid var(--accent);color:var(--accent);font-size:20rpx}
+.track-guests-empty{flex:1;font-size:22rpx;color:var(--gray-mid)}
+.track-guests-arrow{flex-shrink:0;font-size:32rpx;color:var(--gray-mid)}
+
+.list-end{text-align:center;padding:36rpx 0 200rpx;font-family:var(--font-bebas);font-size:22rpx;letter-spacing:4rpx;color:var(--gray-mid)}
+
+.bottom-bar{position:fixed;left:0;right:0;bottom:0;padding:20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));background:var(--black);border-top:2rpx solid var(--gray-light)}
+.save-btn{height:88rpx;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#000;font-size:27rpx;font-weight:900}
+.save-btn.btn-disabled{opacity:.5}
+
+/* ── Featuring picker sheet (matches album-manager's owner-picker) ── */
+.owner-sheet-mask{position:fixed;z-index:60;left:0;right:0;top:0;bottom:0;display:flex;align-items:flex-end;background:rgba(0,0,0,.62)}
+.owner-sheet{width:100%;max-height:82vh;padding:18rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));border-radius:34rpx 34rpx 0 0;background:#120d0b;box-sizing:border-box;display:flex;flex-direction:column}
+.owner-sheet-handle{width:72rpx;height:8rpx;margin:0 auto 20rpx;border-radius:8rpx;background:#4A434B}
+.owner-sheet-title{display:block;margin-bottom:16rpx;font-size:26rpx;font-weight:900;color:var(--white)}
+.owner-sheet-hint{display:block;margin-bottom:16rpx;font-size:22rpx;color:var(--gray-mid)}
+.owner-sheet-chips{display:flex;flex-wrap:wrap;gap:12rpx;margin-bottom:16rpx}
+.owner-chip{display:flex;align-items:center;gap:8rpx;padding:10rpx 16rpx;border:2rpx solid var(--accent);color:var(--accent);font-size:22rpx;font-weight:800}
+.owner-chip-x{font-size:22rpx;line-height:1}
+.owner-sheet-input{height:74rpx;border:2rpx solid var(--gray-light);padding:0 20rpx;color:var(--white);font-size:26rpx;flex-shrink:0}
+.owner-sheet-results{margin-top:16rpx;flex:1;min-height:200rpx;max-height:460rpx}
+.owner-sheet-row{display:flex;align-items:center;gap:16rpx;padding:16rpx;margin-bottom:12rpx;border:2rpx solid var(--gray-light);background:#090707}
+.owner-sheet-row.selected{border-color:var(--accent);background:#1a0f0b}
+.owner-sheet-avatar{flex-shrink:0;width:64rpx;height:64rpx;border-radius:50%;background:#211916;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--accent);font-weight:900}
+.owner-sheet-avatar-img{width:100%;height:100%}
+.owner-sheet-name{flex:1;min-width:0;font-size:26rpx;font-weight:800;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.owner-sheet-check{flex-shrink:0;font-size:22rpx;color:var(--accent);font-weight:900}
+.owner-sheet-actions{flex-shrink:0;display:flex;gap:16rpx;margin-top:20rpx}
+.owner-sheet-cancel{flex:1;padding:22rpx 0;text-align:center;border:2rpx solid var(--gray-light);font-size:25rpx;color:var(--white)}
+.owner-sheet-confirm{flex:1;padding:22rpx 0;text-align:center;background:var(--accent);color:#000;font-size:25rpx;font-weight:900}
