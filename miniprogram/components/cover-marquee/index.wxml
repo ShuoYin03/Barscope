@@ -1,0 +1,16 @@
+<view class="cover-marquee" wx:if="{{list.length}}">
+  <view class="cover-marquee-inner" style="animation-duration: {{duration}};">
+    <block wx:for="{{list}}" wx:key="index">
+      <view class="cover-marquee-item" bindtap="onCoverTap" data-id="{{item.albumId}}">
+        <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
+        <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
+      </view>
+    </block>
+    <block wx:for="{{list}}" wx:key="index">
+      <view class="cover-marquee-item" bindtap="onCoverTap" data-id="{{item.albumId}}">
+        <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
+        <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
+      </view>
+    </block>
+  </view>
+</view>
