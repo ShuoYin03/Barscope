@@ -3,18 +3,18 @@
     <view><text class="title">FEATURES</text><text class="sub">专题</text></view>
   </view>
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <view class="masthead"><text class="kicker">BEATWEEN EDITORIAL</text><text class="headline">长篇阅读，年度企划与场景观察</text><text class="deck">不追逐每一条新闻，只留下值得反复阅读的判断。</text></view>
+    <view class="masthead"><text class="kicker">BEATWEEN EDITORIAL</text><text class="headline">专题栏目，等待你的投稿</text><text class="deck">年度榜单、深度乐评与 Rapper 访谈，欢迎一起把内容做出来。</text></view>
     <scroll-view class="filters" scroll-x show-scrollbar="{{false}}"><view class="filter-row"><view wx:for="{{filters}}" wx:key="*this" class="filter {{activeFilter===item?'active':''}}" data-value="{{item}}" bindtap="onFilterTap"><text>{{item}}</text></view></view></scroll-view>
     <view class="feature-list">
       <view wx:for="{{features}}" wx:key="id" class="feature-card {{item.hero?'hero':''}}" data-id="{{item.id}}" bindtap="onFeatureTap">
         <view class="feature-top"><text class="feature-no">{{item.accent}}</text><text class="feature-cat">{{item.category}}</text></view>
         <text class="feature-title">{{item.title}}</text>
         <text class="feature-subtitle">{{item.subtitle}}</text>
-        <view class="feature-meta"><text>{{item.author}}</text><text>{{item.date}} · {{item.readTime}}</text></view>
-        <text class="feature-arrow">READ →</text>
+        <view class="feature-meta"><text>{{item.status}}</text></view>
+        <text class="feature-arrow">投稿 →</text>
       </view>
     </view>
-    <view class="coming"><text class="coming-kicker">UP NEXT</text><text class="coming-copy">更多年度榜单、深度长评与专题企划将在这里持续发布。</text></view>
+    <view class="coming"><text class="coming-kicker">WAITING FOR SUBMISSIONS</text><text class="coming-copy">有想写的选题，就从这里开始。</text></view>
   </scroll-view>
   <bottom-nav selected="{{3}}" />
 </view>
