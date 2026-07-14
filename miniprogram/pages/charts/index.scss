@@ -100,8 +100,13 @@
 .chart-rank.aside { color: var(--accent); }
 .chart-rank.bside { color: var(--gray-mid); }
 
-
-.chart-info { flex: 1; min-width: 0; }
+.chart-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 .chart-title {
   font-size: 28rpx;
   font-weight: 600;
@@ -111,17 +116,21 @@
   text-overflow: ellipsis;
   display: block;
 }
-.chart-meta {
+.chart-artist {
+  display: block;
+  margin-top: 6rpx;
   font-size: 20rpx;
   color: var(--gray-mid);
-  margin-top: 4rpx;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.meta-dot {
-  width: 4rpx; height: 4rpx; border-radius: 50%;
-  background: var(--gray-light); flex-shrink: 0;
+.chart-date {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 18rpx;
+  color: var(--gray-mid);
+  letter-spacing: .5rpx;
 }
 
 .chart-score {
