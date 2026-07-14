@@ -155,6 +155,7 @@ exports.main = async (event, context) => {
   if (action === 'album_letter_counts')  return await albumLetterCounts()
   if (action === 'backfill_album_letters') return await backfillAlbumLetters(event.skip || 0)
   if (action === 'list_multi_artist_albums') return await listMultiArtistAlbums(event.page || 1, event.pageSize || 60)
+  if (action === 'rebuild_multi_artist_index') return await rebuildMultiArtistIndex(event.skip || 0)
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
 
   return { success: false, error: 'unknown action' }
@@ -373,14 +374,52 @@ async function albumLetterCounts() {
 
 // One-time migration for albums created before titleLetter/isMultiArtist existed.
 // Idempotent — safe to re-run. Client pages through with `skip` until `done`.
+function uniqueIds(value) {
+  return Array.from(new Set((Array.isArray(value) ? value : []).map(String).map(x => x.trim()).filter(Boolean)))
+}
+
+function splitArtistNames(artist) {
+  return Array.from(new Set(String(artist || '').split(/\s*\/\s*|\s*[,&，、+]\s*/).map(x => x.trim()).filter(Boolean)))
+}
+
+function isMultiArtistAlbum(album) {
+  const owners = uniqueIds(album.ownerArtistIds)
+  const participants = uniqueIds(album.artistIds)
+  if (owners.length > 1 || participants.length > 1) return true
+  return splitArtistNames(album.artist).length > 1
+}
+
 async function backfillAlbumLetters(skip) {
   try {
     const pageSize = 300
-    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, title: true, artistIds: true }).get()
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, title: true, artist: true, artistIds: true, ownerArtistIds: true }).get()
     const docs = result.data || []
     if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
-    await Promise.allSettled(docs.map(d => db.collection('albums').doc(d._id).update({ data: { titleLetter: firstLetter(d.title), isMultiArtist: Array.isArray(d.artistIds) && d.artistIds.length > 1 } })))
+    await Promise.allSettled(docs.map(d => db.collection('albums').doc(d._id).update({ data: { titleLetter: firstLetter(d.title), isMultiArtist: isMultiArtistAlbum(d) } })))
     return { success: true, done: false, processed: skip + docs.length, updated: docs.length, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function rebuildMultiArtistIndex(skip) {
+  try {
+    const pageSize = 200
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, artist: true, artistIds: true, ownerArtistIds: true, isMultiArtist: true }).get()
+    const docs = result.data || []
+    if (!docs.length) {
+      const multiTotal = Number((await db.collection('albums').where({ isMultiArtist: true }).count()).total || 0)
+      return { success: true, done: true, processed: skip, updated: 0, multiTotal }
+    }
+    let updated = 0
+    const results = await Promise.allSettled(docs.map(d => {
+      const next = isMultiArtistAlbum(d)
+      if (d.isMultiArtist === next) return Promise.resolve()
+      updated++
+      return db.collection('albums').doc(d._id).update({ data: { isMultiArtist: next } })
+    }))
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
   } catch (e) {
     return { success: false, error: e.message }
   }

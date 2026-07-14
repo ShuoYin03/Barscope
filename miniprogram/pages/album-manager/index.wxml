@@ -308,7 +308,25 @@
     </block>
 
     <!-- ── 多人合作专辑 ── -->
-    <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onMultiReachBottom">
+    <block wx:else>
+      <view class="all-action-bar">
+        <view class="all-action-btn" bindtap="onToggleMultiSelectMode">
+          <text>{{multiSelectMode ? '取消批量' : '批量选择'}}</text>
+        </view>
+        <block wx:if="{{multiSelectMode}}">
+          <view class="all-action-btn" bindtap="onMultiSelectAll"><text>{{multiSelectedCount ? '取消全选' : '全选'}}</text></view>
+          <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onMultiBatchShow"><text>批量显示</text></view>
+          <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onMultiBatchHide"><text>批量隐藏</text></view>
+          <view class="all-action-btn accent" bindtap="onMultiBatchOwnership"><text>批量设置归属</text></view>
+          <view class="all-action-btn ghost {{resyncWorking ? 'btn-disabled' : ''}}" bindtap="onMultiBatchResync">
+            <text>{{resyncWorking ? ('同步中 ' + resyncDone + '/' + resyncTotal) : '重新同步Tracks'}}</text>
+          </view>
+        </block>
+        <view wx:else class="all-action-btn ghost {{multiReindexing ? 'btn-disabled' : ''}}" bindtap="onRebuildMultiArtistIndex">
+          <text>{{multiReindexing ? ('扫描中 ' + multiReindexDone) : '扫描全部合作专辑'}}</text>
+        </view>
+      </view>
+      <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onMultiReachBottom">
       <block wx:if="{{multiLoading && multiList.length === 0}}">
         <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
           <view class="sk skel-cover"></view>
@@ -325,7 +343,8 @@
       </view>
 
       <block wx:else>
-        <view wx:for="{{multiList}}" wx:key="_id" class="album-row">
+        <view wx:for="{{multiList}}" wx:key="_id" class="album-row {{multiSelectMode ? 'selectable' : ''}} {{item.selected ? 'selected' : ''}}" bindtap="onMultiCardTap" data-id="{{item._id}}">
+          <view wx:if="{{multiSelectMode}}" class="select-box {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
           <view class="album-cover-wrap">
             <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
             <view wx:else class="album-cover-fallback">
@@ -349,6 +368,7 @@
           </view>
 
           <view
+            wx:if="{{!multiSelectMode}}"
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
             bindtap="onToggleApproved"
             data-id="{{item._id}}"
@@ -365,7 +385,8 @@
           <text class="list-end-text">── 共 {{multiTotal}} 张 ──</text>
         </view>
       </block>
-    </scroll-view>
+      </scroll-view>
+    </block>
   </block>
 
   <!-- ══ ALBUM LIST ══════════════════════════════════════════════════════════ -->

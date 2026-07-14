@@ -90,6 +90,10 @@ Page({
     multiPageSize: 60,
     multiTotal: 0,
     multiHasMore: false,
+    multiSelectMode: false,
+    multiSelectedCount: 0,
+    multiReindexing: false,
+    multiReindexDone: 0,
 
     ownerPickerVisible: false,
     ownerPickerAlbumCount: 0,
@@ -197,6 +201,82 @@ Page({
     this._loadMultiArtistAlbums(this.data.multiPage + 1)
   },
 
+
+  _selectedAlbums() {
+    return this.data.searchMode === 'multi'
+      ? this.data.multiList.filter(a => a.selected)
+      : this.data.allList.filter(a => a.selected)
+  },
+
+  _clearBatchSelection() {
+    this.setData({
+      allSelectedCount: 0,
+      multiSelectedCount: 0,
+      allList: this.data.allList.map(a => ({ ...a, selected: false })),
+      multiList: this.data.multiList.map(a => ({ ...a, selected: false })),
+    })
+  },
+
+  onToggleMultiSelectMode() {
+    const multiSelectMode = !this.data.multiSelectMode
+    this.setData({
+      multiSelectMode,
+      multiList: this.data.multiList.map(a => ({ ...a, selected: false })),
+      multiSelectedCount: 0,
+    })
+  },
+
+  onMultiCardTap(e: WechatMiniprogram.TouchEvent) {
+    if (!this.data.multiSelectMode) return
+    const id = (e.currentTarget.dataset as { id: string }).id
+    const multiList = this.data.multiList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
+    this.setData({ multiList, multiSelectedCount: multiList.filter(a => a.selected).length })
+  },
+
+  onMultiSelectAll() {
+    const shouldSelect = this.data.multiSelectedCount === 0
+    const multiList = this.data.multiList.map(a => ({ ...a, selected: shouldSelect }))
+    this.setData({ multiList, multiSelectedCount: shouldSelect ? multiList.length : 0 })
+  },
+
+  onMultiBatchShow() { this._batchToggleApproved(true) },
+  onMultiBatchHide() { this._batchToggleApproved(false) },
+  onMultiBatchOwnership() { this.onAllBatchOwnership() },
+  onMultiBatchResync() { this.onAllBatchResync() },
+
+  onRebuildMultiArtistIndex() {
+    if (this.data.multiReindexing) return
+    this.setData({ multiReindexing: true, multiReindexDone: 0 })
+    this._runMultiReindexStep(0)
+  },
+
+  _runMultiReindexStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'rebuild_multi_artist_index', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) {
+          this.setData({ multiReindexing: false })
+          wx.showToast({ title: r.error || '扫描失败', icon: 'none' })
+          return
+        }
+        this.setData({ multiReindexDone: r.processed || 0 })
+        if (r.done) {
+          this.setData({ multiReindexing: false, multiList: [], multiPage: 1 })
+          wx.showToast({ title: `已识别 ${r.multiTotal || 0} 张`, icon: 'success' })
+          this._loadMultiArtistAlbums(1)
+          return
+        }
+        this._runMultiReindexStep(r.nextSkip || 0)
+      },
+      fail: () => {
+        this.setData({ multiReindexing: false })
+        wx.showToast({ title: '网络错误', icon: 'none' })
+      },
+    } as any)
+  },
+
   // ── 全部专辑：字母表浏览 + 批量操作 ──────────────────────────────────────
   _loadLetterCounts() {
     wx.cloud.callFunction({
@@ -272,7 +352,7 @@ Page({
 
   _batchToggleApproved(approved: boolean) {
     if (this.data.allBatchWorking) return
-    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    const ids = this._selectedAlbums().map(a => a._id)
     if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
     wx.showModal({
       title: approved ? `显示 ${ids.length} 张专辑？` : `隐藏 ${ids.length} 张专辑？`,
@@ -295,7 +375,7 @@ Page({
             const patch = (a: Album) => idSet.has(a._id) ? { ...a, approved, selected: false } : a
             const allList = this.data.allList.map(patch)
             const multiList = this.data.multiList.map(patch)
-            this.setData({ allList, multiList, allSelectedCount: 0 })
+            this.setData({ allList, multiList, allSelectedCount: 0, multiSelectedCount: 0 })
             wx.showToast({ title: `已处理 ${r.succeeded || 0} 张`, icon: 'success' })
           },
           fail: () => { wx.hideLoading(); this.setData({ allBatchWorking: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
@@ -307,7 +387,7 @@ Page({
   // ── 批量重新同步 tracks（不改归属，只是用已存的 artistIds 重新拉取/分类曲目）──
   onAllBatchResync() {
     if (this.data.resyncWorking) return
-    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    const ids = this._selectedAlbums().map(a => a._id)
     if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
     wx.showModal({
       title: `重新同步 ${ids.length} 张专辑的 Tracks？`,
@@ -324,7 +404,7 @@ Page({
 
   _runResyncStep(ids: string[], idx: number) {
     if (idx >= ids.length) {
-      this.setData({ resyncWorking: false, allSelectedCount: 0, allList: this.data.allList.map(a => ({ ...a, selected: false })) })
+      this.setData({ resyncWorking: false }); this._clearBatchSelection()
       const failed = this.data.resyncFailed
       wx.showToast({ title: failed ? `完成，${failed} 张失败` : '同步完成', icon: failed ? 'none' : 'success' })
       return
@@ -346,7 +426,7 @@ Page({
 
   // ── 批量设置归属 ──────────────────────────────────────────────────────
   onAllBatchOwnership() {
-    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    const ids = this._selectedAlbums().map(a => a._id)
     if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
     this.setData({ ownerPickerVisible: true, ownerPickerAlbumCount: ids.length, ownerPickerKeyword: '', ownerPickerSelected: [] })
     this._searchOwnerPicker('')
@@ -407,7 +487,7 @@ Page({
     if (this.data.ownerApplyWorking) return
     const targetArtists = this.data.ownerPickerSelected.map(a => ({ artistId: a.artistId, artistName: a.artistName }))
     if (!targetArtists.length) { wx.showToast({ title: '请至少选择一位归属歌手', icon: 'none' }); return }
-    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    const ids = this._selectedAlbums().map(a => a._id)
     if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
     const names = targetArtists.map(a => a.artistName).join(' / ')
     wx.showModal({
@@ -433,7 +513,7 @@ Page({
             const titleResults = this.data.titleResults.map(patch)
             const multiList = this.data.multiList.map(patch)
             this.setData({
-              allList, titleResults, multiList, allSelectedCount: 0,
+              allList, titleResults, multiList, allSelectedCount: 0, multiSelectedCount: 0,
               ownerPickerVisible: false, ownerPickerSelected: [], ownerPickerKeyword: '',
             })
             const failedCount = (r.failed || []).length
