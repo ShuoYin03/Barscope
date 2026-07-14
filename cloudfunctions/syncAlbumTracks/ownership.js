@@ -40,6 +40,17 @@ function resolveOwners(albumDoc, neteaseArtists) {
     if (!names.length && albumDoc.primaryArtist) names.push(String(albumDoc.primaryArtist).trim())
     return { ownerIds: new Set(ids.filter(Boolean)), ownerNames: new Set(names) }
   }
+  // Uncorrected: trust the album doc's own stored participant list over a fresh NetEase re-fetch.
+  // NetEase's endpoints are inconsistent about which artists they attach to an album — a group's
+  // artist-discography listing can credit every member while the album-detail endpoint (what this
+  // function re-fetches on every sync) only credits the group — so re-deriving owners from a single
+  // live call can silently narrow an already-correct multi-artist owner set back down to one.
+  if (Array.isArray(albumDoc.artistIds) && albumDoc.artistIds.length) {
+    const ids = albumDoc.artistIds.map(String)
+    const nameById = buildNameById(albumDoc)
+    const names = ids.map(id => nameById[id]).filter(Boolean)
+    if (names.length) return { ownerIds: new Set(ids), ownerNames: new Set(names) }
+  }
   const ne = (neteaseArtists || []).map(a => ({ id: String(a && a.id || ''), name: String(a && a.name || '').trim() }))
   const ownerIds = new Set(ne.map(a => a.id).filter(Boolean))
   const ownerNames = new Set(ne.map(a => a.name).filter(Boolean))

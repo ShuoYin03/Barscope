@@ -230,6 +230,9 @@
           <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchShow"><text>批量显示</text></view>
           <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchHide"><text>批量隐藏</text></view>
           <view class="all-action-btn accent" bindtap="onAllBatchOwnership"><text>批量设置归属</text></view>
+          <view class="all-action-btn ghost {{resyncWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchResync">
+            <text>{{resyncWorking ? ('同步中 ' + resyncDone + '/' + resyncTotal) : '重新同步Tracks'}}</text>
+          </view>
         </block>
         <view wx:else class="all-action-btn ghost {{backfilling ? 'btn-disabled' : ''}}" bindtap="onBackfillLetters">
           <text>{{backfilling ? ('索引中 ' + backfillDone) : '补全字母索引'}}</text>

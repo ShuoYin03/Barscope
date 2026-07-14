@@ -97,6 +97,11 @@ Page({
     ownerPickerResults: [] as OwnerPick[],
     ownerPickerSelected: [] as OwnerPick[],
     ownerApplyWorking: false,
+
+    resyncWorking: false,
+    resyncDone: 0,
+    resyncTotal: 0,
+    resyncFailed: 0,
   },
 
   onLoad() {
@@ -297,6 +302,46 @@ Page({
         })
       },
     })
+  },
+
+  // ── 批量重新同步 tracks（不改归属，只是用已存的 artistIds 重新拉取/分类曲目）──
+  onAllBatchResync() {
+    if (this.data.resyncWorking) return
+    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
+    wx.showModal({
+      title: `重新同步 ${ids.length} 张专辑的 Tracks？`,
+      content: '会重新从网易云拉取曲目并按当前归属逻辑重新分类 Featuring Guests，不会改变已设置的归属歌手。数量较多时会比较慢。',
+      confirmText: '开始同步',
+      confirmColor: '#C94E25',
+      success: (modal) => {
+        if (!modal.confirm) return
+        this.setData({ resyncWorking: true, resyncDone: 0, resyncTotal: ids.length, resyncFailed: 0 })
+        this._runResyncStep(ids, 0)
+      },
+    })
+  },
+
+  _runResyncStep(ids: string[], idx: number) {
+    if (idx >= ids.length) {
+      this.setData({ resyncWorking: false, allSelectedCount: 0, allList: this.data.allList.map(a => ({ ...a, selected: false })) })
+      const failed = this.data.resyncFailed
+      wx.showToast({ title: failed ? `完成，${failed} 张失败` : '同步完成', icon: failed ? 'none' : 'success' })
+      return
+    }
+    wx.cloud.callFunction({
+      name: 'syncAlbumTracks',
+      data: { albumId: ids[idx] },
+      success: (res: any) => {
+        const r = res.result || {}
+        this.setData({ resyncDone: idx + 1, resyncFailed: this.data.resyncFailed + (r.success ? 0 : 1) })
+        this._runResyncStep(ids, idx + 1)
+      },
+      fail: () => {
+        this.setData({ resyncDone: idx + 1, resyncFailed: this.data.resyncFailed + 1 })
+        this._runResyncStep(ids, idx + 1)
+      },
+    } as any)
   },
 
   // ── 批量设置归属 ──────────────────────────────────────────────────────

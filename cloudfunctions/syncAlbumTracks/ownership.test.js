@@ -111,3 +111,28 @@ test('uncorrected album with no NetEase artists falls back to stored primaryArti
   const { ownerNames } = resolveOwners(doc, [])
   assert.equal(ownerNames.has('某人'), true)
 })
+
+// 最高 — Higher Brothers EP, never corrected. Crawl-time artistIds correctly holds all 5
+// collaborators (group + 4 members, from NetEase's artist-discography endpoint), but a later live
+// re-fetch of the album-detail endpoint only returns the group — a real, observed NetEase
+// inconsistency between its two endpoints for the same album.
+const HIGHEST = {
+  ownershipSource: undefined,
+  primaryArtist: 'Higher Brothers',
+  artist: 'Higher Brothers / 马思唯 / KnowKnow / PSY.P / Melo',
+  artistIds: ['12002201', '1132392', '27868624', '29303235', '29304235'],
+}
+const HIGHEST_NE_NARROW = [ { id: 12002201, name: 'Higher Brothers' } ]
+
+test('uncorrected album: stored artistIds wins over a narrower live NetEase re-fetch', () => {
+  const { ownerIds, ownerNames } = resolveOwners(HIGHEST, HIGHEST_NE_NARROW)
+  assert.deepEqual([...ownerIds].sort(), HIGHEST.artistIds.slice().sort())
+  assert.equal(ownerNames.has('马思唯'), true)
+  assert.equal(ownerNames.has('KnowKnow'), true)
+})
+
+test('isGuest: a group member is not a Feat guest once resolveOwners trusts the stored artistIds', () => {
+  const { ownerIds, ownerNames } = resolveOwners(HIGHEST, HIGHEST_NE_NARROW)
+  assert.equal(isGuest({ id: 1132392, name: '马思唯' }, ownerIds, ownerNames), false)
+  assert.equal(isGuest({ id: 27868624, name: 'KnowKnow' }, ownerIds, ownerNames), false)
+})

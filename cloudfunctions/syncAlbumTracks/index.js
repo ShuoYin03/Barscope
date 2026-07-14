@@ -1,6 +1,6 @@
 const cloud = require('wx-server-sdk')
 const https = require('https')
-const { resolveOwners, isGuest, featureIds } = require('./ownership')
+const { resolveOwners, isGuest, featureIds, buildNameById } = require('./ownership')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -33,11 +33,23 @@ exports.main = async event => {
     // Preserve manual ownership corrections: never let a NetEase re-sync overwrite artist attribution
     // that an admin deliberately fixed. Track/description/company backfill still proceeds.
     if (albumDoc.ownershipSource !== 'user-admin-correction') {
-      patch.artist = artistDisplay; patch.primaryArtist = primaryArtist; patch.neteaseArtistId = neteaseArtistId
-      patch.artistIds = neArtistIds; patch.ownerArtistIds = neArtistIds; patch.isMultiArtist = neArtistIds.length > 1
+      // Union with the album's existing artistIds instead of overwriting: NetEase's album-detail
+      // endpoint (re-fetched here) is sometimes narrower than whatever originally populated artistIds
+      // (e.g. a group release's artist-discography listing credits every member, but the per-album
+      // detail endpoint only credits the group) — blindly replacing would silently drop already-known
+      // collaborators every time this runs.
+      const existingIds = Array.isArray(albumDoc.artistIds) ? albumDoc.artistIds.map(String) : []
+      const existingNameById = buildNameById(albumDoc)
+      const neNameById = {}
+      albumArtists.forEach(a => { const id = String(a && a.id || ''); const name = String(a && a.name || '').trim(); if (id && name) neNameById[id] = name })
+      const mergedIds = existingIds.concat(neArtistIds.filter(id => !existingIds.includes(id)))
+      const mergedNames = mergedIds.map(id => existingNameById[id] || neNameById[id]).filter(Boolean)
+      patch.artist = mergedNames.join(' / ') || artistDisplay
+      patch.primaryArtist = primaryArtist; patch.neteaseArtistId = neteaseArtistId
+      patch.artistIds = mergedIds; patch.ownerArtistIds = mergedIds; patch.isMultiArtist = mergedIds.length > 1
     }
     await db.collection('albums').doc(albumDoc._id).update({ data:patch })
-    return { success:true, albumId:albumDoc._id, sourceId:neteaseAlbumId, trackCount:tracks.length, guestCount:featuringGuests.length, artist:artistDisplay, primaryArtist, artistIds:neArtistIds, featureArtistIds:featureIds(albumDoc.ownershipSource === 'user-admin-correction' ? (albumDoc.artistIds || []) : neArtistIds, ownerIds), tracks, featuringGuests }
+    return { success:true, albumId:albumDoc._id, sourceId:neteaseAlbumId, trackCount:tracks.length, guestCount:featuringGuests.length, artist:patch.artist || artistDisplay, primaryArtist, artistIds:patch.artistIds || neArtistIds, featureArtistIds:featureIds(patch.artistIds || albumDoc.artistIds || [], ownerIds), tracks, featuringGuests }
   } catch(e) { return { success:false, error:e.message } }
 }
 function normalizeTrack(song, idx, ownerIds, ownerNames) { const artists=(song.artists || song.ar || []).map(a=>({id:Number(a.id||0),name:String(a.name||'').trim()})).filter(a=>a.name); const guests=artists.filter(a=>isGuest(a, ownerIds, ownerNames)); return {songId:String(song.id||''),no:idx+1,name:song.name||'',duration:Number(song.duration||song.dt||0),artists,guests,hasFeaturing:guests.length>0} }
