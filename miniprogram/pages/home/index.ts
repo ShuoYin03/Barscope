@@ -58,7 +58,8 @@ Page({
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
   onReleasesMore() { wx.navigateTo({ url: '/pages/recent-releases/index' }) },
   onAlbumTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
+  onReviewTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
   onSearchTap() { wx.switchTab({ url: '/pages/discover/index' }) },
   onHeroTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
-  onReviewMore() { wx.showToast({ title: '评论功能开发中', icon: 'none' }) },
+  onReviewMore() { wx.navigateTo({ url: '/pages/recent-reviews/index' }) },
 })
