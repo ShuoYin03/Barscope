@@ -1,6 +1,11 @@
 import { getThemeClass } from '../../utils/theme'
 
-const SPECIALTY_OPTIONS = ['专辑长评', '单曲点评', '歌词分析', '制作解析', '说唱文化', '地下场景', '现场演出', '行业观察']
+interface SpecialtyOption {
+  value: string
+  selected: boolean
+}
+
+const SPECIALTY_VALUES = ['专辑长评', '单曲点评', '歌词分析', '制作解析', '说唱文化', '地下场景', '现场演出', '行业观察']
 
 Page({
   data: {
@@ -10,7 +15,7 @@ Page({
     loading: true,
     submitting: false,
     existing: null as any,
-    specialtyOptions: SPECIALTY_OPTIONS,
+    specialtyOptions: SPECIALTY_VALUES.map(value => ({ value, selected: false })) as SpecialtyOption[],
     selectedSpecialties: [] as string[],
     wechatId: '',
     reason: '',
@@ -60,18 +65,35 @@ Page({
 
   onToggleSpecialty(e: WechatMiniprogram.TouchEvent) {
     const value = String((e.currentTarget.dataset as any).value || '')
+    if (!value) return
+
     const selected = this.data.selectedSpecialties.slice()
     const index = selected.indexOf(value)
-    if (index >= 0) selected.splice(index, 1)
-    else if (selected.length < 5) selected.push(value)
-    else { wx.showToast({ title: '最多选择 5 项', icon: 'none' }); return }
-    this.setData({ selectedSpecialties: selected })
+
+    if (index >= 0) {
+      selected.splice(index, 1)
+    } else {
+      if (selected.length >= 5) {
+        wx.showToast({ title: '最多选择 5 项', icon: 'none' })
+        return
+      }
+      selected.push(value)
+    }
+
+    const selectedSet = new Set(selected)
+    const specialtyOptions = (this.data.specialtyOptions as SpecialtyOption[]).map(option => ({
+      ...option,
+      selected: selectedSet.has(option.value),
+    }))
+
+    this.setData({ selectedSpecialties: selected, specialtyOptions })
   },
 
   onSubmit() {
     if (this.data.submitting) return
     const { wechatId, reason, sampleReview, portfolioUrl, selectedSpecialties } = this.data
     if (!wechatId.trim()) { wx.showToast({ title: '请填写微信号', icon: 'none' }); return }
+    if (!selectedSpecialties.length) { wx.showToast({ title: '请至少选择一个擅长方向', icon: 'none' }); return }
     if (reason.trim().length < 30) { wx.showToast({ title: '申请理由至少 30 字', icon: 'none' }); return }
     if (sampleReview.trim().length < 100 && !portfolioUrl.trim()) {
       wx.showToast({ title: '请提交 100 字样稿或作品链接', icon: 'none' })
