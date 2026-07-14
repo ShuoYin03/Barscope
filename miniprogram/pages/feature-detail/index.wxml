@@ -1,9 +1,53 @@
 <view class="page {{themeClass}}">
-  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="brand">FEATURES</text></view>
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="brand">FEATURES</text>
+  </view>
+
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{article}}">
-    <view class="article-head"><text class="category">{{article.category}}</text><text class="title">{{article.title}}</text><text class="intro">{{article.intro}}</text><view class="meta"><text>{{article.author}}</text><text>{{article.date}} · {{article.readTime}}</text></view></view>
+    <view class="article-head">
+      <text class="category">{{article.category}} · OPEN CALL</text>
+      <text class="title">{{article.title}}</text>
+      <text class="intro">{{article.intro}}</text>
+    </view>
+
     <view class="rule" />
-    <view class="article-body"><view wx:for="{{article.sections}}" wx:key="heading" class="section"><text class="section-title">{{item.heading}}</text><text class="paragraph">{{item.body}}</text></view></view>
-    <view class="end-mark"><text>— END OF SIDE —</text></view>
+
+    <view class="form">
+      <view class="field">
+        <view class="field-head"><text class="field-label">项目标题 *</text><text class="field-count">{{proposalTitle.length}} / 80</text></view>
+        <input class="input" data-field="proposalTitle" value="{{proposalTitle}}" bindinput="onFieldInput" maxlength="80" placeholder="{{article.proposalPlaceholder}}" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <view class="field-head"><text class="field-label">项目想法 *</text><text class="field-count">{{idea.length}} / 1200</text></view>
+        <textarea class="textarea idea" data-field="idea" value="{{idea}}" bindinput="onFieldInput" maxlength="1200" placeholder="{{article.ideaPlaceholder}}" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <view class="field-head"><text class="field-label">大纲或补充说明</text><text class="field-count">{{outline.length}} / 1600</text></view>
+        <textarea class="textarea" data-field="outline" value="{{outline}}" bindinput="onFieldInput" maxlength="1600" placeholder="{{article.outlinePlaceholder}}" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <text class="field-label">微信号 *</text>
+        <input class="input" data-field="wechat" value="{{wechat}}" bindinput="onFieldInput" maxlength="80" placeholder="用于编辑部联系，请确认填写正确" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <text class="field-label">作品或社交主页链接</text>
+        <input class="input" data-field="links" value="{{links}}" bindinput="onFieldInput" maxlength="500" placeholder="公众号、豆瓣、B站、小红书或其他作品链接" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="privacy-note">
+        <text>提交内容和微信号不会公开，仅供编辑部审核并联系你。</text>
+      </view>
+
+      <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="onSubmit">
+        <text>{{submitting ? '提交中…' : '提交企划 PROPOSAL'}}</text>
+      </view>
+    </view>
+
+    <view class="end-mark"><text>— OPEN CALL —</text></view>
   </scroll-view>
 </view>
