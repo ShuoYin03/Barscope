@@ -1,0 +1,20 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">REVIEW REPORTS</text></view>
+  <view class="head"><view><text class="head-title">举报评论审核</text><text class="head-desc">用户举报的评论会进入这里，删除后会重新计算专辑评分</text></view><text class="count">{{list.length}} 待处理</text></view>
+  <scroll-view class="content" scroll-y>
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadList">重新加载</view></view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无待处理的举报</view>
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="_id" class="card">
+        <view class="info">
+          <text class="album">{{item.albumTitle || '未知专辑'}}</text>
+          <text class="author">评论者：{{item.reviewAuthorName}}</text>
+          <text class="content-text">{{item.reviewContent}}</text>
+          <text class="reason">举报原因：{{item.reason}}</text>
+        </view>
+        <view class="actions"><view class="keep" bindtap="decide" data-id="{{item._id}}" data-decision="keep">保留</view><view class="delete" bindtap="decide" data-id="{{item._id}}" data-decision="delete">删除评论</view></view>
+      </view>
+    </block>
+  </scroll-view>
+</view>
