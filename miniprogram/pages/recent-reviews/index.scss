@@ -1,0 +1,25 @@
+.page { height: 100vh; display: flex; flex-direction: column; background: var(--black); color: var(--white); }
+.topbar { display: flex; align-items: flex-end; padding: 0 32rpx 18rpx; box-sizing: border-box; border-bottom: 2rpx solid var(--accent); flex-shrink: 0; }
+.back { width: 72rpx; font-size: 42rpx; color: var(--accent); line-height: 1; }
+.title-wrap { display: flex; align-items: baseline; gap: 16rpx; }
+.title { font-family: var(--font-bebas); font-size: 42rpx; letter-spacing: 3rpx; }
+.subtitle { font-size: 18rpx; color: var(--accent); letter-spacing: 4rpx; }
+.content { flex: 1; min-height: 0; }
+.review-card { padding: 30rpx 32rpx; border-bottom: 2rpx solid var(--gray-light); background: var(--black); }
+.review-card.is-critic { border-left: 6rpx solid var(--accent); background: var(--off-white); }
+.review-header { display: flex; align-items: flex-start; gap: 18rpx; margin-bottom: 16rpx; }
+.avatar { width: 76rpx; height: 76rpx; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 50%, var(--accent) 0, var(--accent) 17%, var(--groove-a) 18%, var(--groove-b) 100%); }
+.avatar text { font-family: var(--font-bebas); color: var(--black); font-size: 22rpx; }
+.avatar.is-critic { background: var(--accent); }
+.meta { flex: 1; min-width: 0; }
+.name-row { display: flex; align-items: center; gap: 8rpx; min-width: 0; }
+.user { font-size: 25rpx; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.critic-badge { font-size: 18rpx; color: var(--black); background: var(--accent); padding: 2rpx 10rpx; }
+.time { display: block; margin-top: 4rpx; font-size: 20rpx; color: var(--gray-mid); }
+.album { max-width: 220rpx; padding: 5rpx 12rpx; background: var(--accent); color: var(--black); font-size: 18rpx; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score { font-family: var(--font-bebas); font-size: 38rpx; color: var(--gray-mid); line-height: 1; }
+.body { display: block; font-size: 25rpx; line-height: 1.65; color: var(--gray-mid); }
+.footer { display: flex; align-items: center; gap: 20rpx; margin-top: 16rpx; font-size: 20rpx; color: var(--gray-mid); }
+.arrow { margin-left: auto; color: var(--accent); font-size: 28rpx; }
+.loading, .end, .empty { padding: 44rpx 0; text-align: center; color: var(--gray-mid); font-size: 22rpx; }
+.empty { padding-top: 180rpx; }
