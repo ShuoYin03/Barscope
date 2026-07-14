@@ -1,6 +1,7 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+const _ = db.command
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
@@ -30,10 +31,12 @@ exports.main = async (event) => {
       // Recompute from every remaining review, not just the first page, so avgScore stays exact
       // for albums with more than one page of reviews. A deleted review must never keep influencing
       // the average — that's the whole point of doing this here rather than lazily elsewhere.
+      // Explicitly exclude reviewId too: cloud DB where-queries can lag slightly behind a .remove()
+      // on the same request, so the just-deleted doc can still show up in this read otherwise.
       let rows = []
       let skip = 0
       while (true) {
-        const page = await db.collection('reviews').where({ albumId }).field({ rating: true }).skip(skip).limit(100).get()
+        const page = await db.collection('reviews').where({ albumId, _id: _.neq(reviewId) }).field({ rating: true }).skip(skip).limit(100).get()
         rows = rows.concat(page.data || [])
         if (!page.data || page.data.length < 100) break
         skip += 100
