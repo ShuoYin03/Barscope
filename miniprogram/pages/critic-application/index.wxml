@@ -32,19 +32,22 @@
       </view>
 
       <view class="form-section">
-        <text class="field-label">微信号 <text class="required">*</text></text>
+        <text class="field-label first">微信号 <text class="required">*</text></text>
         <input class="input" placeholder="用于审核沟通，不会公开展示" value="{{wechatId}}" data-field="wechatId" bindinput="onInput" maxlength="80" />
 
-        <text class="field-label">擅长方向</text>
+        <view class="label-row specialty-label-row"><text class="field-label">擅长方向 <text class="required">*</text></text><text class="counter">已选 {{selectedSpecialties.length}} / 5</text></view>
+        <text class="field-help">可多选，至少选择 1 项</text>
         <view class="chips">
-          <view wx:for="{{specialtyOptions}}" wx:key="*this" class="chip {{selectedSpecialties.indexOf(item) >= 0 ? 'active' : ''}}" data-value="{{item}}" bindtap="onToggleSpecialty"><text>{{item}}</text></view>
+          <view wx:for="{{specialtyOptions}}" wx:key="value" class="chip {{item.selected ? 'active' : ''}}" data-value="{{item.value}}" bindtap="onToggleSpecialty">
+            <text class="chip-check">{{item.selected ? '✓' : '+'}}</text><text>{{item.value}}</text>
+          </view>
         </view>
 
         <view class="label-row"><text class="field-label">申请理由 <text class="required">*</text></text><text class="counter">{{reasonCount}} / 1200</text></view>
-        <textarea class="textarea reason" placeholder="为什么你适合成为乐评人？你如何理解一篇有价值的乐评？至少 30 字。" value="{{reason}}" data-field="reason" bindinput="onInput" maxlength="1200" />
+        <textarea class="textarea reason" auto-height="{{false}}" fixed="{{true}}" placeholder="为什么你适合成为乐评人？你如何理解一篇有价值的乐评？至少 30 字。" value="{{reason}}" data-field="reason" bindinput="onInput" maxlength="1200" />
 
         <view class="label-row"><text class="field-label">乐评样稿</text><text class="counter">{{sampleCount}} / 3000</text></view>
-        <textarea class="textarea sample" placeholder="粘贴一篇你写过的乐评，或现场写一段不少于 100 字的作品分析。" value="{{sampleReview}}" data-field="sampleReview" bindinput="onInput" maxlength="3000" />
+        <textarea class="textarea sample" auto-height="{{false}}" fixed="{{true}}" placeholder="粘贴一篇你写过的乐评，或现场写一段不少于 100 字的作品分析。" value="{{sampleReview}}" data-field="sampleReview" bindinput="onInput" maxlength="3000" />
 
         <text class="or">— 或 —</text>
 
