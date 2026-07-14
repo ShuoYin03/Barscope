@@ -85,6 +85,17 @@ test('isGuest matches owner by name even when the track artist id is missing/zer
   assert.equal(isGuest({ id: 0, name: '付思遥' }, ownerIds, ownerNames), false)
 })
 
+test('isGuest matches owner by name despite spacing/punctuation drift between NetEase track credits and the artist picker', () => {
+  // Higher Brothers case: a group member is picked as an owner via the admin picker (clean name from
+  // artist_candidates), but NetEase's per-track credit for the same person uses a different id and a
+  // slightly different-formatted name — exact string/id match fails, loose match must still succeed.
+  const ownerIds = new Set(['1'])
+  const ownerNames = new Set(['马思唯'])
+  assert.equal(isGuest({ id: 99999, name: ' 马思唯 ' }, ownerIds, ownerNames), false)
+  assert.equal(isGuest({ id: 99999, name: '马思唯·' }, ownerIds, ownerNames), false)
+  assert.equal(isGuest({ id: 99999, name: '路人' }, ownerIds, ownerNames), true)
+})
+
 test('featureIds is participants minus owners', () => {
   const { ownerIds } = resolveOwners(COMP, COMP_NE)
   assert.deepEqual(featureIds(COMP.artistIds, ownerIds), ['12198387', '12110173', '30704161', '33937972'])

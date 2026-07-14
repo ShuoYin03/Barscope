@@ -47,12 +47,20 @@ function resolveOwners(albumDoc, neteaseArtists) {
   return { ownerIds, ownerNames }
 }
 
-// A track artist is a featured guest unless it is an owner — matched by id first, then by name.
+// Loose name key: case/whitespace/punctuation-insensitive, so "马思唯" still matches a per-track
+// credit spelled with different spacing (NetEase's group-member credits are frequently inconsistent
+// with the artist's own profile name) without requiring an exact byte-for-byte string match.
+function normName(s) { return String(s || '').toLowerCase().replace(/\s+/g, '').replace(/[·.\-_]/g, '') }
+
+// A track artist is a featured guest unless it is an owner — matched by id, then exact name, then
+// loosely-normalized name (handles NetEase spacing/punctuation drift for the same person).
 function isGuest(artist, ownerIds, ownerNames) {
   const id = String(artist && artist.id || '')
   const name = String(artist && artist.name || '').trim()
   if (id && id !== '0' && ownerIds.has(id)) return false
   if (name && ownerNames.has(name)) return false
+  const normed = normName(name)
+  if (normed) { for (const n of ownerNames) { if (normName(n) === normed) return false } }
   return true
 }
 
@@ -61,4 +69,4 @@ function featureIds(allArtistIds, ownerIds) {
   return (allArtistIds || []).map(String).filter(id => !ownerIds.has(id))
 }
 
-module.exports = { buildNameById, resolveOwners, isGuest, featureIds }
+module.exports = { buildNameById, resolveOwners, isGuest, featureIds, normName }

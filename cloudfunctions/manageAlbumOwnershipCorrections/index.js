@@ -17,6 +17,10 @@ async function isAdmin(openId){ if(!openId)return false; const r=await db.collec
 async function list(status){ try { const r=await db.collection(COL).where({status}).orderBy('submittedAt','desc').limit(100).get(); return {success:true,list:r.data,total:r.data.length} } catch(e) { if(isCollectionMissing(e)) return {success:true,list:[],total:0}; throw e } }
 async function stats(){ try { const r=await db.collection(COL).where({status:'pending'}).count(); return {success:true,pending:r.total} } catch(e) { if(isCollectionMissing(e)) return {success:true,pending:0}; throw e } }
 
+// Loose name key: case/whitespace/punctuation-insensitive, so a per-track NetEase credit spelled
+// with different spacing than the artist's own profile name still matches the same owner.
+function normName(s) { return String(s || '').toLowerCase().replace(/\s+/g, '').replace(/[·.\-_]/g, '') }
+
 function cleanTargets(targets){
   const clean = (Array.isArray(targets)?targets:[]).map(x=>({artistId:String(x&&x.artistId||'').trim(),artistName:String(x&&x.artistName||'').trim()})).filter(x=>x.artistId&&x.artistName)
   return clean.filter((x,i,a)=>a.findIndex(y=>y.artistId===x.artistId)===i)
@@ -41,9 +45,17 @@ async function applyOwnershipToAlbum(albumId, owners, openId){
   const artist = ownerNames.join(' / ')
   const ownerIdSet = new Set(ownerArtistIds)
   const ownerNameSet = new Set(ownerNames)
+  const ownerNameNormSet = new Set(ownerNames.map(normName))
   const tracks = (Array.isArray(albumDoc.tracks) ? albumDoc.tracks : []).map(t => {
     const trackArtists = Array.isArray(t.artists) ? t.artists : []
-    const guests = trackArtists.filter(a => !ownerIdSet.has(String(a && a.id || '')) && !ownerNameSet.has(String(a && a.name || '').trim()))
+    const guests = trackArtists.filter(a => {
+      const id = String(a && a.id || '')
+      const name = String(a && a.name || '').trim()
+      if (id && ownerIdSet.has(id)) return false
+      if (name && ownerNameSet.has(name)) return false
+      if (name && ownerNameNormSet.has(normName(name))) return false
+      return true
+    })
     return { ...t, guests, hasFeaturing:guests.length>0 }
   })
   const featuringGuests = collectGuests(tracks)
