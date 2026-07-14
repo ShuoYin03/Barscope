@@ -1,0 +1,9 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="brand">FEATURES</text></view>
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{article}}">
+    <view class="article-head"><text class="category">{{article.category}}</text><text class="title">{{article.title}}</text><text class="intro">{{article.intro}}</text><view class="meta"><text>{{article.author}}</text><text>{{article.date}} · {{article.readTime}}</text></view></view>
+    <view class="rule" />
+    <view class="article-body"><view wx:for="{{article.sections}}" wx:key="heading" class="section"><text class="section-title">{{item.heading}}</text><text class="paragraph">{{item.body}}</text></view></view>
+    <view class="end-mark"><text>— END OF SIDE —</text></view>
+  </scroll-view>
+</view>
