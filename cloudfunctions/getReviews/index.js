@@ -9,9 +9,10 @@ async function safeGet(task) {
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
-  const { albumId, userId, page = 1, pageSize = 20 } = event
+  const { albumId, userId, page = 1, pageSize = 20, likedBy } = event
   if (event.dailyHotAlbum) return getBeijingDailyHotAlbum()
   if (event.totalCount) return getTotalReviewCount()
+  if (likedBy) return getLikedReviews(likedBy, page, pageSize, OPENID)
   if (!albumId && !userId && !event.recent) return { success: false, error: 'albumId or userId or recent required' }
 
   try {
@@ -47,30 +48,53 @@ exports.main = async (event) => {
       }
     }
 
-    const reviewIds = records.map(r => r._id)
-    const likesRes = OPENID && reviewIds.length
-      ? await safeGet(() => db.collection('review_likes').where({ reviewId: _.in(reviewIds), openId: OPENID }).get())
-      : { data: [] }
-    const repliesRes = reviewIds.length
-      ? await safeGet(() => db.collection('review_replies').where({ reviewId: _.in(reviewIds) }).get())
-      : { data: [] }
-
-    const liked = new Set((likesRes.data || []).map(x => x.reviewId))
-    const replyCounts = {}
-    ;(repliesRes.data || []).forEach(x => { replyCounts[x.reviewId] = (replyCounts[x.reviewId] || 0) + 1 })
-
-    const list = records.map(r => ({
-      ...r,
-      initial: r.userNickName ? r.userNickName[0] : '?',
-      userName: r.userNickName || '匿名用户',
-      score: String(r.rating || 0),
-      timeAgo: formatTimeAgo(r.createdAt),
-      likedByMe: liked.has(r._id),
-      replyCount: replyCounts[r._id] || r.replyCount || 0,
-    }))
+    const list = await enrichReviews(records, OPENID)
     return { success: true, list }
   } catch (err) {
     console.error('getReviews failed:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+async function enrichReviews(records, OPENID) {
+  const reviewIds = records.map(r => r._id)
+  const likesRes = OPENID && reviewIds.length
+    ? await safeGet(() => db.collection('review_likes').where({ reviewId: _.in(reviewIds), openId: OPENID }).get())
+    : { data: [] }
+  const repliesRes = reviewIds.length
+    ? await safeGet(() => db.collection('review_replies').where({ reviewId: _.in(reviewIds) }).get())
+    : { data: [] }
+
+  const liked = new Set((likesRes.data || []).map(x => x.reviewId))
+  const replyCounts = {}
+  ;(repliesRes.data || []).forEach(x => { replyCounts[x.reviewId] = (replyCounts[x.reviewId] || 0) + 1 })
+
+  return records.map(r => ({
+    ...r,
+    initial: r.userNickName ? r.userNickName[0] : '?',
+    userName: r.userNickName || '匿名用户',
+    score: String(r.rating || 0),
+    timeAgo: formatTimeAgo(r.createdAt),
+    likedByMe: liked.has(r._id),
+    replyCount: replyCounts[r._id] || r.replyCount || 0,
+  }))
+}
+
+// Reviews a given user has liked, most-recently-liked first — drives the "我的点赞" page.
+async function getLikedReviews(likedBy, page, pageSize, OPENID) {
+  try {
+    const likesRes = await db.collection('review_likes').where({ openId: likedBy }).orderBy('createdAt', 'desc').skip((page - 1) * pageSize).limit(pageSize).get()
+    const likeRows = likesRes.data || []
+    if (!likeRows.length) return { success: true, list: [] }
+    const reviewIds = likeRows.map(x => x.reviewId)
+    const reviewsRes = await db.collection('reviews').where({ _id: _.in(reviewIds) }).get()
+    const reviewMap = new Map((reviewsRes.data || []).map(r => [String(r._id), r]))
+    // Preserve like order; a liked review may since have been deleted by its author.
+    const records = likeRows.map(x => reviewMap.get(String(x.reviewId))).filter(Boolean)
+    const list = await enrichReviews(records, OPENID)
+    return { success: true, list }
+  } catch (err) {
+    console.error('getLikedReviews failed:', err)
     return { success: false, error: err.message }
   }
 }

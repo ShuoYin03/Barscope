@@ -1,0 +1,17 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">点播台</text></view>
+
+  <view class="card">
+    <text class="label">告诉我们你的想法</text>
+    <text class="picked-note">功能建议、体验问题、想收录的专辑或歌手……都可以写在这里</text>
+    <textarea class="textarea" placeholder="写下你的建议…" placeholder-style="color:#766f68" value="{{content}}" bindinput="onContentInput" maxlength="500" />
+    <text class="char-count">{{content.length}}/500</text>
+  </view>
+
+  <view class="card">
+    <text class="label">联系方式（选填）</text>
+    <input class="input" placeholder="微信号 / 其他联系方式，方便我们回复你" placeholder-style="color:#766f68" value="{{contact}}" bindinput="onContactInput" maxlength="100" />
+  </view>
+
+  <view class="submit {{submitting ? 'btn-disabled' : ''}}" bindtap="onSubmit"><text>{{submitting ? '提交中…' : '提交'}}</text></view>
+</view>
