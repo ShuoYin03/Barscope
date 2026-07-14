@@ -27,6 +27,8 @@ exports.main = async (event, context) => {
       title: album.title,
       artist: album.artist,
       year: album.releaseYear,
+      releaseYear: album.releaseYear,
+      releaseDate: album.releaseDate || '',
       score: album.avgScore || 0,
       scoreFill: Math.round((album.avgScore || 0) / 10 * 100) + '%',
       coverUrl: album.coverUrl || '',
