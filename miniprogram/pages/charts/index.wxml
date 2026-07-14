@@ -29,6 +29,7 @@
         <view class="skel-info">
           <view class="sk" style="width:65%;height:26rpx;" />
           <view class="sk" style="width:50%;height:20rpx;" />
+          <view class="sk" style="width:38%;height:18rpx;" />
         </view>
         <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
       </view>
@@ -50,11 +51,8 @@
           </view>
           <view class="chart-info">
             <text class="chart-title">{{item.title}}</text>
-            <view class="chart-meta">
-              <text>{{item.artist}}</text>
-              <view class="meta-dot" />
-              <text>{{item.year}}</text>
-            </view>
+            <text class="chart-artist">{{item.artist}}</text>
+            <text class="chart-date">{{item.dateDisplay}}</text>
           </view>
           <text class="chart-score">{{item.scoreDisplay}}</text>
         </view>
