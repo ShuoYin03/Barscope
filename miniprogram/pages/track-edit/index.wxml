@@ -1,36 +1,49 @@
 <view class="page {{themeClass}}">
-  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">EDIT TRACKS</text></view>
-  <view class="album-name"><text>{{albumTitle}}</text></view>
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <view class="title-wrap">
+      <text class="title">EDIT TRACKS</text>
+      <text class="title-sub">曲目编辑</text>
+    </view>
+  </view>
+
+  <view class="album-name">
+    <text class="album-label">ALBUM</text>
+    <text class="album-title">{{albumTitle}}</text>
+    <text class="album-count">{{tracks.length}} TRACKS</text>
+  </view>
 
   <view wx:if="{{loading}}" class="state"><text>LOADING...</text></view>
 
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <view wx:for="{{tracks}}" wx:key="songId" class="track-card">
-      <view class="track-card-top">
-        <view class="move-col">
-          <view class="move-btn {{index===0 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveUp"><text>▲</text></view>
-          <text class="move-no">{{index+1}}</text>
-          <view class="move-btn {{index===tracks.length-1 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveDown"><text>▼</text></view>
+    <view wx:for="{{tracks}}" wx:key="songId" class="track-row">
+      <view class="track-main-row">
+        <view class="track-order">
+          <text class="track-no">{{index < 9 ? '0' + (index + 1) : index + 1}}</text>
+          <view class="order-actions">
+            <view class="order-btn {{index===0 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveUp"><text>↑</text></view>
+            <view class="order-btn {{index===tracks.length-1 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveDown"><text>↓</text></view>
+          </view>
         </view>
         <input class="track-name-input" value="{{item.name}}" data-idx="{{index}}" bindinput="onNameInput" placeholder="曲目名称" placeholder-style="color:#766f68" maxlength="-1" />
       </view>
+
       <view class="track-guests-row" data-idx="{{index}}" bindtap="onEditGuests">
-        <text class="track-guests-label">Featuring</text>
+        <text class="track-guests-label">FEAT.</text>
         <view class="guest-chips" wx:if="{{item.guests.length}}">
           <text wx:for="{{item.guests}}" wx:for-item="g" wx:key="id" class="guest-chip">{{g.name}}</text>
         </view>
-        <text class="track-guests-empty" wx:else>无</text>
+        <text class="track-guests-empty" wx:else>无合作歌手</text>
         <text class="track-guests-arrow">›</text>
       </view>
     </view>
-    <view class="list-end"><text>— END —</text></view>
+    <view class="list-end"><text>— END OF TRACKLIST —</text></view>
   </scroll-view>
 
   <view class="bottom-bar">
     <view class="save-btn {{saving ? 'btn-disabled' : ''}}" bindtap="onSave"><text>{{saving ? '保存中…' : '保存修改'}}</text></view>
   </view>
 
-  <!-- Featuring picker sheet -->
   <view wx:if="{{pickerVisible}}" class="owner-sheet-mask" bindtap="onPickerCancel">
     <view class="owner-sheet" catchtap="noop">
       <view class="owner-sheet-handle" />
