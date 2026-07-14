@@ -1,0 +1,33 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="back" bindtap="onBack"><text>←</text></view>
+    <view class="title-wrap">
+      <text class="title">RECENT REVIEWS</text>
+      <text class="subtitle">最新评论</text>
+    </view>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onReachBottom">
+    <view wx:if="{{reviews.length === 0 && !loading}}" class="empty"><text>暂无评论</text></view>
+
+    <view wx:for="{{reviews}}" wx:key="_id" class="review-card {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}">
+      <view class="review-header">
+        <view class="avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view>
+        <view class="meta">
+          <view class="name-row">
+            <text class="user">{{item.userName}}</text>
+            <text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text>
+          </view>
+          <text class="time">{{item.timeAgo}}</text>
+        </view>
+        <text class="album">{{item.albumTitle}}</text>
+        <text class="score">{{item.score}}</text>
+      </view>
+      <text class="body">{{item.content}}</text>
+      <view class="footer"><text>♡ {{item.likes}}</text><text>↩ {{item.replyCount}}条回复</text><text class="arrow">→</text></view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading"><text>加载中…</text></view>
+    <view wx:elif="{{!hasMore && reviews.length}}" class="end"><text>── 已加载全部评论 ──</text></view>
+  </scroll-view>
+</view>
