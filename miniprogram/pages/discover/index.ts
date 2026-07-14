@@ -16,7 +16,20 @@ function albumAlphaSort(a:AlbumCard,b:AlbumCard){const t=String(a.title||'').loc
 function scoredSort(a:AlbumCard,b:AlbumCard){return(b.score-a.score)||String(b.releaseDate||'').localeCompare(String(a.releaseDate||''))}
 function releaseSort(a:AlbumCard,b:AlbumCard){return String(b.releaseDate||'').localeCompare(String(a.releaseDate||''))||String(a.title||'').localeCompare(String(b.title||''),'zh-Hans-CN-u-co-pinyin',{sensitivity:'base',numeric:true})}
 function letterOfTitle(title:string){const c=String(title||'').trim().charAt(0).toUpperCase();return /^[A-Z]$/.test(c)?c:'#'}
-function buildLetterGroups(list:ArtistCard[]):ArtistLetterGroup[]{const bucket:Record<string,ArtistCard[]>={};list.forEach(a=>{const letter=(a.letter||'#').toUpperCase();if(!bucket[letter])bucket[letter]=[];bucket[letter].push(a)});return Object.keys(bucket).sort((a,b)=>LETTER_ORDER.indexOf(a)-LETTER_ORDER.indexOf(b)).map(letter=>({letter,list:bucket[letter]}))}
+function buildLetterGroups(list:ArtistCard[]):ArtistLetterGroup[]{
+ const bucket:Record<string,ArtistCard[]>={}
+ list.forEach(a=>{
+  const rawName=String(a.artistName||'').trim()
+  const first=Array.from(rawName)[0]||''
+  let letter=(a.letter||'#').toUpperCase()
+  if(/^[A-Za-z]$/.test(first))letter=first.toUpperCase()
+  else if(/^[\u4e00-\u9fff]$/.test(first))letter=/^[A-Z]$/.test(letter)?letter:'#'
+  else letter='#'
+  if(!bucket[letter])bucket[letter]=[]
+  bucket[letter].push({...a,letter})
+ })
+ return Object.keys(bucket).sort((a,b)=>LETTER_ORDER.indexOf(a)-LETTER_ORDER.indexOf(b)).map(letter=>({letter,list:bucket[letter].slice().sort(alphaSort)}))
+}
 function buildAlbumLetterGroups(list:AlbumCard[]):AlbumLetterGroup[]{const bucket:Record<string,AlbumCard[]>={};list.forEach(a=>{const letter=letterOfTitle(a.title);if(!bucket[letter])bucket[letter]=[];bucket[letter].push(a)});return Object.keys(bucket).sort((a,b)=>LETTER_ORDER.indexOf(a)-LETTER_ORDER.indexOf(b)).map(letter=>({letter,list:bucket[letter].slice().sort(albumAlphaSort)}))}
 import { getThemeClass } from '../../utils/theme'
 
