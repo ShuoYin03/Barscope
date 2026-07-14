@@ -11,8 +11,8 @@
         <view class="hero-info">
           <text class="hero-title">{{album.title}}</text>
           <view class="hero-artist-row"><text class="hero-field-label">歌手</text>
-            <view wx:if="{{album.tracks.length && album.tracks[0].artists.length === 1}}" class="hero-artist-link" bindtap="onGuestTap" data-id="{{album.tracks[0].artists[0].id}}" data-name="{{album.tracks[0].artists[0].name}}"><text class="hero-artist">{{album.tracks[0].artists[0].name}}</text><text class="hero-arrow">›</text></view>
-            <view wx:elif="{{album.tracks.length && album.tracks[0].artists.length > 1}}" class="hero-artist-multi"><view class="hero-artist-link" bindtap="onGuestTap" data-id="{{album.tracks[0].artists[0].id}}" data-name="{{album.tracks[0].artists[0].name}}"><text class="hero-artist">{{album.tracks[0].artists[0].name}}</text></view><view class="artist-selector" bindtap="onOpenArtistSheet" data-source="album"><text>＋{{album.tracks[0].artists.length - 1}}</text><text class="artist-selector-arrow">›</text></view></view>
+            <view wx:if="{{album.artists.length === 1}}" class="hero-artist-link" bindtap="onGuestTap" data-id="{{album.artists[0].id}}" data-name="{{album.artists[0].name}}"><text class="hero-artist">{{album.artists[0].name}}</text><text class="hero-arrow">›</text></view>
+            <view wx:elif="{{album.artists.length > 1}}" class="hero-artist-multi"><view class="hero-artist-link" bindtap="onGuestTap" data-id="{{album.artists[0].id}}" data-name="{{album.artists[0].name}}"><text class="hero-artist">{{album.artists[0].name}}</text></view><view class="artist-selector" bindtap="onOpenArtistSheet" data-source="album"><text>＋{{album.artists.length - 1}}</text><text class="artist-selector-arrow">›</text></view></view>
             <view wx:else class="hero-artist-link" bindtap="onArtistTap"><text class="hero-artist">{{album.primaryArtist || album.artist}}</text><text class="hero-arrow">›</text></view>
           </view>
           <view class="hero-date-row"><text class="hero-field-label">发行日期</text><text class="hero-meta-year">{{album.releaseDisplay}}</text></view>
