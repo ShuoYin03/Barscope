@@ -25,6 +25,13 @@ function buildNameById(albumDoc) {
 function resolveOwners(albumDoc, neteaseArtists) {
   albumDoc = albumDoc || {}
   if (albumDoc.ownershipSource === 'user-admin-correction') {
+    // ownerArtists (explicit id+name pairs) is the source of truth going forward — no positional
+    // string parsing needed. Older corrections made before this field existed fall back below.
+    if (Array.isArray(albumDoc.ownerArtists) && albumDoc.ownerArtists.length) {
+      const ids = albumDoc.ownerArtists.map(a => String(a && a.id || '')).filter(Boolean)
+      const names = albumDoc.ownerArtists.map(a => String(a && a.name || '').trim()).filter(Boolean)
+      return { ownerIds: new Set(ids), ownerNames: new Set(names) }
+    }
     const ids = (Array.isArray(albumDoc.ownerArtistIds) && albumDoc.ownerArtistIds.length)
       ? albumDoc.ownerArtistIds.map(String)
       : (Array.isArray(albumDoc.artistIds) ? albumDoc.artistIds.map(String) : []) // legacy: pre-migration corrections stored owners in artistIds

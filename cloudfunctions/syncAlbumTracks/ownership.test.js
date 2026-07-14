@@ -53,6 +53,15 @@ test('corrected album missing ownerArtistIds (legacy): falls back to artistIds',
   assert.deepEqual([...ownerIds].sort(), COMP.artistIds.slice().sort())
 })
 
+test('corrected album with ownerArtists: names come from the explicit list, not positional string parsing', () => {
+  // A participant promoted from guest to owner is not "newly added" to artistIds, so the artist
+  // string may not stay position-aligned with artistIds. ownerArtists must not depend on that.
+  const promoted = { ...COMP, artist: '付思遥', ownerArtists: [{ id: '51088331', name: '付思遥' }, { id: '12198387', name: '艾志恒Asen' }] }
+  const { ownerIds, ownerNames } = resolveOwners(promoted, COMP_NE)
+  assert.deepEqual([...ownerIds].sort(), ['12198387', '51088331'])
+  assert.deepEqual([...ownerNames].sort(), ['付思遥', '艾志恒Asen'].sort())
+})
+
 test('joint album: neither co-owner is a guest on a shared track', () => {
   const { ownerIds, ownerNames } = resolveOwners(JOINT, JOINT_NE)
   const track = [ { id: 12236125, name: '王以太' }, { id: 1203045, name: '艾热 AIR' } ]

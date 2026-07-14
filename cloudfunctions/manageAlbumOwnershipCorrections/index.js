@@ -38,10 +38,10 @@ async function decide(id, decision, openId){
     const existingIds = Array.isArray(albumDoc.artistIds) ? albumDoc.artistIds.map(String) : []
     const addedOwners = owners.filter(o=>!existingIds.includes(o.artistId))
     const artistIds = existingIds.concat(addedOwners.map(o=>o.artistId))
-    // Keep artist-string ↔ artistIds index alignment (buildNameById relies on it): append new owner names.
-    const artist = existingIds.length
-      ? [String(albumDoc.artist||'').trim(), ...addedOwners.map(o=>o.artistName)].filter(Boolean).join(' / ')
-      : ownerNames.join(' / ')
+    // The display string (used by home/list pages) must reflect the OWNER set, not "existing string
+    // plus newly-added participants" — a participant who was already tracked (e.g. a featured guest
+    // from the original NetEase sync) can still be newly *promoted* to owner without being "added".
+    const artist = ownerNames.join(' / ')
     // Reclassify already-synced tracks against the corrected owner set so per-track credits and
     // Featuring Guests reflect the new ownership immediately, instead of waiting on a NetEase re-sync
     // (which only runs when an album's tracks are still empty).
