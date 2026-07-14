@@ -18,7 +18,7 @@ Page({
     this.setData({ loading: true })
     const p1 = safeCallFunction('getCharts', { limit: 5 })
     const p2 = safeCallFunction('getReviews', { recent: true, pageSize: 4 })
-    const p3 = safeCallFunction('getAlbums', { pageSize: 1 })
+    const p3 = safeCallFunction('getCatalogStats', {})
     const p4 = safeCallFunction('getLatestAlbums', { limit: 12 })
     const p5 = safeCallFunction('getReviews', { dailyHotAlbum: true })
     const p6 = safeCallFunction('getArtists', { limit: 1 })
@@ -52,7 +52,7 @@ Page({
         year: a.releaseDate || a.releaseYear, scoreDisplay: 'NEW', score: 0, scoreFill: '0%', coverUrl: a.coverUrl || '', isThisWeek: !!a.isThisWeek,
       })) : []
       const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length ? latestRes.tickerSongs : FALLBACK_TICKER_SONGS
-      this.setData({ tickerSongs, heroList, chartItems, newReleases, reviews: reviewsRes.success ? (reviewsRes.list || []) : [], totalAlbums: totalRes.success ? (totalRes.total || 0) : 0, totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0, totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0, loading: false })
+      this.setData({ tickerSongs, heroList, chartItems, newReleases, reviews: reviewsRes.success ? (reviewsRes.list || []) : [], totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0, totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0, totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0, loading: false })
     }).catch((err: any) => { console.error('home _loadData error', err); this.setData({ loading: false }) })
   },
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
