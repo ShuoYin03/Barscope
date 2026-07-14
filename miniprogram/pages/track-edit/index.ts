@@ -9,6 +9,7 @@ let _pickerSearchTimer:any=null
 Page({
   data:{
     statusBarHeight:20,
+    topbarHeight:64,
     themeClass:'',
     albumId:'',
     albumTitle:'',
@@ -26,7 +27,12 @@ Page({
     const app=getApp<IAppOption>()
     const albumId=String(options.albumId||'')
     const albumTitle=decodeURIComponent(String(options.title||''))
-    this.setData({statusBarHeight:app.globalData.statusBarHeight,albumId,albumTitle})
+    this.setData({
+      statusBarHeight:app.globalData.statusBarHeight,
+      topbarHeight:app.globalData.topbarHeight,
+      albumId,
+      albumTitle,
+    })
     this._loadTracks(albumId)
   },
 
