@@ -20,25 +20,25 @@ Page({
     const p2 = safeCallFunction('getReviews', { recent: true, pageSize: 4 })
     const p3 = safeCallFunction('getCatalogStats', {})
     const p4 = safeCallFunction('getLatestAlbums', { limit: 12 })
-    const p5 = safeCallFunction('getReviews', { dailyHotAlbum: true })
+    const p5 = safeCallFunction('getReviews', { dailyHotAlbums: true, limit: 6 })
     const p6 = safeCallFunction('getArtists', { limit: 1 })
     const p7 = safeCallFunction('getReviews', { totalCount: true })
     Promise.all([p1, p2, p3, p4, p5, p6, p7]).then((results: any[]) => {
       const chartsRes = results[0], reviewsRes = results[1], totalRes = results[2], latestRes = results[3], dailyHotRes = results[4], artistsRes = results[5], reviewCountRes = results[6]
       const chartItems = chartsRes.success ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) })) : []
       const topItem = chartItems[0] || null
-      const dailyAlbum = dailyHotRes?.success ? dailyHotRes.album : null
+      const dailyAlbums = dailyHotRes?.success ? (dailyHotRes.albums || (dailyHotRes.album ? [dailyHotRes.album] : [])) : []
       const latestList = latestRes?.success ? (latestRes.list || []) : []
 
-      const heroList: any[] = []
-      if (dailyAlbum) {
-        heroList.push({
-          albumId: dailyAlbum.albumId, title: dailyAlbum.title, artist: dailyAlbum.artist, year: dailyAlbum.year,
-          score: fmtScore(dailyAlbum.score), coverUrl: dailyAlbum.coverUrl || '', kicker: '今日热评专辑',
-        })
-      }
-      if (latestList.length) {
-        heroList.push(...latestList.slice(0, dailyAlbum ? 5 : 6).map((a: any) => ({
+      const heroList: any[] = dailyAlbums.slice(0, 6).map((a: any) => ({
+        albumId: a.albumId, title: a.title, artist: a.artist, year: a.year,
+        score: fmtScore(a.score), coverUrl: a.coverUrl || '', kicker: a.todayReviewCount > 1 ? `今日热评 · ${a.todayReviewCount} 条` : '今日热评专辑',
+      }))
+
+      if (heroList.length < 6 && latestList.length) {
+        const used = new Set(heroList.map((a: any) => String(a.albumId)))
+        const fillers = latestList.filter((a: any) => !used.has(String(a.albumId))).slice(0, 6 - heroList.length)
+        heroList.push(...fillers.map((a: any) => ({
           albumId: a.albumId, title: a.title, artist: a.artist, year: a.releaseYear || a.releaseDate,
           score: fmtScore(a.avgScore), coverUrl: a.coverUrl || '', kicker: '最新发行',
         })))
