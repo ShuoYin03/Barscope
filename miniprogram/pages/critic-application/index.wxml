@@ -1,0 +1,59 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <view class="title-wrap"><text class="title">CRITIC APPLICATION</text><text class="sub">乐评人申请</text></view>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="intro">
+      <text class="intro-kicker">SIDE A — JOIN THE PANEL</text>
+      <text class="intro-title">让你的判断成为平台声音</text>
+      <text class="intro-copy">我们希望乐评人具备稳定表达、独立判断和持续关注中文说唱的能力。请认真提交能够证明你能力的材料。</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="state-card"><text>正在读取申请状态…</text></view>
+
+    <view wx:elif="{{existing}}" class="state-card status-{{existing.status}}">
+      <text class="state-label">申请状态</text>
+      <text class="state-title">{{existing.status === 'pending' ? '待审核' : existing.status === 'approved' ? '已通过' : '未通过'}}</text>
+      <text class="state-copy" wx:if="{{existing.status === 'pending'}}">管理员正在查看你的申请理由和能力证明，请耐心等待。</text>
+      <text class="state-copy" wx:elif="{{existing.status === 'approved'}}">你已通过乐评人认证，重新进入“我的”页面后会显示乐评人身份。</text>
+      <text class="state-copy" wx:else>{{existing.adminNote || '本次申请暂未通过，你可以完善作品与表达能力后再次申请。'}}</text>
+      <view class="submitted-block"><text class="submitted-label">申请理由</text><text class="submitted-text">{{existing.reason}}</text></view>
+      <view class="submitted-block" wx:if="{{existing.portfolioUrl}}"><text class="submitted-label">作品链接</text><text class="submitted-text">{{existing.portfolioUrl}}</text></view>
+    </view>
+
+    <block wx:else>
+      <view class="criteria">
+        <text class="section-kicker">申请标准</text>
+        <view class="criterion"><text class="num">01</text><text>能清晰解释评分与判断，不只表达“喜欢 / 不喜欢”</text></view>
+        <view class="criterion"><text class="num">02</text><text>了解中文说唱作品、艺人或场景，并能持续产出</text></view>
+        <view class="criterion"><text class="num">03</text><text>提交真实联系方式和可验证的乐评样稿或作品链接</text></view>
+      </view>
+
+      <view class="form-section">
+        <text class="field-label">微信号 <text class="required">*</text></text>
+        <input class="input" placeholder="用于审核沟通，不会公开展示" value="{{wechatId}}" data-field="wechatId" bindinput="onInput" maxlength="80" />
+
+        <text class="field-label">擅长方向</text>
+        <view class="chips">
+          <view wx:for="{{specialtyOptions}}" wx:key="*this" class="chip {{selectedSpecialties.indexOf(item) >= 0 ? 'active' : ''}}" data-value="{{item}}" bindtap="onToggleSpecialty"><text>{{item}}</text></view>
+        </view>
+
+        <view class="label-row"><text class="field-label">申请理由 <text class="required">*</text></text><text class="counter">{{reasonCount}} / 1200</text></view>
+        <textarea class="textarea reason" placeholder="为什么你适合成为乐评人？你如何理解一篇有价值的乐评？至少 30 字。" value="{{reason}}" data-field="reason" bindinput="onInput" maxlength="1200" />
+
+        <view class="label-row"><text class="field-label">乐评样稿</text><text class="counter">{{sampleCount}} / 3000</text></view>
+        <textarea class="textarea sample" placeholder="粘贴一篇你写过的乐评，或现场写一段不少于 100 字的作品分析。" value="{{sampleReview}}" data-field="sampleReview" bindinput="onInput" maxlength="3000" />
+
+        <text class="or">— 或 —</text>
+
+        <text class="field-label">过往作品链接</text>
+        <input class="input" placeholder="公众号、豆瓣、B站、小红书或其他公开作品链接" value="{{portfolioUrl}}" data-field="portfolioUrl" bindinput="onInput" maxlength="500" />
+
+        <view class="notice"><text>提交即表示你确认材料由本人提供，并同意管理员仅为审核认证目的查看联系方式与作品。</text></view>
+        <button class="submit" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmit">提交申请</button>
+      </view>
+    </block>
+  </scroll-view>
+</view>
