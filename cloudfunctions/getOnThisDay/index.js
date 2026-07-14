@@ -47,6 +47,7 @@ exports.main = async event => {
       coverUrl: a.coverUrl || '',
       releaseYear: a.releaseYear || 0,
       yearsAgo: year - Number(a.releaseYear || 0),
+      avgScore: Number(a.avgScore || 0),
     }))
     return { success: true, list, month, day }
   } catch (err) {

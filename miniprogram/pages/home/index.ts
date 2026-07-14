@@ -48,7 +48,10 @@ Page({
         albumId: a.albumId, title: a.title, coverUrl: a.coverUrl || '',
       })) : []
       const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length ? latestRes.tickerSongs : FALLBACK_TICKER_SONGS
-      const onThisDayList = onThisDayRes?.success ? (onThisDayRes.list || []).map((a: any) => ({ albumId: a.albumId, title: a.title, coverUrl: a.coverUrl || '' })) : []
+      const onThisDayList = onThisDayRes?.success ? (onThisDayRes.list || []).map((a: any) => ({
+        albumId: a.albumId, title: a.title, artist: a.artist, year: a.releaseYear,
+        score: fmtScore(a.avgScore), coverUrl: a.coverUrl || '', yearsAgo: a.yearsAgo,
+      })) : []
       this.setData({ tickerSongs, heroLabel, heroList, onThisDayList, chartItems, newReleases, reviews: reviewsRes.success ? (reviewsRes.list || []) : [], totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0, totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0, totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0, loading: false })
     }).catch((err: any) => { console.error('home _loadData error', err); this.setData({ loading: false }) })
   },
