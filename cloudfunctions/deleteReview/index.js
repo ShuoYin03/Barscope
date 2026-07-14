@@ -27,8 +27,17 @@ exports.main = async (event) => {
     ])
 
     if (albumId) {
-      const remaining = await db.collection('reviews').where({ albumId }).field({ rating: true }).limit(100).get()
-      const rows = remaining.data || []
+      // Recompute from every remaining review, not just the first page, so avgScore stays exact
+      // for albums with more than one page of reviews. A deleted review must never keep influencing
+      // the average — that's the whole point of doing this here rather than lazily elsewhere.
+      let rows = []
+      let skip = 0
+      while (true) {
+        const page = await db.collection('reviews').where({ albumId }).field({ rating: true }).skip(skip).limit(100).get()
+        rows = rows.concat(page.data || [])
+        if (!page.data || page.data.length < 100) break
+        skip += 100
+      }
       const sum = rows.reduce((total, item) => total + (Number(item.rating) || 0), 0)
       const count = rows.length
       await db.collection('albums').doc(albumId).update({
@@ -36,7 +45,7 @@ exports.main = async (event) => {
           avgScore: count ? Math.round((sum / count) * 10) / 10 : 0,
           reviewCount: count,
         },
-      }).catch(() => null)
+      })
     }
 
     const [newReviews, legacyReviews] = await Promise.all([

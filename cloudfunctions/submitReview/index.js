@@ -36,7 +36,16 @@ exports.main = async (event) => {
       },
     })
 
-    const { data: allReviews } = await db.collection('reviews').where({ albumId }).field({ rating: true }).get()
+    // Paginate through every review, not just the default page, so avgScore stays exact once an
+    // album passes 100 reviews.
+    let allReviews = []
+    let skip = 0
+    while (true) {
+      const page = await db.collection('reviews').where({ albumId }).field({ rating: true }).skip(skip).limit(100).get()
+      allReviews = allReviews.concat(page.data || [])
+      if (!page.data || page.data.length < 100) break
+      skip += 100
+    }
     const sum = allReviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0)
     const count = allReviews.length
     await db.collection('albums').doc(albumId).update({ data: { avgScore: count ? Math.round(sum / count * 10) / 10 : 0, reviewCount: count } })

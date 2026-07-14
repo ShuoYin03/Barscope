@@ -15,6 +15,12 @@
     <!-- TICKER -->
     <ticker songs="{{tickerSongs}}" />
 
+    <!-- ── ON THIS DAY — old albums released on this same date, past years ── -->
+    <view class="section-block" wx:if="{{!loading && onThisDayList.length}}">
+      <view class="marquee-label"><text>历史上的今天</text></view>
+      <cover-marquee list="{{onThisDayList}}" />
+    </view>
+
     <!-- ── HERO — today hot reviewed album (scrolling cover wall) ─────────── -->
     <view class="section-block" wx:if="{{loading}}">
       <view class="marquee-label"><text>今日热评专辑</text></view>
