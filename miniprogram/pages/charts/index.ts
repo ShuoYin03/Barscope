@@ -7,15 +7,28 @@ function fmtScore(n: number): string {
   return r.toFixed(1)
 }
 
+function fmtReleaseDate(value: any, fallbackYear?: any): string {
+  const raw = String(value || '').trim()
+  const match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/)
+  if (match) {
+    const [, year, month, day] = match
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
+  }
+  const year = String(fallbackYear || '').trim()
+  return year ? `—/—/${year}` : ''
+}
+
 interface ChartEntry {
-  rank:      number
-  albumId:   string
-  title:     string
-  artist:    string
-  year:      number
-  score:     number
-  trendText: string
-  scoreFill: string
+  rank:        number
+  albumId:     string
+  title:       string
+  artist:      string
+  year:        number
+  releaseDate: string
+  dateDisplay: string
+  score:       number
+  trendText:   string
+  scoreFill:   string
 }
 
 import { getThemeClass } from '../../utils/theme'
@@ -65,11 +78,15 @@ Page({
         const result = res.result
         if (!result.success) { this.setData({ loading: false }); return }
 
-        const list: ChartEntry[] = (result.list || []).map((item: any) => ({
-          ...item,
-          year:         item.year || item.releaseYear,
-          scoreDisplay: fmtScore(item.score),
-        }))
+        const list: ChartEntry[] = (result.list || []).map((item: any) => {
+          const year = item.year || item.releaseYear
+          return {
+            ...item,
+            year,
+            dateDisplay: fmtReleaseDate(item.releaseDate, year),
+            scoreDisplay: fmtScore(item.score),
+          }
+        })
 
         this.setData({ list, loading: false })
       },
