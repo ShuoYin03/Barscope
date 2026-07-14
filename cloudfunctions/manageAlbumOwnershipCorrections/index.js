@@ -42,13 +42,27 @@ async function decide(id, decision, openId){
     const artist = existingIds.length
       ? [String(albumDoc.artist||'').trim(), ...addedOwners.map(o=>o.artistName)].filter(Boolean).join(' / ')
       : ownerNames.join(' / ')
+    // Reclassify already-synced tracks against the corrected owner set so per-track credits and
+    // Featuring Guests reflect the new ownership immediately, instead of waiting on a NetEase re-sync
+    // (which only runs when an album's tracks are still empty).
+    const ownerIdSet = new Set(ownerArtistIds)
+    const ownerNameSet = new Set(ownerNames)
+    const tracks = (Array.isArray(albumDoc.tracks) ? albumDoc.tracks : []).map(t => {
+      const trackArtists = Array.isArray(t.artists) ? t.artists : []
+      const guests = trackArtists.filter(a => !ownerIdSet.has(String(a && a.id || '')) && !ownerNameSet.has(String(a && a.name || '').trim()))
+      return { ...t, guests, hasFeaturing:guests.length>0 }
+    })
+    const featuringGuests = collectGuests(tracks)
     await db.collection('albums').doc(albumId).update({ data:{
       artist,
       primaryArtist:ownerNames[0],
       neteaseArtistId:ownerArtistIds[0],
       ownerArtistIds,
+      ownerArtists:owners.map(o=>({id:Number(o.artistId)||0,name:o.artistName})),
       artistIds,
       isMultiArtist:ownerArtistIds.length>1,
+      tracks,
+      featuringGuests,
       ownershipCorrectedAt:db.serverDate(),
       ownershipCorrectedBy:openId,
       ownershipSource:'user-admin-correction',
@@ -62,4 +76,5 @@ async function decide(id, decision, openId){
   } })
   return {success:true}
 }
+function collectGuests(tracks) { const map=new Map(); tracks.forEach(track=>(track.guests||[]).forEach(g=>{const key=g.id?String(g.id):g.name;if(!map.has(key))map.set(key,{id:g.id||0,name:g.name,count:0,trackNos:[]});const x=map.get(key);x.count++;x.trackNos.push(track.no)}));return Array.from(map.values()).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name)) }
 function isCollectionMissing(e) { const msg = String(e && (e.errMsg || e.message) || ''); return msg.includes('DATABASE_COLLECTION_NOT_EXIST') || msg.includes('collection not exists') || msg.includes('Db or Table not exist') }
