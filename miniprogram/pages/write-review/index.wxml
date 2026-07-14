@@ -60,14 +60,14 @@
         maxlength="500"
         auto-height
       />
-      <text class="char-count">{{content.length}}/500</text>
+      <text class="char-count {{content.length > 0 && content.length < 10 ? 'char-count-warn' : ''}}">{{content.length}}/500{{content.length < 10 ? '（至少10字）' : ''}}</text>
     </view>
 
   </scroll-view>
 
   <!-- SUBMIT BAR -->
   <view class="submit-bar">
-    <view class="submit-btn {{(rating > 0 && !submitting) ? '' : 'disabled'}}" bindtap="onSubmit">
+    <view class="submit-btn {{(rating > 0 && content.length >= 10 && !submitting) ? '' : 'disabled'}}" bindtap="onSubmit">
       <text>{{submitting ? '发布中...' : '提交评论'}}</text>
     </view>
   </view>

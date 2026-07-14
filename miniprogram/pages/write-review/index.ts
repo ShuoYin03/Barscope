@@ -52,8 +52,9 @@ Page({
       wx.showToast({ title: '请先给出评分', icon: 'none' })
       return
     }
-    if (!content.trim()) {
-      wx.showToast({ title: '请输入评论内容', icon: 'none' })
+    const trimmedContent = content.trim()
+    if (trimmedContent.length < 10) {
+      wx.showToast({ title: '评论内容至少需要 10 个字', icon: 'none' })
       return
     }
 
@@ -62,7 +63,7 @@ Page({
 
     wx.cloud.callFunction({
       name: 'submitReview',
-      data: { albumId, albumTitle: this.data.albumTitle, rating, content: content.trim() },
+      data: { albumId, albumTitle: this.data.albumTitle, rating, content: trimmedContent },
       success: (res: any) => {
         wx.hideLoading()
         const result = res.result

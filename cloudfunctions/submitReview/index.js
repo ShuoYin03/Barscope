@@ -2,12 +2,15 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
+const { moderateContent } = require('./moderation')
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const { albumId, albumTitle, rating, content } = event
   if (!albumId || !rating || !content) return { success: false, error: '参数不完整' }
   if (rating < 1 || rating > 10) return { success: false, error: '评分范围 1-10' }
+  const moderation = moderateContent(content)
+  if (!moderation.ok) return { success: false, error: moderation.error }
 
   try {
     const { data: users } = await db.collection('users').where({ openId: OPENID }).limit(1).get()
@@ -28,7 +31,7 @@ exports.main = async (event) => {
         userNickName: user.nickName || '匿名用户',
         userAvatarUrl: user.avatarUrl || '',
         rating,
-        content: String(content).trim(),
+        content: moderation.content,
         likes: 0,
         replyCount: 0,
         isPinned: user.type === 'critic',
