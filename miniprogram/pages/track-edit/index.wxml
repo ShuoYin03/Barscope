@@ -1,45 +1,77 @@
 <view class="page {{themeClass}}">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px">
     <text class="back" bindtap="onBack">←</text>
-    <text class="title">TRACK CORRECTION</text>
-  </view>
-
-  <view class="card album-card">
-    <text class="label">专辑</text>
-    <view class="album-row">
-      <text class="album-title">{{albumTitle}}</text>
-      <text class="album-count">{{tracks.length}} TRACKS</text>
+    <view class="topbar-copy">
+      <text class="title">TRACK CORRECTION</text>
+      <text class="subtitle">曲目纠错</text>
     </view>
-    <text class="review-note">修改提交后不会立即生效，需管理员审核通过。</text>
   </view>
 
   <view wx:if="{{loading}}" class="state"><text>LOADING...</text></view>
 
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <view wx:for="{{tracks}}" wx:key="songId" class="track-card">
-      <view class="track-head">
-        <text class="track-no">{{index < 9 ? '0' + (index + 1) : index + 1}}</text>
-        <view class="order-actions">
-          <view class="order-btn {{index===0 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveUp"><text>↑</text></view>
-          <view class="order-btn {{index===tracks.length-1 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveDown"><text>↓</text></view>
+    <view class="album-block">
+      <view class="album-main">
+        <view class="album-copy">
+          <text class="album-eyebrow">ALBUM</text>
+          <text class="album-title">{{albumTitle}}</text>
         </view>
-        <input class="track-name-input" value="{{item.name}}" data-idx="{{index}}" bindinput="onNameInput" placeholder="曲目名称" placeholder-style="color:#766f68" maxlength="-1" />
+        <text class="album-count">{{tracks.length}} TRACKS</text>
       </view>
+      <text class="album-note">提交后进入管理员审核，审核通过后才会更新正式曲目。</text>
+    </view>
 
-      <view class="track-guests-row" data-idx="{{index}}" bindtap="onEditGuests">
-        <text class="track-guests-label">Featuring</text>
-        <view class="guest-chips" wx:if="{{item.guests.length}}">
-          <text wx:for="{{item.guests}}" wx:for-item="g" wx:key="id" class="guest-chip">{{g.name}}</text>
+    <view class="track-list">
+      <view wx:for="{{tracks}}" wx:key="songId" class="track-row" bindtap="onOpenTrack" data-idx="{{index}}">
+        <text class="track-no">{{index < 9 ? '0' + (index + 1) : index + 1}}</text>
+        <view class="track-copy">
+          <text class="track-name">{{item.name}}</text>
+          <text class="track-feat" wx:if="{{item.guests.length}}">FEAT. {{item.guests[0].name}}{{item.guests.length > 1 ? ' 等' : ''}}</text>
+          <text class="track-feat empty" wx:else>FEAT. —</text>
         </view>
-        <text class="track-guests-empty" wx:else>无合作歌手</text>
-        <text class="track-guests-arrow">›</text>
+        <view class="track-actions">
+          <view class="order-group">
+            <view class="order-btn {{index===0 ? 'disabled' : ''}}" data-idx="{{index}}" catchtap="onMoveUp"><text>↑</text></view>
+            <view class="order-btn {{index===tracks.length-1 ? 'disabled' : ''}}" data-idx="{{index}}" catchtap="onMoveDown"><text>↓</text></view>
+          </view>
+          <text class="track-arrow">›</text>
+        </view>
       </view>
     </view>
+
     <view class="list-end"><text>— END OF TRACKLIST —</text></view>
   </scroll-view>
 
   <view class="bottom-bar">
-    <view class="submit {{saving ? 'btn-disabled' : ''}}" bindtap="onSave"><text>{{saving ? '提交中…' : '提交管理员审核'}}</text></view>
+    <view class="submit {{saving ? 'btn-disabled' : ''}}" bindtap="onSave"><text>{{saving ? '提交中…' : '提交修改'}}</text></view>
+    <text class="submit-note">提交后进入管理员审核</text>
+  </view>
+
+  <view wx:if="{{editVisible}}" class="edit-sheet-mask" bindtap="onEditCancel">
+    <view class="edit-sheet" catchtap="noop">
+      <view class="sheet-handle" />
+      <text class="sheet-title">编辑曲目</text>
+      <text class="sheet-index">TRACK {{editTrackIndex < 9 ? '0' + (editTrackIndex + 1) : editTrackIndex + 1}}</text>
+
+      <text class="sheet-label">曲目名称</text>
+      <input class="sheet-name-input" value="{{editName}}" bindinput="onEditNameInput" placeholder="输入曲目名称" placeholder-style="color:#766f68" maxlength="-1" />
+
+      <text class="sheet-label feat-label">Featuring</text>
+      <view class="sheet-feat-row" bindtap="onEditGuests">
+        <view class="sheet-feat-copy">
+          <view wx:if="{{tracks[editTrackIndex].guests.length}}" class="sheet-feat-chips">
+            <text wx:for="{{tracks[editTrackIndex].guests}}" wx:for-item="g" wx:key="id" class="sheet-feat-chip">{{g.name}}</text>
+          </view>
+          <text wx:else class="sheet-feat-empty">暂无合作歌手</text>
+        </view>
+        <text class="sheet-feat-arrow">›</text>
+      </view>
+
+      <view class="sheet-actions">
+        <view class="sheet-cancel" bindtap="onEditCancel"><text>取消</text></view>
+        <view class="sheet-confirm" bindtap="onEditConfirm"><text>保存本首修改</text></view>
+      </view>
+    </view>
   </view>
 
   <view wx:if="{{pickerVisible}}" class="owner-sheet-mask" bindtap="onPickerCancel">
