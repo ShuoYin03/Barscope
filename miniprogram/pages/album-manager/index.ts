@@ -25,6 +25,8 @@ interface Album {
 
 interface LetterCount { letter: string; count: number }
 
+interface OwnerPick { artistId: string; artistName: string; picUrl: string; selected?: boolean }
+
 interface DuplicateSample {
   key: string
   keep: { _id: string; title: string; artist: string; approved: boolean; reviewCount: number }
@@ -42,6 +44,7 @@ import { getThemeClass } from '../../utils/theme'
 
 let _searchTimer: any = null
 let _titleSearchTimer: any = null
+let _ownerSearchTimer: any = null
 
 Page({
   data: {
@@ -87,6 +90,13 @@ Page({
     multiPageSize: 60,
     multiTotal: 0,
     multiHasMore: false,
+
+    ownerPickerVisible: false,
+    ownerPickerAlbumCount: 0,
+    ownerPickerKeyword: '',
+    ownerPickerResults: [] as OwnerPick[],
+    ownerPickerSelected: [] as OwnerPick[],
+    ownerApplyWorking: false,
   },
 
   onLoad() {
@@ -289,6 +299,109 @@ Page({
     })
   },
 
+  // ── 批量设置归属 ──────────────────────────────────────────────────────
+  onAllBatchOwnership() {
+    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
+    this.setData({ ownerPickerVisible: true, ownerPickerAlbumCount: ids.length, ownerPickerKeyword: '', ownerPickerSelected: [] })
+    this._searchOwnerPicker('')
+  },
+
+  _searchOwnerPicker(keyword: string) {
+    wx.cloud.callFunction({
+      name: 'getArtists',
+      data: { keyword: String(keyword || '').trim(), limit: 30 },
+      success: (res: any) => {
+        const r = res.result || {}
+        const selectedIds = new Set(this.data.ownerPickerSelected.map(a => a.artistId))
+        const ownerPickerResults: OwnerPick[] = (r.success ? (r.list || []) : []).map((a: any) => ({
+          artistId: String(a.artistId), artistName: a.artistName || '', picUrl: a.picUrl || '',
+          selected: selectedIds.has(String(a.artistId)),
+        }))
+        this.setData({ ownerPickerResults })
+      },
+    } as any)
+  },
+
+  onOwnerPickerSearch(e: WechatMiniprogram.Input) {
+    const keyword = e.detail.value || ''
+    this.setData({ ownerPickerKeyword: keyword })
+    clearTimeout(_ownerSearchTimer)
+    _ownerSearchTimer = setTimeout(() => this._searchOwnerPicker(keyword), 300)
+  },
+
+  onOwnerPickerPick(e: WechatMiniprogram.TouchEvent) {
+    const artistId = String((e.currentTarget.dataset as any).id || '')
+    if (!artistId) return
+    const selected = this.data.ownerPickerSelected.slice()
+    const idx = selected.findIndex(a => a.artistId === artistId)
+    if (idx >= 0) {
+      selected.splice(idx, 1)
+    } else {
+      const found = this.data.ownerPickerResults.find(a => a.artistId === artistId)
+      if (found) selected.push({ ...found, selected: true })
+    }
+    const selectedIds = new Set(selected.map(a => a.artistId))
+    const ownerPickerResults = this.data.ownerPickerResults.map(a => ({ ...a, selected: selectedIds.has(a.artistId) }))
+    this.setData({ ownerPickerSelected: selected, ownerPickerResults })
+  },
+
+  onOwnerPickerRemove(e: WechatMiniprogram.TouchEvent) {
+    const artistId = String((e.currentTarget.dataset as any).id || '')
+    const ownerPickerSelected = this.data.ownerPickerSelected.filter(a => a.artistId !== artistId)
+    const ownerPickerResults = this.data.ownerPickerResults.map(a => ({ ...a, selected: ownerPickerSelected.some(x => x.artistId === a.artistId) }))
+    this.setData({ ownerPickerSelected, ownerPickerResults })
+  },
+
+  onOwnerPickerCancel() {
+    if (this.data.ownerApplyWorking) return
+    this.setData({ ownerPickerVisible: false, ownerPickerSelected: [], ownerPickerKeyword: '' })
+  },
+
+  onOwnerPickerConfirm() {
+    if (this.data.ownerApplyWorking) return
+    const targetArtists = this.data.ownerPickerSelected.map(a => ({ artistId: a.artistId, artistName: a.artistName }))
+    if (!targetArtists.length) { wx.showToast({ title: '请至少选择一位归属歌手', icon: 'none' }); return }
+    const ids = this.data.allList.filter(a => a.selected).map(a => a._id)
+    if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
+    const names = targetArtists.map(a => a.artistName).join(' / ')
+    wx.showModal({
+      title: `设置 ${ids.length} 张专辑的归属？`,
+      content: `将把这些专辑的归属统一设为：${names}\n原有 tracks 中的其他歌手会自动归为 Featuring Guests。`,
+      confirmText: '确认设置',
+      confirmColor: '#C94E25',
+      success: (modal) => {
+        if (!modal.confirm) return
+        this.setData({ ownerApplyWorking: true })
+        wx.showLoading({ title: '处理中…', mask: true })
+        wx.cloud.callFunction({
+          name: 'manageAlbumOwnershipCorrections',
+          data: { action: 'batchApply', albumIds: ids, targetArtists },
+          success: (res: any) => {
+            wx.hideLoading()
+            this.setData({ ownerApplyWorking: false })
+            const r = res.result || {}
+            if (!r.success) { wx.showToast({ title: r.error || '操作失败', icon: 'none' }); return }
+            const idSet = new Set(ids)
+            const patch = (a: Album) => idSet.has(a._id) ? { ...a, artist: names, primaryArtist: targetArtists[0].artistName, selected: false } : a
+            const allList = this.data.allList.map(patch)
+            const titleResults = this.data.titleResults.map(patch)
+            const multiList = this.data.multiList.map(patch)
+            this.setData({
+              allList, titleResults, multiList, allSelectedCount: 0,
+              ownerPickerVisible: false, ownerPickerSelected: [], ownerPickerKeyword: '',
+            })
+            const failedCount = (r.failed || []).length
+            wx.showToast({ title: failedCount ? `已设置 ${r.succeeded || 0} 张，${failedCount} 张失败` : `已设置 ${r.succeeded || 0} 张`, icon: failedCount ? 'none' : 'success' })
+          },
+          fail: () => { wx.hideLoading(); this.setData({ ownerApplyWorking: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+        } as any)
+      },
+    })
+  },
+
+  noop() {},
+
   onBackfillLetters() {
     if (this.data.backfilling) return
     this.setData({ backfilling: true, backfillDone: 0 })
@@ -482,5 +595,5 @@ Page({
     })
   },
 
-  onUnload() { clearTimeout(_searchTimer); clearTimeout(_titleSearchTimer) },
+  onUnload() { clearTimeout(_searchTimer); clearTimeout(_titleSearchTimer); clearTimeout(_ownerSearchTimer) },
 })

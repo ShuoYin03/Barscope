@@ -229,6 +229,7 @@
           <view class="all-action-btn" bindtap="onAllSelectAll"><text>{{allSelectedCount ? '取消全选' : '全选'}}</text></view>
           <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchShow"><text>批量显示</text></view>
           <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchHide"><text>批量隐藏</text></view>
+          <view class="all-action-btn accent" bindtap="onAllBatchOwnership"><text>批量设置归属</text></view>
         </block>
         <view wx:else class="all-action-btn ghost {{backfilling ? 'btn-disabled' : ''}}" bindtap="onBackfillLetters">
           <text>{{backfilling ? ('索引中 ' + backfillDone) : '补全字母索引'}}</text>
@@ -424,5 +425,35 @@
       </block>
     </scroll-view>
   </block>
+
+  <!-- ── 批量设置归属 sheet ── -->
+  <view wx:if="{{ownerPickerVisible}}" class="owner-sheet-mask" bindtap="onOwnerPickerCancel">
+    <view class="owner-sheet" catchtap="noop">
+      <view class="owner-sheet-handle" />
+      <text class="owner-sheet-title">设置归属 · 已选 {{ownerPickerAlbumCount}} 张专辑</text>
+
+      <view wx:if="{{ownerPickerSelected.length}}" class="owner-sheet-chips">
+        <view wx:for="{{ownerPickerSelected}}" wx:key="artistId" class="owner-chip" bindtap="onOwnerPickerRemove" data-id="{{item.artistId}}">
+          <text>{{item.artistName}}</text><text class="owner-chip-x">×</text>
+        </view>
+      </view>
+      <view wx:else class="owner-sheet-hint"><text>请选择一位或多位归属歌手</text></view>
+
+      <input class="owner-sheet-input" placeholder="搜索归属歌手…" value="{{ownerPickerKeyword}}" bindinput="onOwnerPickerSearch" placeholder-style="color:#766f68" />
+
+      <scroll-view class="owner-sheet-results" scroll-y>
+        <view wx:for="{{ownerPickerResults}}" wx:key="artistId" class="owner-sheet-row {{item.selected ? 'selected' : ''}}" bindtap="onOwnerPickerPick" data-id="{{item.artistId}}">
+          <view class="owner-sheet-avatar"><image wx:if="{{item.picUrl}}" class="owner-sheet-avatar-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+          <text class="owner-sheet-name">{{item.artistName}}</text>
+          <text class="owner-sheet-check">{{item.selected ? '已选' : '选择'}}</text>
+        </view>
+      </scroll-view>
+
+      <view class="owner-sheet-actions">
+        <view class="owner-sheet-cancel" bindtap="onOwnerPickerCancel"><text>取消</text></view>
+        <view class="owner-sheet-confirm {{ownerApplyWorking ? 'btn-disabled' : ''}}" bindtap="onOwnerPickerConfirm"><text>{{ownerApplyWorking ? '处理中…' : '确认设置'}}</text></view>
+      </view>
+    </view>
+  </view>
 
 </view>
