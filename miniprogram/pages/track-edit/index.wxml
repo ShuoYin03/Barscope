@@ -1,11 +1,12 @@
 <view class="page {{themeClass}}">
-  <view class="topbar" style="height: {{topbarHeight + 12}}px; padding-top: {{statusBarHeight}}px">
+  <view class="topbar" style="height: {{topbarHeight + 24}}px; padding-top: {{statusBarHeight}}px">
     <text class="back" bindtap="onBack">←</text>
-    <view class="title-wrap"><text class="title">EDIT TRACKS</text><text class="title-sub">曲目纠错</text></view>
+    <view class="title-wrap"><text class="title">TRACK CORRECTION</text><text class="title-sub">曲目纠错</text></view>
   </view>
   <view class="album-name"><text class="album-label">ALBUM</text><text class="album-title">{{albumTitle}}</text><text class="album-count">{{tracks.length}} TRACKS</text></view>
   <view wx:if="{{loading}}" class="state"><text>LOADING...</text></view>
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="review-notice"><text>你提交的修改不会直接写入专辑，管理员审核通过后才会生效。</text></view>
     <view wx:for="{{tracks}}" wx:key="songId" class="track-row">
       <view class="track-main-row"><view class="track-order"><text class="track-no">{{index < 9 ? '0' + (index + 1) : index + 1}}</text><view class="order-actions"><view class="order-btn {{index===0 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveUp"><text>↑</text></view><view class="order-btn {{index===tracks.length-1 ? 'disabled' : ''}}" data-idx="{{index}}" bindtap="onMoveDown"><text>↓</text></view></view></view><input class="track-name-input" value="{{item.name}}" data-idx="{{index}}" bindinput="onNameInput" placeholder="曲目名称" placeholder-style="color:#766f68" maxlength="-1" /></view>
       <view class="track-guests-row" data-idx="{{index}}" bindtap="onEditGuests"><text class="track-guests-label">FEAT.</text><view class="guest-chips" wx:if="{{item.guests.length}}"><text wx:for="{{item.guests}}" wx:for-item="g" wx:key="id" class="guest-chip">{{g.name}}</text></view><text class="track-guests-empty" wx:else>无合作歌手</text><text class="track-guests-arrow">›</text></view>
