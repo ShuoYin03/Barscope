@@ -11,7 +11,27 @@ exports.main = async event => {
   if (action === 'stats') return stats()
   if (action === 'decide') return decide(event.id, event.decision, OPENID)
   if (action === 'batchApply') return batchApply(event.albumIds, event.targetArtists, OPENID)
+  if (action === 'inspect') return inspect(event.albumId)
   return { success:false, error:'unknown action' }
+}
+
+// Read-only debug helper: dump the raw owner fields + first track's raw artist entries for an album,
+// so a real id/name mismatch can be diagnosed from actual stored data instead of guessed at.
+async function inspect(albumId){
+  const id = String(albumId || '').trim()
+  if(!id) return {success:false,error:'missing albumId'}
+  const albumDoc = (await db.collection('albums').doc(id).get()).data
+  if(!albumDoc) return {success:false,error:'album not found'}
+  return { success:true,
+    title:albumDoc.title,
+    ownershipSource:albumDoc.ownershipSource,
+    ownerArtistIds:albumDoc.ownerArtistIds,
+    ownerArtists:albumDoc.ownerArtists,
+    artistIds:albumDoc.artistIds,
+    artist:albumDoc.artist,
+    firstTrack:(albumDoc.tracks||[])[0]||null,
+    featuringGuests:albumDoc.featuringGuests,
+  }
 }
 async function isAdmin(openId){ if(!openId)return false; const r=await db.collection('users').where({openId,type:'admin'}).limit(1).get(); return r.data.length>0 }
 async function list(status){ try { const r=await db.collection(COL).where({status}).orderBy('submittedAt','desc').limit(100).get(); return {success:true,list:r.data,total:r.data.length} } catch(e) { if(isCollectionMissing(e)) return {success:true,list:[],total:0}; throw e } }
