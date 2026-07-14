@@ -10,7 +10,7 @@ async function safeGet(task) {
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const { albumId, userId, page = 1, pageSize = 20, likedBy } = event
-  if (event.dailyHotAlbum) return getBeijingDailyHotAlbum()
+  if (event.dailyHotAlbums || event.dailyHotAlbum) return getBeijingDailyHotAlbums(Number(event.limit || 6))
   if (event.totalCount) return getTotalReviewCount()
   if (likedBy) return getLikedReviews(likedBy, page, pageSize, OPENID)
   if (!albumId && !userId && !event.recent) return { success: false, error: 'albumId or userId or recent required' }
@@ -32,11 +32,8 @@ exports.main = async (event) => {
     } else {
       const skip = (page - 1) * pageSize
       let query
-      if (albumId) {
-        query = db.collection('reviews').where({ albumId }).orderBy('createdAt', 'desc')
-      } else {
-        query = db.collection('reviews').orderBy('createdAt', 'desc')
-      }
+      if (albumId) query = db.collection('reviews').where({ albumId }).orderBy('createdAt', 'desc')
+      else query = db.collection('reviews').orderBy('createdAt', 'desc')
       const result = await query.skip(skip).limit(pageSize).get()
       records = result.data || []
       if (albumId) {
@@ -80,7 +77,6 @@ async function enrichReviews(records, OPENID) {
   }))
 }
 
-// Reviews a given user has liked, most-recently-liked first — drives the "我的点赞" page.
 async function getLikedReviews(likedBy, page, pageSize, OPENID) {
   try {
     const likesRes = await db.collection('review_likes').where({ openId: likedBy }).orderBy('createdAt', 'desc').skip((page - 1) * pageSize).limit(pageSize).get()
@@ -89,7 +85,6 @@ async function getLikedReviews(likedBy, page, pageSize, OPENID) {
     const reviewIds = likeRows.map(x => x.reviewId)
     const reviewsRes = await db.collection('reviews').where({ _id: _.in(reviewIds) }).get()
     const reviewMap = new Map((reviewsRes.data || []).map(r => [String(r._id), r]))
-    // Preserve like order; a liked review may since have been deleted by its author.
     const records = likeRows.map(x => reviewMap.get(String(x.reviewId))).filter(Boolean)
     const list = await enrichReviews(records, OPENID)
     return { success: true, list }
@@ -108,13 +103,13 @@ async function getTotalReviewCount() {
   }
 }
 
-async function getBeijingDailyHotAlbum() {
+async function getBeijingDailyHotAlbums(limit = 6) {
   try {
     const { start, end, dateKey } = beijingDayRange()
     const where = { createdAt: _.gte(start).and(_.lt(end)) }
     const countRes = await db.collection('reviews').where(where).count()
     const total = Number(countRes.total || 0)
-    if (!total) return { success: true, album: null, dateKey, reviewCount: 0 }
+    if (!total) return { success: true, albums: [], album: null, dateKey, reviewCount: 0 }
 
     const rows = []
     for (let offset = 0; offset < total; offset += 100) {
@@ -134,32 +129,38 @@ async function getBeijingDailyHotAlbum() {
     })
 
     const ranked = Array.from(stats.values()).sort((a, b) => (b.reviewCount - a.reviewCount) || (b.latestReviewAt - a.latestReviewAt))
-    if (!ranked.length) return { success: true, album: null, dateKey, reviewCount: 0 }
+    if (!ranked.length) return { success: true, albums: [], album: null, dateKey, reviewCount: 0 }
 
-    const ids = ranked.slice(0, 20).map(x => x.albumId)
+    const ids = ranked.slice(0, 30).map(x => x.albumId)
     const albumRes = await db.collection('albums').where({ _id: _.in(ids), approved: true }).get()
     const albumMap = new Map((albumRes.data || []).map(a => [String(a._id), a]))
-    const winner = ranked.find(x => albumMap.has(x.albumId))
-    if (!winner) return { success: true, album: null, dateKey, reviewCount: 0 }
+    const albums = ranked
+      .filter(x => albumMap.has(x.albumId))
+      .slice(0, Math.max(1, Math.min(limit, 10)))
+      .map(item => {
+        const album = albumMap.get(item.albumId)
+        return {
+          albumId: String(album._id),
+          title: String(album.title || ''),
+          artist: String(album.artist || album.primaryArtist || ''),
+          year: album.releaseYear || '',
+          score: Number(album.avgScore || 0),
+          coverUrl: String(album.coverUrl || ''),
+          genres: Array.isArray(album.genres) ? album.genres : [],
+          todayReviewCount: item.reviewCount,
+          latestReviewAt: item.latestReviewAt,
+        }
+      })
 
-    const album = albumMap.get(winner.albumId)
     return {
       success: true,
       dateKey,
-      reviewCount: winner.reviewCount,
-      album: {
-        albumId: String(album._id),
-        title: String(album.title || ''),
-        artist: String(album.artist || album.primaryArtist || ''),
-        year: album.releaseYear || '',
-        score: Number(album.avgScore || 0),
-        coverUrl: String(album.coverUrl || ''),
-        genres: Array.isArray(album.genres) ? album.genres : [],
-        todayReviewCount: winner.reviewCount,
-      },
+      reviewCount: albums.reduce((sum, item) => sum + Number(item.todayReviewCount || 0), 0),
+      albums,
+      album: albums[0] || null,
     }
   } catch (err) {
-    console.error('getBeijingDailyHotAlbum failed:', err)
+    console.error('getBeijingDailyHotAlbums failed:', err)
     return { success: false, error: err.message }
   }
 }
