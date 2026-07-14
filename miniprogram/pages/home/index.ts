@@ -88,7 +88,7 @@ Page({
         hero = { albumId: topItem.albumId, title: topItem.title, artist: topItem.artist, year: topItem.year, score: fmtScore(topItem.score), scoreFill: scoreFill(topItem.score), coverUrl: topItem.coverUrl || '', genres: [], todayReviewCount: 0, heroSource: 'chartFallback' }
       }
 
-      const newReleases = latestRes?.success ? (latestRes.list || []).slice(0, 4).map((a: any, i: number) => ({
+      const newReleases = latestRes?.success ? (latestRes.list || []).slice(0, 8).map((a: any, i: number) => ({
         albumId: a.albumId, rank: String(i + 1).padStart(2, '0'), title: a.title, artist: a.artist,
         year: a.releaseDate || a.releaseYear, scoreDisplay: 'NEW', score: 0, scoreFill: '0%', coverUrl: a.coverUrl || '', isThisWeek: !!a.isThisWeek,
       })) : []
