@@ -1,9 +1,9 @@
 import { getThemeClass } from '../../utils/theme'
 
 const FEATURES = [
-  { id:'2026-top-10', category:'年度企划', title:'2026 中文说唱十大专辑', subtitle:'从作品完整度、声音突破与场景影响出发，重看这一年的十张关键唱片。', author:'BEATWEEN EDITORIAL', date:'2026.12', readTime:'12 MIN', accent:'01', hero:true },
-  { id:'long-review-template', category:'深度长评', title:'一张专辑，如何留下自己的时代坐标', subtitle:'从叙事、制作与地域语境三个维度，拆解一篇真正有判断的长篇乐评。', author:'编辑部', date:'2026.07', readTime:'8 MIN', accent:'02' },
-  { id:'rapper-interview', category:'人物访谈', title:'在作品之外，听见 Rapper 如何成为自己', subtitle:'从创作方法、成长经历到行业选择，保留音乐之外更真实的表达。', author:'BEATWEEN CONVERSATIONS', date:'2026.07', readTime:'10 MIN', accent:'03' },
+  { id:'2026-top-10', category:'年度企划', title:'2026 中文说唱十大专辑', subtitle:'等待投稿中…', status:'广告位等待投稿中…', accent:'01', hero:true },
+  { id:'long-review-template', category:'深度长评', title:'深度乐评征稿中', subtitle:'广告位等待投稿中…', status:'等待你的长篇乐评', accent:'02' },
+  { id:'rapper-interview', category:'人物访谈', title:'Rapper 心里话', subtitle:'广告位等待投稿中…', status:'等待你的采访与人物故事', accent:'03' },
 ]
 
 Page({
