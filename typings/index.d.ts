@@ -4,6 +4,7 @@ interface RapUserInfo {
   openId: string
   nickName: string
   avatarUrl: string
+  coverUrl?: string
   type: 'critic' | 'normal' | 'admin'
   bio?: string
   reviewCount: number

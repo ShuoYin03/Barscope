@@ -5,6 +5,7 @@
   <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadProfile">重新加载</view></view>
 
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{coverUrl}}" class="cover-banner"><image class="cover-img" src="{{coverUrl}}" mode="aspectFill" /></view>
     <view class="user-card">
       <view class="vinyl-disc">
         <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
@@ -19,6 +20,9 @@
 
     <view wx:if="{{!isMe}}" class="follow-bar">
       <view class="follow-btn {{isFollowing ? 'following' : ''}}" bindtap="onToggleFollow"><text>{{isFollowing ? '已关注' : '+ 关注'}}</text></view>
+    </view>
+    <view wx:else class="follow-bar">
+      <view class="follow-btn edit" bindtap="onEditProfile"><text>编辑资料</text></view>
     </view>
 
     <view class="stat-strip">

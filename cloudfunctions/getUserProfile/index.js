@@ -31,6 +31,7 @@ exports.main = async (event) => {
         openId: targetOpenId,
         nickName: user.nickName || '匿名用户',
         avatarUrl: user.avatarUrl || '',
+        coverUrl: user.coverUrl || '',
         bio: user.bio || '',
         type: user.type || 'normal',
         reviewCount,

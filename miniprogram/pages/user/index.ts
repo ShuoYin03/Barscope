@@ -4,7 +4,7 @@ Page({
   data:{
     statusBarHeight:20,themeClass:'',
     openId:'',loading:true,loadError:'',
-    nickName:'',avatarUrl:'',bio:'',isCritic:false,isAdmin:false,
+    nickName:'',avatarUrl:'',coverUrl:'',bio:'',isCritic:false,isAdmin:false,
     reviewCount:0,likesReceived:0,followerCount:0,followingCount:0,
     isMe:false,isFollowing:false,followBusy:false,
     latestReviews:[] as any[],
@@ -27,6 +27,7 @@ Page({
         loading:false,
         nickName:p.nickName||'匿名用户',
         avatarUrl:p.avatarUrl||'',
+        coverUrl:p.coverUrl||'',
         bio:p.bio||'',
         isCritic:p.type==='critic',
         isAdmin:p.type==='admin',
@@ -52,6 +53,7 @@ Page({
       if(!r.success){this.setData({isFollowing:wasFollowing,followerCount:this.data.followerCount+(wasFollowing?1:-1)});wx.showToast({title:r.error||'操作失败',icon:'none'})}
     },fail:()=>{this.setData({followBusy:false,isFollowing:wasFollowing,followerCount:this.data.followerCount+(wasFollowing?1:-1)});wx.showToast({title:'网络错误',icon:'none'})}} as any)
   },
+  onEditProfile(){wx.navigateTo({url:'/pages/login/index'})},
   onReviewTap(e:WechatMiniprogram.TouchEvent){
     const albumId=(e.currentTarget.dataset as any).albumId
     if(albumId)wx.navigateTo({url:`/pages/album-detail/index?id=${albumId}`})
