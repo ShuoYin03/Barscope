@@ -48,9 +48,10 @@
 .side-row { display: flex; align-items: center; gap: 16rpx; padding: 28rpx 32rpx 14rpx; }
 .side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); white-space: nowrap; }
 .side-rule { flex: 1; height: 1px; background: var(--gray-light); }
-.side-b-row { margin-top: 8rpx; border-top: 2rpx solid var(--off-white); }
+.side-b-row { margin-top: 0; border-top: 2rpx solid var(--off-white); padding-top: 24rpx; }
 
-.career-wrap { position: relative; min-height: 220rpx; }
+/* SIDE A owns the timeline. Absolute positioning keeps it clipped to this section. */
+.career-wrap { position: relative; min-height: 220rpx; overflow: hidden; }
 .career-albums { background: var(--black); padding-right: 88rpx; }
 .album-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 22rpx 24rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
 .album-row:last-child { border-bottom: none; }
@@ -59,24 +60,25 @@
 .album-meta { font-size: 22rpx; color: var(--gray-mid); margin-top: 8rpx; display: block; }
 .album-score { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); flex-shrink: 0; }
 
-.career-timeline { position: sticky; top: 16rpx; float: right; width: 76rpx; height: 420rpx; margin-top: 8rpx; margin-right: 6rpx; margin-left: -82rpx; z-index: 12; background: linear-gradient(90deg, rgba(5,3,5,.12), rgba(5,3,5,.96) 30%); }
-.career-timeline-inner { position: relative; min-height: 100%; padding: 14rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 10rpx; }
+.career-timeline { position: absolute; top: 8rpx; right: 6rpx; bottom: 8rpx; width: 78rpx; z-index: 12; overflow: hidden; background: linear-gradient(90deg, rgba(5,3,5,.08), rgba(5,3,5,.97) 28%); }
+.career-timeline-inner { position: relative; min-height: 100%; padding: 14rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 8rpx; }
 .career-timeline-line { position: absolute; top: 24rpx; bottom: 24rpx; left: 21rpx; width: 2rpx; background: var(--gray-light); }
-.career-year { position: relative; z-index: 2; min-height: 42rpx; display: flex; align-items: center; gap: 7rpx; width: 100%; color: var(--gray-mid); }
-.career-year text { font-family: var(--font-bebas); font-size: 20rpx; letter-spacing: .5rpx; white-space: nowrap; }
+.career-year { position: relative; z-index: 2; min-height: 38rpx; display: flex; align-items: center; gap: 7rpx; width: 100%; color: var(--gray-mid); }
+.career-year text { font-family: var(--font-bebas); font-size: 19rpx; letter-spacing: .5rpx; white-space: nowrap; }
 .career-dot { width: 10rpx; height: 10rpx; border-radius: 50%; margin-left: 16rpx; background: var(--gray-mid); border: 2rpx solid var(--black); box-sizing: border-box; flex-shrink: 0; }
 .career-year.active { color: var(--accent); }
 .career-year.active .career-dot { width: 16rpx; height: 16rpx; margin-left: 13rpx; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5rpx rgba(201,78,37,.18); }
-.career-year.active text { font-size: 23rpx; }
+.career-year.active text { font-size: 22rpx; }
 
-.collaborator-list { background: var(--black); padding-bottom: 42rpx; }
-.collaborator-row { min-height: 104rpx; display: flex; align-items: center; gap: 22rpx; padding: 18rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
-.collaborator-rank { width: 44rpx; flex-shrink: 0; font-family: var(--font-bebas); font-size: 34rpx; color: var(--accent); text-align: center; }
-.collaborator-info { flex: 1; min-width: 0; }
-.collaborator-name { display: block; font-size: 28rpx; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.collaborator-count { display: block; margin-top: 6rpx; font-size: 20rpx; color: var(--gray-mid); }
-.collaborator-arrow { flex-shrink: 0; font-size: 42rpx; color: var(--accent); line-height: 1; }
-.collaborator-empty { padding: 52rpx 32rpx 90rpx; text-align: center; color: var(--gray-mid); font-size: 22rpx; }
+/* SIDE B is intentionally compact so it reads as a secondary leaderboard. */
+.collaborator-list { background: var(--black); padding: 0 32rpx 36rpx; }
+.collaborator-row { min-height: 72rpx; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 0; border-bottom: 2rpx solid var(--off-white); }
+.collaborator-rank { width: 34rpx; flex-shrink: 0; font-family: var(--font-bebas); font-size: 28rpx; color: var(--accent); text-align: left; }
+.collaborator-info { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 14rpx; }
+.collaborator-name { display: block; flex: 1; min-width: 0; font-size: 24rpx; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.collaborator-count { display: block; flex-shrink: 0; margin-top: 0; font-size: 17rpx; color: var(--gray-mid); white-space: nowrap; }
+.collaborator-arrow { flex-shrink: 0; font-size: 32rpx; color: var(--accent); line-height: 1; }
+.collaborator-empty { padding: 36rpx 32rpx 72rpx; text-align: center; color: var(--gray-mid); font-size: 21rpx; }
 
 .skel-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 32rpx; }
 .skel-info { flex: 1; }
