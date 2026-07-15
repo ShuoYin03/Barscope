@@ -49,7 +49,9 @@
 .side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); white-space: nowrap; }
 .side-rule { flex: 1; height: 1px; background: var(--gray-light); }
 .side-more { flex-shrink: 0; color: var(--accent); font-size: 18rpx; font-weight: 700; letter-spacing: 2rpx; white-space: nowrap; }
-.side-b-row { margin-top: 0; border-top: 2rpx solid var(--off-white); padding-top: 24rpx; }
+.side-b-row { margin-top: 0; border-top: 2rpx solid var(--off-white); padding-top: 24rpx; align-items: flex-start; }
+.side-b-title-wrap { flex-shrink: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.side-note { display: block; max-width: 360rpx; font-size: 16rpx; line-height: 1.4; letter-spacing: 1rpx; color: var(--gray-mid); opacity: .72; }
 
 /* SIDE A owns the timeline. Absolute positioning keeps it clipped to this section. */
 .career-wrap { position: relative; min-height: 220rpx; overflow: hidden; }
@@ -78,6 +80,7 @@
 .collaborator-info { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 14rpx; }
 .collaborator-name { display: block; flex: 1; min-width: 0; font-size: 24rpx; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .collaborator-count { display: block; flex-shrink: 0; margin-top: 0; font-size: 17rpx; color: var(--gray-mid); white-space: nowrap; }
+.collaborator-row.uncollected .collaborator-name { opacity: .78; }
 .collaborator-arrow { flex-shrink: 0; font-size: 32rpx; color: var(--accent); line-height: 1; }
 .collaborator-empty { padding: 36rpx 32rpx 72rpx; text-align: center; color: var(--gray-mid); font-size: 21rpx; }
 
