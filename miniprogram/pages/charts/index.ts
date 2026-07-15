@@ -24,6 +24,38 @@ function isReleasedIn2026(item: any): boolean {
   return releaseYear === '2026' || /^2026[-/.]/.test(releaseDate)
 }
 
+function pad2(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+function fmtMonthDay(date: Date): string {
+  return `${pad2(date.getMonth() + 1)}.${pad2(date.getDate())}`
+}
+
+function buildPeriodSubtitle(period: Period, now = new Date()): string {
+  const year = now.getFullYear()
+
+  if (period === 'weekly') {
+    const day = now.getDay()
+    const mondayOffset = day === 0 ? -6 : 1 - day
+    const monday = new Date(year, now.getMonth(), now.getDate() + mondayOffset)
+    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
+    return `${fmtMonthDay(monday)}–${fmtMonthDay(sunday)} · 用户评分`
+  }
+
+  if (period === 'monthly') {
+    const first = new Date(year, now.getMonth(), 1)
+    const last = new Date(year, now.getMonth() + 1, 0)
+    return `${fmtMonthDay(first)}–${fmtMonthDay(last)} · 用户评分`
+  }
+
+  if (period === 'annual') {
+    return `${year}.01–${year}.12 · 累计评分`
+  }
+
+  return '2026 年发行 · 已评分专辑'
+}
+
 interface ChartEntry {
   rank: number
   albumId: string
@@ -38,11 +70,11 @@ interface ChartEntry {
 
 import { getThemeClass } from '../../utils/theme'
 
-const PERIOD_META: Record<Period, { label: string; subtitle: string }> = {
-  weekly:      { label: '周榜', subtitle: '周榜 · 统计 1–30 名' },
-  monthly:     { label: '月榜', subtitle: '月榜 · 统计 1–30 名' },
-  annual:      { label: '年榜', subtitle: '年榜 · 统计 1–30 名' },
-  release2026: { label: '2026榜单', subtitle: '2026发行 · 统计 1–30 名' },
+const PERIOD_META: Record<Period, { label: string }> = {
+  weekly:      { label: '周榜' },
+  monthly:     { label: '月榜' },
+  annual:      { label: '年榜' },
+  release2026: { label: '2026榜单' },
 }
 
 Page({
@@ -51,7 +83,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     period: 'weekly' as Period,
-    periodSubtitle: PERIOD_META.weekly.subtitle,
+    periodSubtitle: buildPeriodSubtitle('weekly'),
     periods: (Object.keys(PERIOD_META) as Period[]).map(key => ({ key, label: PERIOD_META[key].label })),
     list: [] as ChartEntry[],
     loading: true,
@@ -74,8 +106,7 @@ Page({
   },
 
   _loadCharts(period: Period) {
-    const meta = PERIOD_META[period]
-    this.setData({ loading: true, list: [], periodSubtitle: meta.subtitle })
+    this.setData({ loading: true, list: [], periodSubtitle: buildPeriodSubtitle(period) })
 
     wx.cloud.callFunction({
       name: 'getCharts',
