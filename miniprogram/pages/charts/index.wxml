@@ -1,7 +1,7 @@
 <view class="page {{themeClass}}">
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="topbar-l">
-      <text class="topbar-title">CHARTS</text>
+      <text class="topbar-title">RANKINGS</text>
       <text class="topbar-sub">{{periodSubtitle}}</text>
     </view>
   </view>
