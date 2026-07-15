@@ -20,6 +20,4 @@
 .badge-progress-track{height:10rpx;background:var(--off-white);margin-top:8rpx;overflow:hidden}
 .badge-progress-fill{height:100%;background:var(--accent)}
 .badge-progress-text{font-size:19rpx;color:var(--gray-mid);margin-top:4rpx}
-
-.empty{padding:160rpx 32rpx;text-align:center;color:var(--gray-mid);font-size:26rpx}
-.retry{display:inline-flex;margin-top:24rpx;padding:13rpx 28rpx;font-size:22rpx;font-weight:800;border:2rpx solid var(--gray-light);color:var(--gray-mid)}
+.badge-progress-dev{display:block;margin-top:8rpx;font-size:19rpx;color:var(--gray-mid);font-style:italic}
