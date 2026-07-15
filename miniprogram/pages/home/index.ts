@@ -6,6 +6,16 @@ const FALLBACK_TICKER_SONGS = [
 
 function scoreFill(score: number) { return Math.round(score / 10 * 100) + '%' }
 function fmtScore(n: number): string { if (!n) return '—'; const r = Math.round(n * 10) / 10; return r === 10 ? '10' : r.toFixed(1) }
+function fmtReleaseDate(value: any, fallbackYear?: any): string {
+  const raw = String(value || '').trim()
+  const match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/)
+  if (match) {
+    const [, year, month, day] = match
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
+  }
+  const year = String(fallbackYear || '').trim()
+  return year || ''
+}
 function safeCallFunction(name: string, data: Record<string, any>) {
   return wx.cloud.callFunction({ name, data }).then((res: any) => res.result || { success: false }).catch((err: any) => { console.warn(`${name} failed`, err); return { success: false } })
 }
@@ -32,21 +42,43 @@ Page({
       const dailyAlbums = dailyHotRes?.success ? (dailyHotRes.albums || (dailyHotRes.album ? [dailyHotRes.album] : [])) : []
       const latestList = latestRes?.success ? (latestRes.list || []) : []
 
-      const heroList: any[] = dailyAlbums.slice(0, 6).map((a: any) => ({ albumId: a.albumId, title: a.title, coverUrl: a.coverUrl || '' }))
+      const heroList: any[] = dailyAlbums.slice(0, 6).map((a: any) => ({
+        albumId: a.albumId,
+        title: a.title,
+        artist: a.artist || '',
+        coverUrl: a.coverUrl || '',
+        dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
+      }))
       let heroLabel = '今日热评专辑'
       if (heroList.length < 6 && latestList.length) {
         const used = new Set(heroList.map((a: any) => String(a.albumId)))
         const fillers = latestList.filter((a: any) => !used.has(String(a.albumId))).slice(0, 6 - heroList.length)
-        heroList.push(...fillers.map((a: any) => ({ albumId: a.albumId, title: a.title, coverUrl: a.coverUrl || '' })))
+        heroList.push(...fillers.map((a: any) => ({
+          albumId: a.albumId,
+          title: a.title,
+          artist: a.artist || '',
+          coverUrl: a.coverUrl || '',
+          dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
+        })))
         if (!dailyAlbums.length) heroLabel = '最新发行'
       }
       if (!heroList.length && topItem) {
-        heroList.push({ albumId: topItem.albumId, title: topItem.title, coverUrl: topItem.coverUrl || '' })
+        heroList.push({
+          albumId: topItem.albumId,
+          title: topItem.title,
+          artist: topItem.artist || '',
+          coverUrl: topItem.coverUrl || '',
+          dateDisplay: fmtReleaseDate(topItem.releaseDate, topItem.releaseYear || topItem.year),
+        })
         heroLabel = '热门榜单'
       }
 
       const newReleases = latestRes?.success ? (latestRes.list || []).slice(0, 10).map((a: any) => ({
-        albumId: a.albumId, title: a.title, coverUrl: a.coverUrl || '',
+        albumId: a.albumId,
+        title: a.title,
+        artist: a.artist || '',
+        coverUrl: a.coverUrl || '',
+        dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
       })) : []
       const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length ? latestRes.tickerSongs : FALLBACK_TICKER_SONGS
       const onThisDayList = onThisDayRes?.success ? (onThisDayRes.list || []).map((a: any) => ({
