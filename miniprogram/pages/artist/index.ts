@@ -9,6 +9,7 @@ interface ArtistAlbum {
 }
 
 interface Collaborator {
+  key: string
   artistId: string
   name: string
   count: number

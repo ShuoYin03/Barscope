@@ -7,14 +7,30 @@ function normalizeName(value) {
   return String(value || '').trim().toLowerCase().replace(/[\s._\-·'’/]/g, '')
 }
 
+// NetEase marks an unmatched/unresolved artist with id 0 — still a real featuring credit with a
+// real name, just without a resolvable artist page. `id || ''`-style coalescing treats 0 as falsy
+// and silently drops these guests, so id must be read with a null/undefined check instead, and rows
+// without a usable id are identified by normalized name rather than discarded.
+function readGuestId(guest) {
+  const raw = guest && (guest.id != null ? guest.id : guest.artistId)
+  const idStr = String(raw != null ? raw : '').trim()
+  return idStr && idStr !== '0' ? idStr : ''
+}
+
+function collabKey(id, nameKey) {
+  return id ? `id:${id}` : `name:${nameKey}`
+}
+
 function addCount(map, id, name, increment = 1, currentId = '', currentNameKey = '') {
   const artistId = String(id || '').trim()
   const artistName = String(name || '').trim()
-  if (!artistId || !artistName || increment <= 0) return
-  if (artistId === currentId || normalizeName(artistName) === currentNameKey) return
-  const row = map.get(artistId)
+  if (!artistName || increment <= 0) return
+  const nameKey = normalizeName(artistName)
+  if ((artistId && artistId === currentId) || nameKey === currentNameKey) return
+  const key = collabKey(artistId, nameKey)
+  const row = map.get(key)
   if (row) row.count += increment
-  else map.set(artistId, { artistId, name: artistName, count: increment, collected: false })
+  else map.set(key, { key, artistId, name: artistName, count: increment, collected: false })
 }
 
 async function fetchCareerAlbums(artistId) {
@@ -68,11 +84,13 @@ exports.main = async event => {
         const seenThisTrack = new Set()
         const guests = Array.isArray(track.guests) ? track.guests : []
         guests.forEach(guest => {
-          const id = String(guest && (guest.id || guest.artistId) || '').trim()
+          const id = readGuestId(guest)
           const name = String(guest && (guest.name || guest.artistName) || '').trim()
-          if (!id || !name || seenThisTrack.has(id)) return
-          seenThisTrack.add(id)
-          albumTrackCounts.set(id, (albumTrackCounts.get(id) || 0) + 1)
+          if (!name) return
+          const key = collabKey(id, normalizeName(name))
+          if (seenThisTrack.has(key)) return
+          seenThisTrack.add(key)
+          albumTrackCounts.set(key, (albumTrackCounts.get(key) || 0) + 1)
           addCount(counts, id, name, 1, artistId, currentNameKey)
         })
       })
@@ -82,10 +100,12 @@ exports.main = async event => {
       // already present at track level.
       if (Array.isArray(album.featuringGuests)) {
         album.featuringGuests.forEach(guest => {
-          const id = String(guest && (guest.id || guest.artistId) || '').trim()
+          const id = readGuestId(guest)
           const name = String(guest && (guest.name || guest.artistName) || '').trim()
+          if (!name) return
+          const key = collabKey(id, normalizeName(name))
           const summaryCount = Number(guest && guest.count || 1)
-          const trackCount = albumTrackCounts.get(id) || 0
+          const trackCount = albumTrackCounts.get(key) || 0
           if (summaryCount > trackCount) addCount(counts, id, name, summaryCount - trackCount, artistId, currentNameKey)
         })
       }

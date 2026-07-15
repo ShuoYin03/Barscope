@@ -66,7 +66,7 @@
         <text wx:if="{{collaborators.length > 3}}" class="side-more" bindtap="onCollaboratorsMore">{{collaboratorsExpanded ? '收起 ↑' : '更多 →'}}</text>
       </view>
       <view wx:if="{{visibleCollaborators.length}}" class="collaborator-list">
-        <view wx:for="{{visibleCollaborators}}" wx:key="artistId" class="collaborator-row {{item.collected ? 'collected' : 'uncollected'}}" bindtap="onCollaboratorTap" data-artist-id="{{item.artistId}}" data-artist-name="{{item.name}}" data-collected="{{item.collected}}">
+        <view wx:for="{{visibleCollaborators}}" wx:key="key" class="collaborator-row {{item.collected ? 'collected' : 'uncollected'}}" bindtap="onCollaboratorTap" data-artist-id="{{item.artistId}}" data-artist-name="{{item.name}}" data-collected="{{item.collected}}">
           <text class="collaborator-rank">{{index + 1}}</text>
           <view class="collaborator-info"><text class="collaborator-name">{{item.name}}</text><text class="collaborator-count">共同合作 {{item.count}} 首</text></view>
           <text wx:if="{{item.collected}}" class="collaborator-arrow">›</text>
