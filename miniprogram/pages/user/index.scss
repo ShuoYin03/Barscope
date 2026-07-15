@@ -29,7 +29,6 @@
 .stat-cell:not(:last-child){border-right:2rpx solid var(--gray-light)}
 .stat-num{font-family:var(--font-bebas);font-size:44rpx;color:var(--white);line-height:1}
 .stat-lbl{font-size:17rpx;color:var(--gray-mid);letter-spacing:2rpx}
-.stat-badge .stat-num,.stat-badge .stat-lbl{color:var(--accent)}
 
 .badge-section{padding:24rpx 32rpx 0}
 .badge-row{display:flex;flex-wrap:wrap;gap:12rpx}
