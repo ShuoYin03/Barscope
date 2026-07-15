@@ -12,6 +12,7 @@ interface Collaborator {
   artistId: string
   name: string
   count: number
+  collected: boolean
 }
 
 const BIO_PREVIEW_LENGTH = 150
@@ -30,37 +31,63 @@ function normalizeName(value: any) {
   return String(value || '').trim().toLowerCase().replace(/[\s._\-·'’/]/g, '')
 }
 
-// Count collaborators at track level. Every featuring appearance on one track counts once.
-// This deliberately ignores album-level credited/co-owner artist fields.
+// Full-career collaborator aggregation.
+// Primary source: every album -> every track -> guests (Featuring).
+// Compatibility fallback: when an older album has no track-level guests, use the
+// album-level featuringGuests summary that was generated from its tracks.
+// Nothing is truncated here; Top 10 is applied only after library matching + sorting.
 function collectTrackCollaborators(rawList: any[], currentArtistId: string, currentArtistName: string): Collaborator[] {
   const counts = new Map<string, Collaborator>()
-  const currentId = String(currentArtistId || '')
+  const currentId = String(currentArtistId || '').trim()
   const currentNameKey = normalizeName(currentArtistName)
+
+  const addCount = (id: any, rawName: any, increment = 1) => {
+    const artistId = String(id || '').trim()
+    const name = String(rawName || '').trim()
+    if (!artistId || !name || increment <= 0) return
+    if (artistId === currentId || normalizeName(name) === currentNameKey) return
+    const existing = counts.get(artistId)
+    if (existing) existing.count += increment
+    else counts.set(artistId, { artistId, name, count: increment, collected: false })
+  }
 
   rawList.forEach((album: any) => {
     const tracks = Array.isArray(album.tracks) ? album.tracks : []
+    let trackGuestAppearances = 0
+
     tracks.forEach((track: any) => {
       const seenThisTrack = new Set<string>()
       const guests = Array.isArray(track.guests) ? track.guests : []
 
       guests.forEach((guest: any) => {
-        const artistId = String(guest?.id || guest?.artistId || '').trim()
+        const id = String(guest?.id || guest?.artistId || '').trim()
         const name = String(guest?.name || guest?.artistName || '').trim()
-        if (!artistId || !name) return
-        if (artistId === currentId || normalizeName(name) === currentNameKey) return
-        if (seenThisTrack.has(artistId)) return
-        seenThisTrack.add(artistId)
-
-        const existing = counts.get(artistId)
-        if (existing) existing.count += 1
-        else counts.set(artistId, { artistId, name, count: 1 })
+        if (!id || !name || seenThisTrack.has(id)) return
+        if (id === currentId || normalizeName(name) === currentNameKey) return
+        seenThisTrack.add(id)
+        addCount(id, name, 1)
+        trackGuestAppearances += 1
       })
     })
+
+    // Some older synced records keep the correct Featuring counts only in this summary.
+    // Use it only when no track-level guest data exists for this album to avoid double counting.
+    if (trackGuestAppearances === 0 && Array.isArray(album.featuringGuests)) {
+      album.featuringGuests.forEach((guest: any) => {
+        addCount(guest?.id || guest?.artistId, guest?.name || guest?.artistName, Number(guest?.count || 1))
+      })
+    }
   })
 
   return Array.from(counts.values())
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .slice(0, 10)
+}
+
+function sortCollaborators(list: Collaborator[]) {
+  return list.slice().sort((a, b) =>
+    b.count - a.count ||
+    Number(b.collected) - Number(a.collected) ||
+    a.name.localeCompare(b.name)
+  )
 }
 
 import { getThemeClass } from '../../utils/theme'
@@ -99,14 +126,8 @@ Page({
     const artistId = options.artistId || ''
     const artistName = decodeURIComponent(options.artistName || '')
     const initial = artistName[0] || '?'
-
     this._artistId = artistId
-    this.setData({
-      statusBarHeight: app.globalData.statusBarHeight,
-      artistName,
-      initial: initial.toUpperCase(),
-    })
-
+    this.setData({ statusBarHeight: app.globalData.statusBarHeight, artistName, initial: initial.toUpperCase() })
     this._loadArtist(artistId)
     this._loadAlbums(artistId)
   },
@@ -134,11 +155,7 @@ Page({
       data: { name: this.data.artistName },
       success: (res: any) => {
         const r = res.result || {}
-        if (!r.success) {
-          this.setData({ submitStatus: 'idle' })
-          wx.showToast({ title: r.error || '提交失败', icon: 'none' })
-          return
-        }
+        if (!r.success) { this.setData({ submitStatus: 'idle' }); wx.showToast({ title: r.error || '提交失败', icon: 'none' }); return }
         if (r.existed && r.status === 'approved') {
           wx.showToast({ title: '已收录，正在刷新', icon: 'none' })
           this.setData({ submitStatus: 'idle' })
@@ -149,20 +166,39 @@ Page({
         if (r.existed) { this.setData({ submitStatus: 'pending' }); return }
         this.setData({ submitStatus: 'submitted' })
       },
-      fail: () => {
-        this.setData({ submitStatus: 'idle' })
-        wx.showToast({ title: '提交失败', icon: 'none' })
-      },
+      fail: () => { this.setData({ submitStatus: 'idle' }); wx.showToast({ title: '提交失败', icon: 'none' }) },
     } as any)
   },
 
-  onShow() {
-    this.setData({ themeClass: getThemeClass() })
-  },
+  onShow() { this.setData({ themeClass: getThemeClass() }) },
 
   onBioToggle() {
     if (!this.data.hasLongBio) return
     this.setData({ bioExpanded: !this.data.bioExpanded })
+  },
+
+  _applyCollaborators(rawCollaborators: Collaborator[]) {
+    const fallback = sortCollaborators(rawCollaborators).slice(0, 10)
+    if (!rawCollaborators.length) {
+      this.setData({ collaborators: [], visibleCollaborators: [], collaboratorsExpanded: false })
+      return
+    }
+
+    wx.cloud.callFunction({
+      name: 'getArtistAvatars',
+      data: { artistIds: rawCollaborators.map(item => item.artistId) },
+      success: (res: any) => {
+        const libraryMap = new Map<string, boolean>()
+        const rows = res.result?.success ? (res.result.list || []) : []
+        rows.forEach((row: any) => libraryMap.set(String(row.artistId), !!row.collected))
+        const ranked = sortCollaborators(rawCollaborators.map(item => ({
+          ...item,
+          collected: libraryMap.get(item.artistId) === true,
+        }))).slice(0, 10)
+        this.setData({ collaborators: ranked, visibleCollaborators: ranked.slice(0, 3), collaboratorsExpanded: false })
+      },
+      fail: () => this.setData({ collaborators: fallback, visibleCollaborators: fallback.slice(0, 3), collaboratorsExpanded: false }),
+    } as any)
   },
 
   _loadAlbums(artistId: string) {
@@ -192,18 +228,11 @@ Page({
         })
 
         const scored = list.filter(a => a.score > 0)
-        const avgScore = scored.length
-          ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1)
-          : '–'
-
+        const avgScore = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : '–'
         const years = Array.from(seenYears).sort((a, b) => b - a)
         const yearRange = years.length
-          ? (Math.min(...years) === Math.max(...years)
-              ? String(Math.min(...years))
-              : `${Math.min(...years)}–${Math.max(...years)}`)
+          ? (Math.min(...years) === Math.max(...years) ? String(Math.min(...years)) : `${Math.min(...years)}–${Math.max(...years)}`)
           : ''
-
-        const collaborators = collectTrackCollaborators(rawList, artistId, this.data.artistName)
 
         this.setData({
           list,
@@ -212,11 +241,11 @@ Page({
           yearRange,
           years,
           activeYear: years[0] || 0,
-          collaborators,
-          visibleCollaborators: collaborators.slice(0, 3),
-          collaboratorsExpanded: false,
           loading: false,
         })
+
+        // Important: aggregate the entire career first. No Top 10 truncation happens before this point.
+        this._applyCollaborators(collectTrackCollaborators(rawList, artistId, this.data.artistName))
       },
       fail: () => this.setData({ loading: false }),
     } as any)
@@ -240,13 +269,12 @@ Page({
     const dataset = e.currentTarget.dataset as any
     const artistId = String(dataset.artistId || '')
     const artistName = String(dataset.artistName || '')
-    if (!artistId) return
+    const collected = dataset.collected === true || dataset.collected === 'true'
+    if (!artistId || !collected) return
     wx.navigateTo({ url: `/pages/artist/index?artistId=${encodeURIComponent(artistId)}&artistName=${encodeURIComponent(artistName)}` })
   },
 
-  onBack() {
-    wx.navigateBack()
-  },
+  onBack() { wx.navigateBack() },
 
   onAlbumTap(e: WechatMiniprogram.TouchEvent) {
     const id = (e.currentTarget.dataset as { id: string }).id
