@@ -7,7 +7,10 @@ const _ = db.command
 
 const COL = 'crawlerStatus'
 const DOC = 'singleton'
-const CHUNK = 20
+// 之前是 20：当 cloudCrawlerDailyTrigger 需要 await 完整跑完一批时（自链 fire-and-forget 不可靠，
+// 详见 cloudCrawlerDailyTrigger/index.js 的注释），批次越大越容易撞 cloud.callFunction 自身的
+// socket 超时。调小到 10 换取更高的单批成功率，代价是全量一轮需要更多批次。
+const CHUNK = 10
 const INTERNAL_TOKEN = 'cc_internal_v1'
 const DETAIL_CONCURRENCY = 8
 const ARTIST_CONCURRENCY = 3

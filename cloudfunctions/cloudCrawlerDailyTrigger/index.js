@@ -14,13 +14,15 @@ const RECRAWL_COOLDOWN_MS = 50 * 60 * 1000
 
 // 每 5 分钟醒一次（config.json 里配的 timer trigger）。
 //
-// 一轮全量的"一批接一批处理"现在由 cloudCrawler 自己链式串起来（每批处理完 fire-and-forget 触发下一批，
-// 见 cloudCrawler/index.js 的 selfInvokeNext）。这个定时器有两个职责：
-//   1) 起步：距上次完成超过 RECRAWL_COOLDOWN_MS（默认 50 分钟）时，从头（cursor=0）调 cloudCrawler
-//      把链条点着——配合每 5 分钟的定时器，效果是"每小时一轮全量"（冷却挡住同一小时内的重复起步）；
-//   2) 看门狗：如果发现 status='running' 但已超过 CHAIN_ALIVE_MS 没有任何进度（说明某次 fire-and-forget
-//      没接上、链断了），就从 progress.processedArtists 记的位置接力恢复；每 5 分钟醒一次意味着断链最多
-//      5 分钟内被接回来。链条正常时（最近有进度）则跳过，不去和链条抢着触发同一批。
+// cloudCrawler 自己也会在处理完一批后 fire-and-forget 触发下一批（见 cloudCrawler/index.js 的
+// selfInvokeNext），但实测这个自链并不可靠：容器很可能在那次 fire-and-forget 请求真正发出去之前就
+// 被平台冻结/回收，下一批压根没被调用（不是"报错但其实跑了"，是真的没跑）。所以这个定时器现在是
+// 真正兜底整条链的主力，而不只是"看门狗"：
+//   1) 起步：距上次完成超过 RECRAWL_COOLDOWN_MS 时，从头（cursor=0）调 cloudCrawler 把链条点着；
+//   2) 续跑：如果发现 status='running' 但已超过 CHAIN_ALIVE_MS 没有任何进度，就从
+//      progress.processedArtists 记的位置 await 完整地调一次 cloudCrawler——必须 await，
+//      fire-and-forget 在这里试过，实测链条完全推不动。await 有撞 cloud.callFunction 自身 socket
+//      超时的风险，配合 cloudCrawler.js 里调小后的 CHUNK 把单批耗时压下来，缓解这个风险。
 // pending 状态属于本地 pipeline，与本定时器无关，直接跳过。
 exports.main = async (event, context) => {
   try {
@@ -38,12 +40,19 @@ exports.main = async (event, context) => {
         await heartbeat('skip-chain-alive', cursor)
         return { success: true, skipped: true, reason: '链式任务进行中（最近有进度），定时器跳过', cursor }
       }
-      // 超过 CHAIN_ALIVE_MS 没有任何进度 → 链条大概率断了（某次 fire-and-forget 没接上）→ 从当前位置接力恢复
+      // 超过 CHAIN_ALIVE_MS 没有任何进度 → 链条大概率断了（某次 fire-and-forget 没接上）→ 从当前位置接力恢复。
+      // 这里必须 await 完整结果：实测 fire-and-forget 触发 cloudCrawler 之后，容器经常在真正把请求发出去
+      // 之前就被冻结/回收，下一批根本没有被执行——不是"报错但其实跑了"，是真的没跑。await 虽然有撞
+      // socket 超时的风险，但撞超时时 cloudCrawler 已经被真正调用、大概率仍在服务端继续跑完这一批；
+      // 不 await 则完全没有这层保证。配合 cloudCrawler.js 里调小后的 CHUNK，超时概率已经大幅降低。
       console.log(`[cloudCrawlerDailyTrigger] branch=resume idleMs=${idleMs} cursor=${cursor}`)
       await heartbeat('resume', cursor)
-      await invokeCloudCrawlerAsync({ action: 'allApproved', cursor, __internal: true, __token: INTERNAL_TOKEN })
-      await writeReport('resumed', cursor, { fired: true })
-      return { success: true, resumed: true, cursor }
+      const res = await cloud.callFunction({
+        name: 'cloudCrawler',
+        data: { action: 'allApproved', cursor, __internal: true, __token: INTERNAL_TOKEN },
+      })
+      await writeReport('resumed', cursor, res.result)
+      return { success: true, resumed: true, cursor, result: res.result }
     }
 
     if (status.status === 'pending') {
@@ -61,27 +70,15 @@ exports.main = async (event, context) => {
 
     console.log('[cloudCrawlerDailyTrigger] branch=start cursor=0')
     await heartbeat('start', 0)
-    await invokeCloudCrawlerAsync({ action: 'allApproved', cursor: 0, __internal: true, __token: INTERNAL_TOKEN })
-    await writeReport('triggered', 0, { fired: true })
-    return { success: true, triggered: true }
+    const res = await cloud.callFunction({ name: 'cloudCrawler', data: { action: 'allApproved', cursor: 0, __internal: true, __token: INTERNAL_TOKEN } })
+    await writeReport('triggered', 0, res.result)
+    return { success: true, triggered: true, result: res.result }
   } catch (e) {
     console.error('[cloudCrawlerDailyTrigger] failed', e)
     await heartbeat('error', 0, e.message)
     await safeReportError(e)
     return { success: false, error: e.message }
   }
-}
-
-// 触发 cloudCrawler 处理一批。刻意不 await 其完整执行：一批最多 20 位艺人，每位都要打网易云接口，
-// 耗时不可控，同步等待很容易撞上跨云函数调用（cloud.callFunction）自身的 socket 超时——这正是之前
-// crawlerReports 里反复出现 "ESOCKETTIMEDOUT" 的原因。cloudCrawler.js 自己链式触发下一批时用的就是
-// 同样的 fire-and-forget 写法（见其 selfInvokeNext），这里改成完全一致。
-async function invokeCloudCrawlerAsync(data) {
-  try {
-    const p = cloud.callFunction({ name: 'cloudCrawler', data })
-    if (p && typeof p.catch === 'function') p.catch(() => {})
-  } catch (e) {}
-  await new Promise(r => setTimeout(r, 800))
 }
 
 // 每次醒来都盖写一次心跳字段（只更新这两个字段，不影响 status/progress 等其它字段），
