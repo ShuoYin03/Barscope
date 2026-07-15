@@ -1,10 +1,10 @@
 interface ArtistAlbum {
-  id:         string
-  title:      string
-  year:       number
+  id: string
+  title: string
+  year: number
   trackCount: number
-  score:      number
-  coverUrl:   string
+  score: number
+  coverUrl: string
   yearAnchor: string
 }
 
@@ -30,46 +30,32 @@ function normalizeName(value: any) {
   return String(value || '').trim().toLowerCase().replace(/[\s._\-·'’/]/g, '')
 }
 
-function collectCollaborators(rawList: any[], currentArtistId: string, currentArtistName: string): Collaborator[] {
+// Count collaborators at track level. Every featuring appearance on one track counts once.
+// This deliberately ignores album-level credited/co-owner artist fields.
+function collectTrackCollaborators(rawList: any[], currentArtistId: string, currentArtistName: string): Collaborator[] {
   const counts = new Map<string, Collaborator>()
   const currentId = String(currentArtistId || '')
   const currentNameKey = normalizeName(currentArtistName)
 
-  const add = (id: any, name: any) => {
-    const artistId = String(id || '').trim()
-    const artistName = String(name || '').trim()
-    if (!artistId || !artistName) return
-    if (artistId === currentId || normalizeName(artistName) === currentNameKey) return
-    const key = artistId
-    const existing = counts.get(key)
-    if (existing) existing.count += 1
-    else counts.set(key, { artistId, name: artistName, count: 1 })
-  }
-
   rawList.forEach((album: any) => {
-    const seenThisAlbum = new Set<string>()
-    const addOnce = (id: any, name: any) => {
-      const key = String(id || '').trim()
-      if (!key || seenThisAlbum.has(key)) return
-      seenThisAlbum.add(key)
-      add(id, name)
-    }
+    const tracks = Array.isArray(album.tracks) ? album.tracks : []
+    tracks.forEach((track: any) => {
+      const seenThisTrack = new Set<string>()
+      const guests = Array.isArray(track.guests) ? track.guests : []
 
-    if (Array.isArray(album.collaboratorArtists)) {
-      album.collaboratorArtists.forEach((artist: any) => addOnce(artist?.id || artist?.artistId, artist?.name || artist?.artistName))
-    }
+      guests.forEach((guest: any) => {
+        const artistId = String(guest?.id || guest?.artistId || '').trim()
+        const name = String(guest?.name || guest?.artistName || '').trim()
+        if (!artistId || !name) return
+        if (artistId === currentId || normalizeName(name) === currentNameKey) return
+        if (seenThisTrack.has(artistId)) return
+        seenThisTrack.add(artistId)
 
-    const ids = Array.isArray(album.collaboratorArtistIds) ? album.collaboratorArtistIds : []
-    const names = Array.isArray(album.collaboratorArtistNames) ? album.collaboratorArtistNames : []
-    ids.forEach((id: any, index: number) => addOnce(id, names[index]))
-
-    // Older records may only keep artistIds and the slash-separated artist string.
-    // Only pair these when the array lengths match so we never create an incorrect link.
-    const artistIds = Array.isArray(album.artistIds) ? album.artistIds.map(String) : []
-    const artistNames = String(album.artist || '').split('/').map((name: string) => name.trim()).filter(Boolean)
-    if (artistIds.length && artistIds.length === artistNames.length) {
-      artistIds.forEach((id: string, index: number) => addOnce(id, artistNames[index]))
-    }
+        const existing = counts.get(artistId)
+        if (existing) existing.count += 1
+        else counts.set(artistId, { artistId, name, count: 1 })
+      })
+    })
   })
 
   return Array.from(counts.values())
@@ -82,35 +68,37 @@ import { getThemeClass } from '../../utils/theme'
 Page({
   data: {
     statusBarHeight: 20,
-    themeClass:      '',
-    artistName:      '',
-    initial:         '',
-    bannerUrl:       '',
-    avatarUrl:       '',
-    briefDesc:       '',
-    briefDescPreview:'',
-    hasLongBio:      false,
-    bioExpanded:     false,
-    total:           0,
-    avgScore:        '–',
-    yearRange:       '',
-    list:            [] as ArtistAlbum[],
-    years:           [] as number[],
-    activeYear:      0,
-    scrollIntoView:  '',
-    collaborators:   [] as Collaborator[],
-    loading:         true,
-    notCollected:    false,
-    submitStatus:    'idle' as 'idle' | 'submitting' | 'submitted' | 'pending',
+    themeClass: '',
+    artistName: '',
+    initial: '',
+    bannerUrl: '',
+    avatarUrl: '',
+    briefDesc: '',
+    briefDescPreview: '',
+    hasLongBio: false,
+    bioExpanded: false,
+    total: 0,
+    avgScore: '–',
+    yearRange: '',
+    list: [] as ArtistAlbum[],
+    years: [] as number[],
+    activeYear: 0,
+    scrollIntoView: '',
+    collaborators: [] as Collaborator[],
+    visibleCollaborators: [] as Collaborator[],
+    collaboratorsExpanded: false,
+    loading: true,
+    notCollected: false,
+    submitStatus: 'idle' as 'idle' | 'submitting' | 'submitted' | 'pending',
   },
 
   _artistId: '',
 
   onLoad(options: Record<string, string>) {
     const app = getApp<IAppOption>()
-    const artistId   = options.artistId   || ''
+    const artistId = options.artistId || ''
     const artistName = decodeURIComponent(options.artistName || '')
-    const initial    = (artistName.match(/[A-Za-z]/) ? artistName[0] : artistName[0]) || '?'
+    const initial = artistName[0] || '?'
 
     this._artistId = artistId
     this.setData({
@@ -158,10 +146,7 @@ Page({
           this._loadAlbums(this._artistId)
           return
         }
-        if (r.existed) {
-          this.setData({ submitStatus: 'pending' })
-          return
-        }
+        if (r.existed) { this.setData({ submitStatus: 'pending' }); return }
         this.setData({ submitStatus: 'submitted' })
       },
       fail: () => {
@@ -196,12 +181,12 @@ Page({
           const firstOfYear = !!year && !seenYears.has(year)
           if (year) seenYears.add(year)
           return {
-            id:         a._id,
-            title:      a.title       || '',
+            id: a._id,
+            title: a.title || '',
             year,
-            trackCount: a.trackCount  || 0,
-            score:      Math.round((a.avgScore || 0) * 10) / 10,
-            coverUrl:   a.coverUrl    || '',
+            trackCount: a.trackCount || 0,
+            score: Math.round((a.avgScore || 0) * 10) / 10,
+            coverUrl: a.coverUrl || '',
             yearAnchor: firstOfYear ? `career-year-${year}` : '',
           }
         })
@@ -217,7 +202,8 @@ Page({
               ? String(Math.min(...years))
               : `${Math.min(...years)}–${Math.max(...years)}`)
           : ''
-        const collaborators = collectCollaborators(rawList, artistId, this.data.artistName)
+
+        const collaborators = collectTrackCollaborators(rawList, artistId, this.data.artistName)
 
         this.setData({
           list,
@@ -227,6 +213,8 @@ Page({
           years,
           activeYear: years[0] || 0,
           collaborators,
+          visibleCollaborators: collaborators.slice(0, 3),
+          collaboratorsExpanded: false,
           loading: false,
         })
       },
@@ -238,6 +226,14 @@ Page({
     const year = Number((e.currentTarget.dataset as any).year || 0)
     if (!year) return
     this.setData({ activeYear: year, scrollIntoView: `career-year-${year}` })
+  },
+
+  onCollaboratorsMore() {
+    const expanded = !this.data.collaboratorsExpanded
+    this.setData({
+      collaboratorsExpanded: expanded,
+      visibleCollaborators: expanded ? this.data.collaborators.slice(0, 10) : this.data.collaborators.slice(0, 3),
+    })
   },
 
   onCollaboratorTap(e: WechatMiniprogram.TouchEvent) {
