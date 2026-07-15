@@ -90,6 +90,29 @@
   letter-spacing: 1rpx;
 }
 
+.ranking-section-head {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 10rpx 32rpx 12rpx;
+  background: var(--black);
+}
+.podium-section-head { padding-top: 2rpx; }
+.rest-section-head { padding-top: 28rpx; }
+.ranking-section-title {
+  font-family: var(--font-bebas);
+  font-size: 20rpx;
+  letter-spacing: 5rpx;
+  color: var(--gray-mid);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ranking-section-rule {
+  flex: 1;
+  height: 2rpx;
+  background: var(--gray-light);
+}
+
 .chart-item {
   display: flex;
   align-items: center;
@@ -101,6 +124,8 @@
 .podium-item {
   position: relative;
   min-height: 150rpx;
+  padding-top: 26rpx;
+  padding-bottom: 26rpx;
 }
 .chart-rank {
   font-family: var(--font-bebas);
@@ -142,30 +167,42 @@
 .medal-disc {
   position: relative;
   z-index: 2;
-  width: 54rpx;
-  height: 54rpx;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  border: 4rpx solid rgba(255,255,255,.28);
-  box-shadow: 0 0 16rpx rgba(0,0,0,.28), inset 0 0 0 3rpx rgba(0,0,0,.12);
+  border: 4rpx solid rgba(255,255,255,.32);
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,.28), inset 0 0 0 3rpx rgba(0,0,0,.12);
+}
+.medal-disc-inner {
+  width: 38rpx;
+  height: 38rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid rgba(255,255,255,.38);
+  box-sizing: border-box;
 }
 .medal-rank {
   font-family: var(--font-bebas);
-  font-size: 34rpx;
+  font-size: 30rpx;
   font-weight: 700;
   line-height: 1;
   color: #111111;
-  text-shadow: 0 1rpx 0 rgba(255,255,255,.35);
+  text-shadow: 0 1rpx 0 rgba(255,255,255,.38);
 }
-.medal-1 .medal-disc { background: #FFD400; }
-.medal-1 .medal-ribbon { background: #FF3B30; }
-.medal-2 .medal-disc { background: #E8EDF2; }
-.medal-2 .medal-ribbon { background: #4A90E2; }
-.medal-3 .medal-disc { background: #F07A24; }
-.medal-3 .medal-ribbon { background: #8E44AD; }
+
+/* Fixed medal palette — intentionally independent from theme variables. */
+.medal-1 .medal-disc { background: #FFD400; box-shadow: 0 0 20rpx rgba(255,212,0,.32), inset 0 0 0 3rpx rgba(0,0,0,.1); }
+.medal-1 .medal-ribbon { background: #FFB800; }
+.medal-2 .medal-disc { background: #D9E2EC; box-shadow: 0 0 18rpx rgba(217,226,236,.28), inset 0 0 0 3rpx rgba(0,0,0,.1); }
+.medal-2 .medal-ribbon { background: #AEBECC; }
+.medal-3 .medal-disc { background: #FF7A1A; box-shadow: 0 0 18rpx rgba(255,122,26,.3), inset 0 0 0 3rpx rgba(0,0,0,.1); }
+.medal-3 .medal-ribbon { background: #D95700; }
 
 .chart-info {
   flex: 1;
@@ -209,30 +246,10 @@
   flex-shrink: 0;
 }
 
-/* Fixed high-saturation podium colors: independent from light/dark theme variables. */
+/* High-saturation podium score colors, preserved in both light and dark themes. */
 .chart-score.top-1 { color: #FFD400; }
-.chart-score.top-2 { color: #E8EDF2; }
-.chart-score.top-3 { color: #F07A24; }
-
-.ranking-section-divider {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 24rpx 44rpx 10rpx;
-  background: var(--black);
-}
-.ranking-section-line {
-  flex: 1;
-  height: 2rpx;
-  background: var(--gray-light);
-}
-.ranking-section-label {
-  font-family: var(--font-bebas);
-  font-size: 18rpx;
-  letter-spacing: 4rpx;
-  color: var(--gray-mid);
-  white-space: nowrap;
-}
+.chart-score.top-2 { color: #D9E2EC; }
+.chart-score.top-3 { color: #FF7A1A; }
 
 .list-end {
   padding: 36rpx 32rpx 120rpx;
