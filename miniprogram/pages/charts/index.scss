@@ -151,6 +151,11 @@
   flex-shrink: 0;
 }
 
+/* Fixed podium colors: intentionally independent from light/dark theme variables. */
+.chart-score.top-1 { color: #D4AF37; }
+.chart-score.top-2 { color: #C0C0C0; }
+.chart-score.top-3 { color: #CD7F32; }
+
 .list-end {
   padding: 36rpx 32rpx 120rpx;
   display: flex;
