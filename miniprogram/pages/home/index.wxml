@@ -24,9 +24,9 @@
       <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
     </view>
 
-    <!-- ── ON THIS DAY — STANDALONE COLUMN ─────────────────────── -->
+    <!-- ── EDITORIAL COLUMN — ON THIS DAY ─────────────────────── -->
     <view wx:if="{{!loading && heroSwiperList.length}}" class="otd-section">
-      <section-header prefix="专栏" side="" title="历史上的今天" />
+      <section-header prefix="专栏" side="" title="" />
       <swiper class="hero-swiper" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
         <swiper-item wx:for="{{heroSwiperList}}" wx:key="albumId">
           <view class="hero-banner" bindtap="onAlbumTap" data-id="{{item.albumId}}">
