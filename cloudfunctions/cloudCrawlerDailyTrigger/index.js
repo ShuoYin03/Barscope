@@ -69,7 +69,7 @@ exports.main = async (event, context) => {
     return { success: true, triggered: true, result: res.result }
   } catch (e) {
     console.error('[cloudCrawlerDailyTrigger] failed', e)
-    await heartbeat('error', 0)
+    await heartbeat('error', 0, e.message)
     await safeReportError(e)
     return { success: false, error: e.message }
   }
@@ -78,9 +78,9 @@ exports.main = async (event, context) => {
 // 每次醒来都盖写一次心跳字段（只更新这两个字段，不影响 status/progress 等其它字段），
 // 这样即使这一轮什么正事都没做（跳过），也能在数据库/管理页里看出"定时器还在正常醒来"，
 // 跟"定时器压根没被云端调用"区分开。
-async function heartbeat(branch, cursor) {
+async function heartbeat(branch, cursor, detail) {
   try {
-    await db.collection(COL).doc(DOC).update({ data: { lastTriggerAt: db.serverDate(), lastTriggerBranch: branch, lastTriggerCursor: Number(cursor || 0) } })
+    await db.collection(COL).doc(DOC).update({ data: { lastTriggerAt: db.serverDate(), lastTriggerBranch: branch, lastTriggerCursor: Number(cursor || 0), lastTriggerDetail: detail ? String(detail) : '' } })
   } catch (e) {
     // doc 还不存在（从没跑过一次真正的爬虫）时 update 会失败，忽略即可，等第一次 patchStatus 建好文档后心跳自然能写进去
   }

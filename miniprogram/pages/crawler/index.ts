@@ -17,9 +17,10 @@ function formatAgo(ms: number): string {
 }
 const HEARTBEAT_BRANCH_LABELS: Record<string, string> = {
   start: '开始新一轮全量爬取',
-  continue: '续跑批次中',
+  resume: '链条卡住，接力续跑',
+  'skip-chain-alive': '跳过（链条正常运行中）',
   'skip-pending': '跳过（等待本地爬虫流程）',
-  'skip-cooldown': '跳过（24 小时内已完成过一轮）',
+  'skip-cooldown': '跳过（冷却期内已完成过一轮）',
   error: '触发失败',
 }
 // 定时器每 5 分钟醒一次；超过这个时长没有心跳，基本可以判定触发器没在正常调用
@@ -83,8 +84,9 @@ Page({
           else if (elapsed > 90000) { shouldClear = true; wx.showToast({ title: '启动超时，请检查云函数', icon: 'none' }) }
         }
         const heartbeatMs = toMillis(s.lastTriggerAt)
+        const heartbeatDetail = s.lastTriggerBranch === 'error' && s.lastTriggerDetail ? `：${s.lastTriggerDetail}` : ''
         const heartbeatText = heartbeatMs
-          ? `${formatAgo(heartbeatMs)} · ${HEARTBEAT_BRANCH_LABELS[s.lastTriggerBranch] || s.lastTriggerBranch || '未知'}`
+          ? `${formatAgo(heartbeatMs)} · ${HEARTBEAT_BRANCH_LABELS[s.lastTriggerBranch] || s.lastTriggerBranch || '未知'}${heartbeatDetail}`
           : '暂无记录（定时器可能还没成功调用过）'
         const heartbeatStale = !heartbeatMs || (Date.now() - heartbeatMs) > HEARTBEAT_STALE_MS
         this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear, heartbeatText, heartbeatStale })
