@@ -4,15 +4,20 @@ const db = cloud.database()
 const FOLLOWS_COL = 'follows'
 
 const BADGE_DEFS = [
-  { id: 'first_review', name: '首条乐评', icon: '✎', check: s => s.reviewCount >= 1 },
-  { id: 'ten_reviews', name: '十条乐评', icon: '✎✎', check: s => s.reviewCount >= 10 },
-  { id: 'fifty_reviews', name: '资深乐评人', icon: '★', check: s => s.reviewCount >= 50 },
-  { id: 'ten_likes', name: '获赞新星', icon: '♥', check: s => s.likesReceived >= 10 },
-  { id: 'fifty_likes', name: '获赞达人', icon: '♥♥', check: s => s.likesReceived >= 50 },
-  { id: 'ten_followers', name: '人气乐评人', icon: '⌁', check: s => s.followerCount >= 10 },
+  { id: 'first_review', name: '首条乐评', icon: '✎', metric: 'reviewCount', target: 1, desc: '发布第一条乐评' },
+  { id: 'ten_reviews', name: '十条乐评', icon: '✎✎', metric: 'reviewCount', target: 10, desc: '累计发布 10 条乐评' },
+  { id: 'fifty_reviews', name: '资深乐评人', icon: '★', metric: 'reviewCount', target: 50, desc: '累计发布 50 条乐评' },
+  { id: 'ten_likes', name: '获赞新星', icon: '♥', metric: 'likesReceived', target: 10, desc: '乐评累计获得 10 个赞' },
+  { id: 'fifty_likes', name: '获赞达人', icon: '♥♥', metric: 'likesReceived', target: 50, desc: '乐评累计获得 50 个赞' },
+  { id: 'ten_followers', name: '人气乐评人', icon: '⌁', metric: 'followerCount', target: 10, desc: '吸引 10 位关注者' },
 ]
+// Returns every badge (locked and earned) with progress, so the client can render a full gallery
+// as well as just the earned subset.
 function computeBadges(stats) {
-  return BADGE_DEFS.filter(b => b.check(stats)).map(b => ({ id: b.id, name: b.name, icon: b.icon }))
+  return BADGE_DEFS.map(b => {
+    const current = Math.min(Number(stats[b.metric] || 0), b.target)
+    return { id: b.id, name: b.name, icon: b.icon, desc: b.desc, target: b.target, current, earned: current >= b.target }
+  })
 }
 
 function followDocId(followerOpenId, followingOpenId) {

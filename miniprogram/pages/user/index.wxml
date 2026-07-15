@@ -32,8 +32,13 @@
       <view class="stat-cell"><text class="stat-num">{{followingCount}}</text><text class="stat-lbl">关注中</text></view>
     </view>
 
-    <view wx:if="{{badges.length}}" class="badge-row">
-      <view wx:for="{{badges}}" wx:key="id" class="badge-pill"><text class="badge-icon">{{item.icon}}</text><text class="badge-name">{{item.name}}</text></view>
+    <view class="badge-section">
+      <view class="badge-row">
+        <block wx:for="{{badges}}" wx:key="id">
+          <view wx:if="{{item.earned}}" class="badge-pill"><text class="badge-icon">{{item.icon}}</text><text class="badge-name">{{item.name}}</text></view>
+        </block>
+      </view>
+      <view class="badge-all-link" bindtap="onViewAllBadges"><text>查看全部徽章 →</text></view>
     </view>
 
     <view class="side-row"><text class="side-text">最新乐评</text></view>

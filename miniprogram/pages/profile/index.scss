@@ -152,10 +152,12 @@
 .stat-num { font-family: var(--font-bebas); font-size: 52rpx; color: var(--white); line-height: 1; }
 .stat-lbl { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 3rpx; }
 
-.badge-row { display: flex; flex-wrap: wrap; gap: 12rpx; padding: 20rpx 32rpx 0; background: var(--black); }
+.badge-section { padding: 20rpx 32rpx 0; background: var(--black); }
+.badge-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .badge-pill { display: flex; align-items: center; gap: 6rpx; padding: 8rpx 16rpx; border: 2rpx solid var(--accent); border-radius: 999rpx; }
 .badge-icon { font-size: 20rpx; color: var(--accent); }
 .badge-name { font-size: 20rpx; color: var(--accent); letter-spacing: 1rpx; }
+.badge-all-link { margin-top: 16rpx; font-size: 21rpx; color: var(--gray-mid); letter-spacing: 1rpx; }
 
 .side-row { padding: 24rpx 32rpx 12rpx; background: var(--black); }
 .side-row.b { border-top: 4rpx solid var(--accent); margin-top: 8rpx; }
