@@ -44,17 +44,13 @@
       </view>
 
       <block wx:for="{{list}}" wx:key="albumId">
-        <view wx:if="{{item.rank === 4}}" class="ranking-section-head rest-section-head">
-          <text class="ranking-section-title">THE REST</text>
+        <view wx:if="{{item.rank === 4}}" class="ranking-section-head field-section-head">
+          <text class="ranking-section-title">THE FIELD</text>
           <view class="ranking-section-rule" />
         </view>
 
-        <view class="chart-item {{item.rank <= 3 ? 'podium-item' : ''}}" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-          <view wx:if="{{item.rank <= 3}}" class="podium-rank-wrap">
-            <text class="chart-rank">{{item.rank}}</text>
-            <text class="podium-emoji">{{item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : '🥉'}}</text>
-          </view>
-          <text wx:else class="chart-rank">{{item.rank}}</text>
+        <view class="chart-item" bindtap="onAlbumTap" data-id="{{item.albumId}}">
+          <text class="chart-rank">{{item.rank}}</text>
 
           <view class="vinyl-cover-wrap">
             <view class="vinyl-disc-peek" />
