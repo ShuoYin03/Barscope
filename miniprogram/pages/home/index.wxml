@@ -24,13 +24,12 @@
       <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
     </view>
 
-    <!-- ── ON THIS DAY + TODAY'S HOT REVIEW TAG ────────────────── -->
-    <swiper wx:if="{{!loading && onThisDayList.length}}" class="hero-swiper" autoplay="{{onThisDayList.length > 1}}" interval="5000" duration="380" circular="{{onThisDayList.length > 1}}" indicator-dots="{{onThisDayList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
-      <swiper-item wx:for="{{onThisDayList}}" wx:key="albumId">
+    <!-- ── ON THIS DAY, FOLLOWED BY TODAY'S HOT REVIEWS — one continuous swipe ── -->
+    <swiper wx:if="{{!loading && heroSwiperList.length}}" class="hero-swiper" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
+      <swiper-item wx:for="{{heroSwiperList}}" wx:key="albumId">
         <view class="hero-banner" bindtap="onAlbumTap" data-id="{{item.albumId}}">
           <view style="align-self:flex-start;margin-bottom:10rpx;">
-            <text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">历史上的今天 · {{item.yearsAgo}}年前</text>
-            <text wx:if="{{todayHotTitle}}" style="display:block;margin-top:12rpx;font-size:18rpx;font-weight:700;letter-spacing:2rpx;color:#d45124;">今日热评专辑 · {{todayHotTitle}}</text>
+            <text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">{{item.kicker}}</text>
           </view>
           <view class="vinyl-hero-wrap" style="width:560rpx;height:355rpx;position:relative;display:flex;align-items:flex-start;justify-content:center;">
             <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">

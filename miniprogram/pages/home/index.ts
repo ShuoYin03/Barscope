@@ -27,9 +27,8 @@ Page({
     themeClass: '',
     tickerSongs: FALLBACK_TICKER_SONGS,
     loading: true,
-    todayHotTitle: '',
     recentHotItems: [] as any[],
-    onThisDayList: [] as any[],
+    heroSwiperList: [] as any[],
     chartItems: [] as any[],
     newReleases: [] as any[],
     reviews: [] as any[],
@@ -87,7 +86,6 @@ Page({
         scoreDisplay: fmtScore(Number(a.avgScore || a.score || 0)),
       }))
 
-      const todayHotTitle = recentHotItems[0]?.title || ''
       const latestList = latestRes?.success ? (latestRes.list || []) : []
 
       const newReleases = latestList.slice(0, 10).map((a: any) => ({
@@ -102,7 +100,7 @@ Page({
         ? latestRes.tickerSongs
         : FALLBACK_TICKER_SONGS
 
-      const onThisDayList = onThisDayRes?.success
+      const onThisDaySwiperItems = onThisDayRes?.success
         ? (onThisDayRes.list || []).map((a: any) => ({
             albumId: a.albumId,
             title: a.title,
@@ -110,9 +108,21 @@ Page({
             year: a.releaseYear,
             score: fmtScore(a.avgScore),
             coverUrl: a.coverUrl || '',
-            yearsAgo: a.yearsAgo,
+            kicker: `历史上的今天 · ${a.yearsAgo}年前`,
           }))
         : []
+
+      const todayHotSwiperItems = dailyAlbums.slice(0, 6).map((a: any) => ({
+        albumId: a.albumId,
+        title: a.title,
+        artist: a.artist || '',
+        year: a.year || '',
+        score: fmtScore(Number(a.score || 0)),
+        coverUrl: a.coverUrl || '',
+        kicker: '今日热评专辑',
+      }))
+
+      const heroSwiperList = [...onThisDaySwiperItems, ...todayHotSwiperItems]
 
       const topCritics = topCriticsRes?.success
         ? (topCriticsRes.list || []).map((c: any) => ({ ...c, initial: c.nickName ? c.nickName[0] : '?' }))
@@ -120,9 +130,8 @@ Page({
 
       this.setData({
         tickerSongs,
-        todayHotTitle,
         recentHotItems,
-        onThisDayList,
+        heroSwiperList,
         chartItems,
         newReleases,
         reviews: reviewsRes.success ? (reviewsRes.list || []) : [],
