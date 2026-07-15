@@ -21,9 +21,32 @@ function safeCallFunction(name: string, data: Record<string, any>) {
 }
 
 Page({
-  data: { statusBarHeight: 20, topbarHeight: 64, themeClass: '', tickerSongs: FALLBACK_TICKER_SONGS, loading: true, heroLabel: '今日热评专辑', heroList: [] as any[], onThisDayList: [] as any[], chartItems: [] as any[], newReleases: [] as any[], reviews: [] as any[], topCritics: [] as any[], totalAlbums: 0, totalArtists: 0, totalReviews: 0 },
-  onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }) },
-  onShow() { if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 }); this.setData({ themeClass: getThemeClass() }); this._loadData() },
+  data: {
+    statusBarHeight: 20,
+    topbarHeight: 64,
+    themeClass: '',
+    tickerSongs: FALLBACK_TICKER_SONGS,
+    loading: true,
+    todayHotTitle: '',
+    recentHotItems: [] as any[],
+    onThisDayList: [] as any[],
+    chartItems: [] as any[],
+    newReleases: [] as any[],
+    reviews: [] as any[],
+    topCritics: [] as any[],
+    totalAlbums: 0,
+    totalArtists: 0,
+    totalReviews: 0,
+  },
+  onLoad() {
+    const app = getApp<IAppOption>()
+    this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
+  },
+  onShow() {
+    if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 })
+    this.setData({ themeClass: getThemeClass() })
+    this._loadData()
+  },
   _loadData() {
     this.setData({ loading: true })
     const p1 = safeCallFunction('getCharts', { limit: 5 })
@@ -35,65 +58,99 @@ Page({
     const p7 = safeCallFunction('getReviews', { totalCount: true })
     const p8 = safeCallFunction('getOnThisDay', { limit: 8 })
     const p9 = safeCallFunction('getReviews', { monthlyTopCritics: true, limit: 8 })
+
     Promise.all([p1, p2, p3, p4, p5, p6, p7, p8, p9]).then((results: any[]) => {
-      const chartsRes = results[0], reviewsRes = results[1], totalRes = results[2], latestRes = results[3], dailyHotRes = results[4], artistsRes = results[5], reviewCountRes = results[6], onThisDayRes = results[7], topCriticsRes = results[8]
-      const chartItems = chartsRes.success ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) })) : []
-      const topItem = chartItems[0] || null
-      const dailyAlbums = dailyHotRes?.success ? (dailyHotRes.albums || (dailyHotRes.album ? [dailyHotRes.album] : [])) : []
+      const chartsRes = results[0]
+      const reviewsRes = results[1]
+      const totalRes = results[2]
+      const latestRes = results[3]
+      const dailyHotRes = results[4]
+      const artistsRes = results[5]
+      const reviewCountRes = results[6]
+      const onThisDayRes = results[7]
+      const topCriticsRes = results[8]
+
+      const chartItems = chartsRes.success
+        ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) }))
+        : []
+
+      const dailyAlbums = dailyHotRes?.success
+        ? (dailyHotRes.albums || (dailyHotRes.album ? [dailyHotRes.album] : []))
+        : []
+
+      const recentHotSource = dailyAlbums.length ? dailyAlbums : chartItems
+      const recentHotItems = recentHotSource.slice(0, 5).map((a: any, index: number) => ({
+        albumId: a.albumId || a._id,
+        title: a.title || a.albumTitle || '',
+        artist: a.artist || '',
+        rank: index + 1,
+        scoreDisplay: fmtScore(Number(a.avgScore || a.score || 0)),
+      }))
+
+      const todayHotTitle = recentHotItems[0]?.title || ''
       const latestList = latestRes?.success ? (latestRes.list || []) : []
 
-      const heroList: any[] = dailyAlbums.slice(0, 6).map((a: any) => ({
+      const newReleases = latestList.slice(0, 10).map((a: any) => ({
         albumId: a.albumId,
         title: a.title,
         artist: a.artist || '',
         coverUrl: a.coverUrl || '',
         dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
       }))
-      let heroLabel = '今日热评专辑'
-      if (heroList.length < 6 && latestList.length) {
-        const used = new Set(heroList.map((a: any) => String(a.albumId)))
-        const fillers = latestList.filter((a: any) => !used.has(String(a.albumId))).slice(0, 6 - heroList.length)
-        heroList.push(...fillers.map((a: any) => ({
-          albumId: a.albumId,
-          title: a.title,
-          artist: a.artist || '',
-          coverUrl: a.coverUrl || '',
-          dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
-        })))
-        if (!dailyAlbums.length) heroLabel = '最新发行'
-      }
-      if (!heroList.length && topItem) {
-        heroList.push({
-          albumId: topItem.albumId,
-          title: topItem.title,
-          artist: topItem.artist || '',
-          coverUrl: topItem.coverUrl || '',
-          dateDisplay: fmtReleaseDate(topItem.releaseDate, topItem.releaseYear || topItem.year),
-        })
-        heroLabel = '热门榜单'
-      }
 
-      const newReleases = latestRes?.success ? (latestRes.list || []).slice(0, 10).map((a: any) => ({
-        albumId: a.albumId,
-        title: a.title,
-        artist: a.artist || '',
-        coverUrl: a.coverUrl || '',
-        dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
-      })) : []
-      const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length ? latestRes.tickerSongs : FALLBACK_TICKER_SONGS
-      const onThisDayList = onThisDayRes?.success ? (onThisDayRes.list || []).map((a: any) => ({
-        albumId: a.albumId, title: a.title, artist: a.artist, year: a.releaseYear,
-        score: fmtScore(a.avgScore), coverUrl: a.coverUrl || '', yearsAgo: a.yearsAgo,
-      })) : []
-      const topCritics = topCriticsRes?.success ? (topCriticsRes.list || []).map((c: any) => ({ ...c, initial: c.nickName ? c.nickName[0] : '?' })) : []
-      this.setData({ tickerSongs, heroLabel, heroList, onThisDayList, chartItems, newReleases, reviews: reviewsRes.success ? (reviewsRes.list || []) : [], topCritics, totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0, totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0, totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0, loading: false })
-    }).catch((err: any) => { console.error('home _loadData error', err); this.setData({ loading: false }) })
+      const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length
+        ? latestRes.tickerSongs
+        : FALLBACK_TICKER_SONGS
+
+      const onThisDayList = onThisDayRes?.success
+        ? (onThisDayRes.list || []).map((a: any) => ({
+            albumId: a.albumId,
+            title: a.title,
+            artist: a.artist,
+            year: a.releaseYear,
+            score: fmtScore(a.avgScore),
+            coverUrl: a.coverUrl || '',
+            yearsAgo: a.yearsAgo,
+          }))
+        : []
+
+      const topCritics = topCriticsRes?.success
+        ? (topCriticsRes.list || []).map((c: any) => ({ ...c, initial: c.nickName ? c.nickName[0] : '?' }))
+        : []
+
+      this.setData({
+        tickerSongs,
+        todayHotTitle,
+        recentHotItems,
+        onThisDayList,
+        chartItems,
+        newReleases,
+        reviews: reviewsRes.success ? (reviewsRes.list || []) : [],
+        topCritics,
+        totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0,
+        totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0,
+        totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0,
+        loading: false,
+      })
+    }).catch((err: any) => {
+      console.error('home _loadData error', err)
+      this.setData({ loading: false })
+    })
   },
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
   onReleasesMore() { wx.navigateTo({ url: '/pages/recent-releases/index' }) },
-  onAlbumTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
-  onReviewTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
+  onAlbumTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as any).id
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+  },
+  onReviewTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as any).id
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+  },
   onSearchTap() { wx.switchTab({ url: '/pages/discover/index' }) },
   onReviewMore() { wx.navigateTo({ url: '/pages/recent-reviews/index' }) },
-  onCriticTap(e: WechatMiniprogram.TouchEvent) { const openId = (e.currentTarget.dataset as any).openId; if (openId) wx.navigateTo({ url: `/pages/user/index?openId=${openId}` }) },
+  onCriticTap(e: WechatMiniprogram.TouchEvent) {
+    const openId = (e.currentTarget.dataset as any).openId
+    if (openId) wx.navigateTo({ url: `/pages/user/index?openId=${openId}` })
+  },
 })
