@@ -41,12 +41,9 @@ exports.main = async (event, context) => {
       // 超过 CHAIN_ALIVE_MS 没有任何进度 → 链条大概率断了（某次 fire-and-forget 没接上）→ 从当前位置接力恢复
       console.log(`[cloudCrawlerDailyTrigger] branch=resume idleMs=${idleMs} cursor=${cursor}`)
       await heartbeat('resume', cursor)
-      const res = await cloud.callFunction({
-        name: 'cloudCrawler',
-        data: { action: 'allApproved', cursor, __internal: true, __token: INTERNAL_TOKEN },
-      })
-      await writeReport('resumed', cursor, res.result)
-      return { success: true, resumed: true, cursor, result: res.result }
+      await invokeCloudCrawlerAsync({ action: 'allApproved', cursor, __internal: true, __token: INTERNAL_TOKEN })
+      await writeReport('resumed', cursor, { fired: true })
+      return { success: true, resumed: true, cursor }
     }
 
     if (status.status === 'pending') {
@@ -64,15 +61,27 @@ exports.main = async (event, context) => {
 
     console.log('[cloudCrawlerDailyTrigger] branch=start cursor=0')
     await heartbeat('start', 0)
-    const res = await cloud.callFunction({ name: 'cloudCrawler', data: { action: 'allApproved', cursor: 0, __internal: true, __token: INTERNAL_TOKEN } })
-    await writeReport('triggered', 0, res.result)
-    return { success: true, triggered: true, result: res.result }
+    await invokeCloudCrawlerAsync({ action: 'allApproved', cursor: 0, __internal: true, __token: INTERNAL_TOKEN })
+    await writeReport('triggered', 0, { fired: true })
+    return { success: true, triggered: true }
   } catch (e) {
     console.error('[cloudCrawlerDailyTrigger] failed', e)
     await heartbeat('error', 0, e.message)
     await safeReportError(e)
     return { success: false, error: e.message }
   }
+}
+
+// 触发 cloudCrawler 处理一批。刻意不 await 其完整执行：一批最多 20 位艺人，每位都要打网易云接口，
+// 耗时不可控，同步等待很容易撞上跨云函数调用（cloud.callFunction）自身的 socket 超时——这正是之前
+// crawlerReports 里反复出现 "ESOCKETTIMEDOUT" 的原因。cloudCrawler.js 自己链式触发下一批时用的就是
+// 同样的 fire-and-forget 写法（见其 selfInvokeNext），这里改成完全一致。
+async function invokeCloudCrawlerAsync(data) {
+  try {
+    const p = cloud.callFunction({ name: 'cloudCrawler', data })
+    if (p && typeof p.catch === 'function') p.catch(() => {})
+  } catch (e) {}
+  await new Promise(r => setTimeout(r, 800))
 }
 
 // 每次醒来都盖写一次心跳字段（只更新这两个字段，不影响 status/progress 等其它字段），
