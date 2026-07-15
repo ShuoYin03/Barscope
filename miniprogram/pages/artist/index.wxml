@@ -46,13 +46,15 @@
           </view>
         </view>
 
-        <view wx:if="{{years.length}}" class="career-timeline">
-          <view class="career-timeline-line" />
-          <view wx:for="{{years}}" wx:key="*this" class="career-year {{activeYear === item ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item}}">
-            <view class="career-dot" />
-            <text>{{item}}</text>
+        <scroll-view wx:if="{{years.length}}" class="career-timeline" scroll-y enhanced show-scrollbar="{{false}}">
+          <view class="career-timeline-inner">
+            <view class="career-timeline-line" />
+            <view wx:for="{{years}}" wx:key="*this" class="career-year {{activeYear === item ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item}}">
+              <view class="career-dot" />
+              <text>{{item}}</text>
+            </view>
           </view>
-        </view>
+        </scroll-view>
       </view>
 
       <view class="side-row side-b-row"><text class="side-text">SIDE B — TOP COLLABORATORS</text><view class="side-rule" /></view>
