@@ -44,6 +44,48 @@
   margin-bottom: 4rpx;
 }
 
+/* ── ON THIS DAY — standalone editorial column ── */
+.otd-section {
+  margin: 28rpx 0 30rpx;
+  padding: 0 0 18rpx;
+  background: #08060A;
+  border-top: 2rpx solid var(--gray-light);
+  border-bottom: 2rpx solid var(--gray-light);
+}
+.otd-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 26rpx 44rpx 18rpx;
+  border-bottom: 1px solid var(--off-white);
+}
+.otd-title-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.otd-eyebrow {
+  font-family: var(--font-bebas);
+  font-size: 20rpx;
+  letter-spacing: 5rpx;
+  color: var(--accent);
+  line-height: 1;
+}
+.otd-title {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 2rpx;
+}
+.otd-note {
+  flex-shrink: 0;
+  font-size: 18rpx;
+  color: var(--gray-mid);
+  letter-spacing: 2rpx;
+}
+
 /* ── ON THIS DAY — vinyl disc + cover swiper ── */
 .hero-banner {
   width: 100%;
@@ -376,18 +418,15 @@
   font-family: var(--font-bebas);
   font-size: 40rpx;
   letter-spacing: 2rpx;
-  color: var(--gray-mid);
+  color: var(--accent);
   flex-shrink: 0;
   align-self: center;
-  line-height: 1;
 }
-
-.review-item.is-critic .review-score { color: var(--accent); }
 
 .review-text {
   font-size: 24rpx;
   color: var(--gray-mid);
-  line-height: 1.6;
+  line-height: 1.65;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -398,81 +437,57 @@
   margin-top: 16rpx;
   font-size: 20rpx;
   color: var(--gray-mid);
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
 }
 
-.sep { color: var(--gray-light); }
+.review-footer .sep { margin: 0 4rpx; }
 
+/* ── FEED GATE ── */
 .feed-gate {
-  padding: 48rpx 32rpx;
+  padding: 48rpx 32rpx 54rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 20rpx;
-  text-align: center;
 }
 .feed-gate-text {
-  font-size: 23rpx;
-  color: var(--gray-mid);
+  font-size: 22rpx;
   line-height: 1.6;
+  color: var(--gray-mid);
 }
 .feed-gate-btn {
-  padding: 16rpx 40rpx;
   background: var(--accent);
   color: var(--black);
   font-size: 22rpx;
-  font-weight: 800;
-  letter-spacing: 2rpx;
+  font-weight: 700;
+  padding: 14rpx 24rpx;
 }
 
-/* ── COVER IMAGE ── */
-.cover-img {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  display: block;
-}
-
-/* ── STATS STRIP ── */
+/* ── STATS ── */
 .stat-strip {
-  background: var(--black);
   display: flex;
   border-top: 2rpx solid var(--gray-light);
+  border-bottom: 2rpx solid var(--gray-light);
+  margin-top: 18rpx;
 }
-
 .stat-cell {
   flex: 1;
-  padding: 32rpx 24rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
+  text-align: center;
+  padding: 30rpx 10rpx 34rpx;
 }
-
 .stat-mid {
   border-left: 2rpx solid var(--gray-light);
   border-right: 2rpx solid var(--gray-light);
 }
-
-.stat-num-row {
-  display: flex;
-  align-items: baseline;
-}
-
+.stat-num-row { line-height: 1; }
 .stat-accent {
   font-family: var(--font-bebas);
-  font-weight: 700;
-  font-size: 56rpx;
+  font-size: 48rpx;
   color: var(--accent);
-  line-height: 1;
-  letter-spacing: 2rpx;
 }
-
 .stat-label {
-  font-size: 18rpx;
+  display: block;
+  margin-top: 8rpx;
+  font-size: 19rpx;
   color: var(--gray-mid);
   letter-spacing: 2rpx;
 }
-
