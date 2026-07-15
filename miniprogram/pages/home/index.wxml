@@ -15,7 +15,7 @@
     <!-- TICKER -->
     <ticker songs="{{tickerSongs}}" />
 
-    <!-- ── LATEST RELEASES — larger and slower scrolling cover wall ── -->
+    <!-- ── SIDE A — LATEST RELEASES ─────────────────────────────── -->
     <view class="section-block">
       <section-header side="A" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
       <view wx:if="{{loading}}" class="marquee-skel">
@@ -24,11 +24,14 @@
       <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
     </view>
 
-    <!-- ── ON THIS DAY — old albums released on this same date, past years ── -->
+    <!-- ── ON THIS DAY + TODAY'S HOT REVIEW TAG ────────────────── -->
     <swiper wx:if="{{!loading && onThisDayList.length}}" class="hero-swiper" autoplay="{{onThisDayList.length > 1}}" interval="5000" duration="380" circular="{{onThisDayList.length > 1}}" indicator-dots="{{onThisDayList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
       <swiper-item wx:for="{{onThisDayList}}" wx:key="albumId">
         <view class="hero-banner" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-          <view class="hero-kicker" style="align-self:flex-start;margin-bottom:22rpx;font-size:20rpx;font-weight:800;letter-spacing:6rpx;color:#d45124;"><text>历史上的今天 · {{item.yearsAgo}}年前</text></view>
+          <view style="align-self:flex-start;margin-bottom:10rpx;">
+            <text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">历史上的今天 · {{item.yearsAgo}}年前</text>
+            <text wx:if="{{todayHotTitle}}" style="display:block;margin-top:12rpx;font-size:18rpx;font-weight:700;letter-spacing:2rpx;color:#d45124;">今日热评专辑 · {{todayHotTitle}}</text>
+          </view>
           <view class="vinyl-hero-wrap" style="width:560rpx;height:355rpx;position:relative;display:flex;align-items:flex-start;justify-content:center;">
             <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">
               <view class="vinyl-hero-label">
@@ -50,21 +53,9 @@
       </swiper-item>
     </swiper>
 
-    <!-- ── HERO — today hot reviewed album (scrolling cover wall) ─────────── -->
-    <view class="section-block" wx:if="{{loading}}">
-      <view class="marquee-label"><text>今日热评专辑</text></view>
-      <view class="marquee-skel">
-        <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="sk" style="width:200rpx;height:200rpx;flex-shrink:0;" />
-      </view>
-    </view>
-    <view class="section-block" wx:elif="{{heroList.length}}">
-      <view class="marquee-label"><text>{{heroLabel}}</text></view>
-      <cover-marquee list="{{heroList}}" />
-    </view>
-
-    <!-- ── SIDE B — TOP CHARTS (H-A text rows) ────────────────────── -->
+    <!-- ── SIDE B — RECENTLY HOT REVIEWED ALBUMS ───────────────── -->
     <view class="section-block">
-      <section-header side="B" title="TOP CHARTS" />
+      <section-header side="B" title="近期热评专辑" more="{{true}}" bind:more="onReviewMore" />
       <view wx:if="{{loading}}" class="ca-list">
         <view class="ca-rows">
           <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
@@ -78,17 +69,16 @@
       </view>
       <view wx:else class="ca-list">
         <view class="ca-rows">
-          <view wx:for="{{chartItems}}" wx:key="rank" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-            <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank <= 5 ? 'A' + item.rank : 'B' + (item.rank - 5)}}</text>
+          <view wx:for="{{recentHotItems}}" wx:key="albumId" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}">
+            <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank}}</text>
             <view class="ca-info"><text class="ca-title">{{item.title}}</text><text class="ca-artist">{{item.artist}}</text></view>
             <text class="ca-score">{{item.scoreDisplay}}</text>
           </view>
         </view>
-        <view class="ca-more" bindtap="onChartMore"><text>更多 →</text></view>
       </view>
     </view>
 
-    <!-- ── SECTION 04: RECENT REVIEWS ─────────────────────────────── -->
+    <!-- ── SIDE C — RECENT REVIEWS ─────────────────────────────── -->
     <view class="section-block">
       <section-header side="C" title="最新评论" more="{{true}}" bind:more="onReviewMore" />
       <view wx:if="{{loading}}" class="reviews-list">
