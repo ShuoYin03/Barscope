@@ -2,11 +2,10 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-exports.main = async (event, context) => {
+exports.main = async (event) => {
   const { period = 'weekly', limit = 20 } = event
 
   try {
-    // 有评分数据时按 avgScore 排，否则按新碟排
     const { data: scored } = await db.collection('albums')
       .where({ approved: true, avgScore: db.command.gt(0) })
       .orderBy('avgScore', 'desc')
@@ -14,9 +13,12 @@ exports.main = async (event, context) => {
       .get()
 
     const sortField = scored.length > 0 ? 'avgScore' : 'releaseYear'
+    const where = period === 'release2026'
+      ? { approved: true, releaseYear: 2026 }
+      : { approved: true }
 
     const { data } = await db.collection('albums')
-      .where({ approved: true })
+      .where(where)
       .orderBy(sortField, 'desc')
       .limit(limit)
       .get()
