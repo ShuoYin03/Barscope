@@ -50,7 +50,7 @@
           <text class="chart-artist">{{item.artist}}</text>
           <text class="chart-date">{{item.dateDisplay}}</text>
         </view>
-        <text class="chart-score">{{item.scoreDisplay}}</text>
+        <text class="chart-score {{item.rank === 1 ? 'top-1' : item.rank === 2 ? 'top-2' : item.rank === 3 ? 'top-3' : ''}}">{{item.scoreDisplay}}</text>
       </view>
 
       <view wx:if="{{list.length > 0}}" class="list-end"><text class="list-end-text">— END OF TOP 30 —</text></view>
