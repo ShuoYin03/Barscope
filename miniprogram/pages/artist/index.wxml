@@ -60,7 +60,7 @@
       <view class="side-row side-b-row">
         <view class="side-b-title-wrap">
           <text class="side-text">SIDE B — TOP COLLABORATORS</text>
-          <text class="side-note">仅统计生涯已收录专辑 Tracks 中的 Featuring 合作</text>
+          <text class="side-note">仅统计生涯专辑内 Tracks 的 Featuring 合作数据 · 同次数优先展示已收录 Rapper</text>
         </view>
         <view class="side-rule" />
         <text wx:if="{{collaborators.length > 3}}" class="side-more" bindtap="onCollaboratorsMore">{{collaboratorsExpanded ? '收起 ↑' : '更多 →'}}</text>
