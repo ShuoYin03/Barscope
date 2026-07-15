@@ -32,6 +32,10 @@
       <view class="stat-cell"><text class="stat-num">{{followingCount}}</text><text class="stat-lbl">关注中</text></view>
     </view>
 
+    <view wx:if="{{badges.length}}" class="badge-row">
+      <view wx:for="{{badges}}" wx:key="id" class="badge-pill"><text class="badge-icon">{{item.icon}}</text><text class="badge-name">{{item.name}}</text></view>
+    </view>
+
     <view class="side-row"><text class="side-text">最新乐评</text></view>
     <view wx:if="{{latestReviews.length === 0}}" class="empty small">还没有发布乐评</view>
     <block wx:else>

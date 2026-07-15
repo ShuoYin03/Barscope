@@ -11,7 +11,7 @@ function safeCallFunction(name: string, data: Record<string, any>) {
 }
 
 Page({
-  data: { statusBarHeight: 20, topbarHeight: 64, themeClass: '', tickerSongs: FALLBACK_TICKER_SONGS, loading: true, heroLabel: '今日热评专辑', heroList: [] as any[], onThisDayList: [] as any[], chartItems: [] as any[], newReleases: [] as any[], reviews: [] as any[], totalAlbums: 0, totalArtists: 0, totalReviews: 0 },
+  data: { statusBarHeight: 20, topbarHeight: 64, themeClass: '', tickerSongs: FALLBACK_TICKER_SONGS, loading: true, heroLabel: '今日热评专辑', heroList: [] as any[], onThisDayList: [] as any[], chartItems: [] as any[], newReleases: [] as any[], reviews: [] as any[], topCritics: [] as any[], totalAlbums: 0, totalArtists: 0, totalReviews: 0 },
   onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }) },
   onShow() { if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 }); this.setData({ themeClass: getThemeClass() }); this._loadData() },
   _loadData() {
@@ -24,8 +24,9 @@ Page({
     const p6 = safeCallFunction('getArtists', { limit: 1 })
     const p7 = safeCallFunction('getReviews', { totalCount: true })
     const p8 = safeCallFunction('getOnThisDay', { limit: 8 })
-    Promise.all([p1, p2, p3, p4, p5, p6, p7, p8]).then((results: any[]) => {
-      const chartsRes = results[0], reviewsRes = results[1], totalRes = results[2], latestRes = results[3], dailyHotRes = results[4], artistsRes = results[5], reviewCountRes = results[6], onThisDayRes = results[7]
+    const p9 = safeCallFunction('getReviews', { monthlyTopCritics: true, limit: 8 })
+    Promise.all([p1, p2, p3, p4, p5, p6, p7, p8, p9]).then((results: any[]) => {
+      const chartsRes = results[0], reviewsRes = results[1], totalRes = results[2], latestRes = results[3], dailyHotRes = results[4], artistsRes = results[5], reviewCountRes = results[6], onThisDayRes = results[7], topCriticsRes = results[8]
       const chartItems = chartsRes.success ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) })) : []
       const topItem = chartItems[0] || null
       const dailyAlbums = dailyHotRes?.success ? (dailyHotRes.albums || (dailyHotRes.album ? [dailyHotRes.album] : [])) : []
@@ -52,7 +53,8 @@ Page({
         albumId: a.albumId, title: a.title, artist: a.artist, year: a.releaseYear,
         score: fmtScore(a.avgScore), coverUrl: a.coverUrl || '', yearsAgo: a.yearsAgo,
       })) : []
-      this.setData({ tickerSongs, heroLabel, heroList, onThisDayList, chartItems, newReleases, reviews: reviewsRes.success ? (reviewsRes.list || []) : [], totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0, totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0, totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0, loading: false })
+      const topCritics = topCriticsRes?.success ? (topCriticsRes.list || []).map((c: any) => ({ ...c, initial: c.nickName ? c.nickName[0] : '?' })) : []
+      this.setData({ tickerSongs, heroLabel, heroList, onThisDayList, chartItems, newReleases, reviews: reviewsRes.success ? (reviewsRes.list || []) : [], topCritics, totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0, totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0, totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0, loading: false })
     }).catch((err: any) => { console.error('home _loadData error', err); this.setData({ loading: false }) })
   },
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
@@ -61,4 +63,5 @@ Page({
   onReviewTap(e: WechatMiniprogram.TouchEvent) { const id = (e.currentTarget.dataset as any).id; if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }) },
   onSearchTap() { wx.switchTab({ url: '/pages/discover/index' }) },
   onReviewMore() { wx.navigateTo({ url: '/pages/recent-reviews/index' }) },
+  onCriticTap(e: WechatMiniprogram.TouchEvent) { const openId = (e.currentTarget.dataset as any).openId; if (openId) wx.navigateTo({ url: `/pages/user/index?openId=${openId}` }) },
 })

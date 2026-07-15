@@ -8,6 +8,7 @@ Page({
     reviewCount:0,likesReceived:0,followerCount:0,followingCount:0,
     isMe:false,isFollowing:false,followBusy:false,
     latestReviews:[] as any[],
+    badges:[] as any[],
   },
   onLoad(options){
     const app=getApp<IAppOption>()
@@ -38,6 +39,7 @@ Page({
         isMe:!!p.isMe,
         isFollowing:!!p.isFollowing,
         latestReviews:(p.latestReviews||[]).map((x:any)=>({...x,ratingText:x.rating?Number(x.rating).toFixed(1):'—'})),
+        badges:p.badges||[],
       })
     },fail:()=>this.setData({loading:false,loadError:'加载失败，请确认云函数已部署'})} as any)
   },

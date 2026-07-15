@@ -3,6 +3,18 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const FOLLOWS_COL = 'follows'
 
+const BADGE_DEFS = [
+  { id: 'first_review', name: '首条乐评', icon: '✎', check: s => s.reviewCount >= 1 },
+  { id: 'ten_reviews', name: '十条乐评', icon: '✎✎', check: s => s.reviewCount >= 10 },
+  { id: 'fifty_reviews', name: '资深乐评人', icon: '★', check: s => s.reviewCount >= 50 },
+  { id: 'ten_likes', name: '获赞新星', icon: '♥', check: s => s.likesReceived >= 10 },
+  { id: 'fifty_likes', name: '获赞达人', icon: '♥♥', check: s => s.likesReceived >= 50 },
+  { id: 'ten_followers', name: '人气乐评人', icon: '⌁', check: s => s.followerCount >= 10 },
+]
+function computeBadges(stats) {
+  return BADGE_DEFS.filter(b => b.check(stats)).map(b => ({ id: b.id, name: b.name, icon: b.icon }))
+}
+
 function followDocId(followerOpenId, followingOpenId) {
   return `${followerOpenId}_${followingOpenId}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
 }
@@ -41,6 +53,7 @@ exports.main = async (event) => {
         isFollowing,
         isMe: OPENID === targetOpenId,
         latestReviews,
+        badges: computeBadges({ reviewCount, likesReceived, followerCount }),
       },
     }
   } catch (err) {
