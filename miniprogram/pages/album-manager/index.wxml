@@ -20,7 +20,7 @@
       <view class="mode-tab {{searchMode === 'multi' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="multi"><text>多人合作</text></view>
     </view>
 
-    <view class="search-bar" wx:if="{{searchMode === 'artist' || searchMode === 'title'}}">
+    <view class="search-bar" wx:if="{{searchMode === 'artist' || searchMode === 'title' || searchMode === 'all'}}">
       <view class="search-input-wrap">
         <text class="search-icon">⌕</text>
         <input
@@ -32,11 +32,19 @@
           placeholder-style="color:#666"
         />
         <input
-          wx:else
+          wx:elif="{{searchMode === 'title'}}"
           class="search-input"
           placeholder="搜索专辑名称…"
           value="{{titleKeyword}}"
           bindinput="onTitleSearch"
+          placeholder-style="color:#666"
+        />
+        <input
+          wx:else
+          class="search-input"
+          placeholder="搜索专辑名 / 歌手 / 专辑ID…"
+          value="{{allSearchKeyword}}"
+          bindinput="onAllSearch"
           placeholder-style="color:#666"
         />
       </view>
@@ -165,7 +173,7 @@
       </view>
 
       <block wx:else>
-        <view wx:for="{{titleResults}}" wx:key="_id" class="album-row">
+        <view wx:for="{{titleResults}}" wx:key="_id" class="album-row" bindtap="onTitleCardTap" data-id="{{item._id}}">
           <view class="album-cover-wrap">
             <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
             <view wx:else class="album-cover-fallback">
@@ -190,7 +198,7 @@
 
           <view
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
-            bindtap="onToggleApproved"
+            catchtap="onToggleApproved"
             data-id="{{item._id}}"
             data-approved="{{item.approved}}"
           >
@@ -252,7 +260,7 @@
 
         <view wx:elif="{{allList.length === 0}}" class="empty-state">
           <text class="empty-icon">○</text>
-          <text class="empty-text">该字母下暂无专辑</text>
+          <text class="empty-text">{{allSearching ? '没有匹配的专辑' : '该字母下暂无专辑'}}</text>
         </view>
 
         <block wx:else>
@@ -370,7 +378,7 @@
           <view
             wx:if="{{!multiSelectMode}}"
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
-            bindtap="onToggleApproved"
+            catchtap="onToggleApproved"
             data-id="{{item._id}}"
             data-approved="{{item.approved}}"
           >
@@ -409,7 +417,7 @@
       </view>
 
       <block wx:else>
-        <view wx:for="{{albumList}}" wx:key="_id" class="album-row">
+        <view wx:for="{{albumList}}" wx:key="_id" class="album-row" bindtap="onAlbumCardTap" data-id="{{item._id}}">
           <view class="album-cover-wrap">
             <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
             <view wx:else class="album-cover-fallback">
@@ -435,7 +443,7 @@
 
           <view
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
-            bindtap="onToggleApproved"
+            catchtap="onToggleApproved"
             data-id="{{item._id}}"
             data-approved="{{item.approved}}"
           >

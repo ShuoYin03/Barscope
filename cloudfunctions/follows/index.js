@@ -55,6 +55,7 @@ async function listFollowers(targetOpenId, viewerOpenId) {
 
   const usersRes = await db.collection('users').where({ openId: _.in(followerIds) }).field({ openId: true, nickName: true, avatarUrl: true, type: true }).get()
   const userMap = new Map((usersRes.data || []).map(u => [u.openId, u]))
+  const avatarMap = await resolveCloudUrls((usersRes.data || []).map(u => u.avatarUrl))
 
   let viewerFollowingSet = new Set()
   if (viewerOpenId) {
@@ -65,10 +66,30 @@ async function listFollowers(targetOpenId, viewerOpenId) {
   const list = followerIds.map(id => {
     const u = userMap.get(id)
     if (!u) return null
-    return { openId: id, nickName: u.nickName || '匿名用户', avatarUrl: u.avatarUrl || '', type: u.type || 'normal', isFollowing: viewerFollowingSet.has(id) }
+    return { openId: id, nickName: u.nickName || '匿名用户', avatarUrl: applyResolvedUrl(u.avatarUrl, avatarMap) || '', type: u.type || 'normal', isFollowing: viewerFollowingSet.has(id) }
   }).filter(Boolean)
 
   return { success: true, list }
+}
+
+// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
+// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
+// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
+async function resolveCloudUrls(urls) {
+  const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
+  if (!targets.length) return new Map()
+  try {
+    const res = await cloud.getTempFileURL({ fileList: targets })
+    const map = new Map()
+    ;(res.fileList || []).forEach(f => { if (f.status === 0 && f.tempFileURL) map.set(f.fileID, f.tempFileURL) })
+    return map
+  } catch (e) {
+    console.warn('resolveCloudUrls failed:', e.message)
+    return new Map()
+  }
+}
+function applyResolvedUrl(url, map) {
+  return (url && map.get(url)) || url
 }
 
 async function ensureCollection(name) {

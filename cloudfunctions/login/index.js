@@ -12,6 +12,7 @@ exports.main = async (event, context) => {
     const coverUrl = String(event.coverUrl || '').trim()
     const bio = String(event.bio || '').trim().slice(0, 100)
 
+    let user
     if (data.length > 0) {
       const existing = data[0]
       const patch = {}
@@ -23,24 +24,49 @@ exports.main = async (event, context) => {
         await db.collection('users').doc(existing._id).update({ data: patch })
         Object.assign(existing, patch)
       }
-      return { success: true, user: existing, isNew: false }
+      user = existing
+    } else {
+      // First time login — create user
+      const newUser = {
+        openId: OPENID,
+        nickName: nickName || '说唱迷',
+        avatarUrl: avatarUrl || '',
+        coverUrl: coverUrl || '',
+        type: 'normal',
+        bio: bio || '',
+        reviewCount: 0,
+        joinedAt: db.serverDate(),
+      }
+      const result = await db.collection('users').add({ data: newUser })
+      user = { _id: result._id, ...newUser }
     }
 
-    // First time login — create user
-    const newUser = {
-      openId: OPENID,
-      nickName: nickName || '说唱迷',
-      avatarUrl: avatarUrl || '',
-      coverUrl: coverUrl || '',
-      type: 'normal',
-      bio: bio || '',
-      reviewCount: 0,
-      joinedAt: db.serverDate(),
-    }
+    const urlMap = await resolveCloudUrls([user.avatarUrl, user.coverUrl])
+    user.avatarUrl = applyResolvedUrl(user.avatarUrl, urlMap) || ''
+    user.coverUrl = applyResolvedUrl(user.coverUrl, urlMap) || ''
 
-    const result = await db.collection('users').add({ data: newUser })
-    return { success: true, user: { _id: result._id, ...newUser }, isNew: true }
+    return { success: true, user, isNew: data.length === 0 }
   } catch (err) {
     return { success: false, error: err.message }
   }
+}
+
+// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
+// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
+// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
+async function resolveCloudUrls(urls) {
+  const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
+  if (!targets.length) return new Map()
+  try {
+    const res = await cloud.getTempFileURL({ fileList: targets })
+    const map = new Map()
+    ;(res.fileList || []).forEach(f => { if (f.status === 0 && f.tempFileURL) map.set(f.fileID, f.tempFileURL) })
+    return map
+  } catch (e) {
+    console.warn('resolveCloudUrls failed:', e.message)
+    return new Map()
+  }
+}
+function applyResolvedUrl(url, map) {
+  return (url && map.get(url)) || url
 }

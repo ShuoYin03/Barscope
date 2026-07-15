@@ -45,6 +45,7 @@ import { getThemeClass } from '../../utils/theme'
 let _searchTimer: any = null
 let _titleSearchTimer: any = null
 let _ownerSearchTimer: any = null
+let _allSearchTimer: any = null
 
 Page({
   data: {
@@ -72,6 +73,8 @@ Page({
 
     allLetters: [] as LetterCount[],
     allActiveLetter: '',
+    allSearchKeyword: '',
+    allSearching: false,
     allList: [] as Album[],
     allLoading: false,
     allPage: 1,
@@ -227,8 +230,8 @@ Page({
   },
 
   onMultiCardTap(e: WechatMiniprogram.TouchEvent) {
-    if (!this.data.multiSelectMode) return
     const id = (e.currentTarget.dataset as { id: string }).id
+    if (!this.data.multiSelectMode) { if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }); return }
     const multiList = this.data.multiList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
     this.setData({ multiList, multiSelectedCount: multiList.filter(a => a.selected).length })
   },
@@ -297,8 +300,35 @@ Page({
   onAllLetterTap(e: WechatMiniprogram.TouchEvent) {
     const letter = (e.currentTarget.dataset as { letter: string }).letter
     if (!letter || letter === this.data.allActiveLetter) return
-    this.setData({ allActiveLetter: letter, allList: [], allPage: 1, allHasMore: false })
+    this.setData({ allActiveLetter: letter, allSearchKeyword: '', allSearching: false, allList: [], allPage: 1, allHasMore: false })
     this._loadAllAlbums(letter, 1)
+  },
+
+  onAllSearch(e: WechatMiniprogram.Input) {
+    const keyword = e.detail.value || ''
+    this.setData({ allSearchKeyword: keyword })
+    clearTimeout(_allSearchTimer)
+    _allSearchTimer = setTimeout(() => this._searchAllAlbums(keyword), 400)
+  },
+
+  _searchAllAlbums(keyword: string) {
+    const kw = keyword.trim()
+    if (!kw) {
+      this.setData({ allSearching: false, allList: [], allPage: 1, allHasMore: false })
+      this._loadAllAlbums(this.data.allActiveLetter, 1)
+      return
+    }
+    this.setData({ allSearching: true, allLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'search_admin_albums', keyword: kw },
+      success: (res: any) => {
+        const r = res.result || {}
+        const list = r.success ? (r.list || []) : []
+        this.setData({ allList: list, allTotal: list.length, allHasMore: false, allLoading: false })
+      },
+      fail: () => this.setData({ allLoading: false }),
+    })
   },
 
   _loadAllAlbums(letter: string, page: number) {
@@ -324,7 +354,7 @@ Page({
   },
 
   onAllReachBottom() {
-    if (this.data.searchMode !== 'all' || !this.data.allHasMore || this.data.allLoading) return
+    if (this.data.searchMode !== 'all' || this.data.allSearching || !this.data.allHasMore || this.data.allLoading) return
     this._loadAllAlbums(this.data.allActiveLetter, this.data.allPage + 1)
   },
 
@@ -335,10 +365,18 @@ Page({
   },
 
   onAllCardTap(e: WechatMiniprogram.TouchEvent) {
-    if (!this.data.allSelectMode) return
     const id = (e.currentTarget.dataset as { id: string }).id
+    if (!this.data.allSelectMode) { if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }); return }
     const allList = this.data.allList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
     this.setData({ allList, allSelectedCount: allList.filter(a => a.selected).length })
+  },
+  onTitleCardTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as { id: string }).id
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+  },
+  onAlbumCardTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as { id: string }).id
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
   },
 
   onAllSelectAll() {

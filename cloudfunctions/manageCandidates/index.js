@@ -324,17 +324,22 @@ async function listAdminAlbums(artistId, artistName) {
 }
 
 // ── search_admin_albums ────────────────────────────────────────────────────────
+// Also tries the keyword as a direct _id lookup so admins can paste an album ID
+// straight in, not just browse by first letter of the title.
 async function searchAdminAlbums(keyword) {
   const kw = String(keyword || '').trim()
   if (!kw) return { success: true, list: [], total: 0 }
   try {
     const re = db.RegExp({ regexp: kw, options: 'i' })
-    const result = await db.collection('albums')
-      .where(_.or([{ title: re }, { artist: re }]))
-      .orderBy('releaseYear', 'desc')
-      .limit(60)
-      .get()
-    return { success: true, list: result.data, total: result.data.length }
+    const [byIdRes, regexRes] = await Promise.all([
+      db.collection('albums').doc(kw).get().catch(() => null),
+      db.collection('albums').where(_.or([{ title: re }, { artist: re }])).orderBy('releaseYear', 'desc').limit(60).get(),
+    ])
+    const list = []
+    const seen = new Set()
+    if (byIdRes && byIdRes.data) { list.push(byIdRes.data); seen.add(String(byIdRes.data._id)) }
+    ;(regexRes.data || []).forEach(a => { if (!seen.has(String(a._id))) { list.push(a); seen.add(String(a._id)) } })
+    return { success: true, list, total: list.length }
   } catch (e) {
     return { success: false, error: e.message }
   }

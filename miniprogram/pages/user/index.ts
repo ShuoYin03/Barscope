@@ -57,7 +57,6 @@ Page({
   },
   onEditProfile(){wx.navigateTo({url:'/pages/login/index'})},
   onViewAllBadges(){wx.navigateTo({url:`/pages/badges/index?openId=${this.data.openId}`})},
-  onViewFollowers(){wx.navigateTo({url:`/pages/followers/index?openId=${this.data.openId}`})},
   onReviewTap(e:WechatMiniprogram.TouchEvent){
     const albumId=(e.currentTarget.dataset as any).albumId
     if(albumId)wx.navigateTo({url:`/pages/album-detail/index?id=${albumId}`})

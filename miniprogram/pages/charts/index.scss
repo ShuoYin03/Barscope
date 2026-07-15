@@ -90,11 +90,36 @@
   letter-spacing: 1rpx;
 }
 
+.ranking-section-head {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 10rpx 32rpx 12rpx;
+  background: var(--black);
+}
+.podium-section-head { padding-top: 2rpx; }
+.field-section-head { padding-top: 28rpx; }
+.ranking-section-title {
+  font-family: var(--font-bebas);
+  font-size: 20rpx;
+  letter-spacing: 5rpx;
+  color: var(--gray-mid);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ranking-section-rule {
+  flex: 1;
+  height: 2rpx;
+  background: var(--gray-light);
+}
+
 .chart-item {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  padding: 22rpx 32rpx;
+  height: 168rpx;
+  padding: 14rpx 32rpx;
+  box-sizing: border-box;
   border-bottom: 2rpx solid var(--off-white);
 }
 .chart-item:last-child { border-bottom: none; }
@@ -109,6 +134,7 @@
   letter-spacing: 1rpx;
   color: var(--accent);
 }
+
 .chart-info {
   flex: 1;
   min-width: 0;
