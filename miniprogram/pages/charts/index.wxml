@@ -31,27 +31,30 @@
         <view class="sk" style="width:40rpx;height:34rpx;flex-shrink:0;" />
       </view>
     </view>
+
     <view wx:else class="chart-list">
-      <block wx:for="{{list}}" wx:key="rank">
-        <view wx:if="{{index === 0}}" class="chart-side"><section-header side="A" title="TOP CHARTS" /></view>
-        <view wx:if="{{item.rank === 6}}" class="chart-side"><section-header side="B" title="6–10" /></view>
-        <view class="chart-item" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-          <text class="chart-rank {{item.rank <= 5 ? 'aside' : 'bside'}}">{{item.rank <= 5 ? 'A' + item.rank : 'B' + (item.rank - 5)}}</text>
-          <view class="vinyl-cover-wrap">
-            <view class="vinyl-disc-peek" />
-            <image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" />
-            <view wx:else class="cover-sq cover-sq-ph" />
-          </view>
-          <view class="chart-info">
-            <text class="chart-title">{{item.title}}</text>
-            <text class="chart-artist">{{item.artist}}</text>
-            <text class="chart-date">{{item.dateDisplay}}</text>
-          </view>
-          <text class="chart-score">{{item.scoreDisplay}}</text>
+      <view class="ranking-head" wx:if="{{list.length > 0}}">
+        <text class="ranking-kicker">TOP 30</text>
+        <text class="ranking-copy">仅统计已有评分的专辑</text>
+      </view>
+
+      <view wx:for="{{list}}" wx:key="albumId" class="chart-item" bindtap="onAlbumTap" data-id="{{item.albumId}}">
+        <text class="chart-rank">{{item.rank}}</text>
+        <view class="vinyl-cover-wrap">
+          <view class="vinyl-disc-peek" />
+          <image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view wx:else class="cover-sq cover-sq-ph" />
         </view>
-      </block>
-      <view wx:if="{{list.length > 0}}" class="list-end"><text class="list-end-text">— END OF SIDE B —</text></view>
-      <view wx:if="{{list.length === 0}}" class="list-end"><text class="list-end-text">— 暂无符合条件的专辑 —</text></view>
+        <view class="chart-info">
+          <text class="chart-title">{{item.title}}</text>
+          <text class="chart-artist">{{item.artist}}</text>
+          <text class="chart-date">{{item.dateDisplay}}</text>
+        </view>
+        <text class="chart-score">{{item.scoreDisplay}}</text>
+      </view>
+
+      <view wx:if="{{list.length > 0}}" class="list-end"><text class="list-end-text">— END OF TOP 30 —</text></view>
+      <view wx:if="{{list.length === 0}}" class="list-end"><text class="list-end-text">— 暂无已评分专辑 —</text></view>
     </view>
   </scroll-view>
 
