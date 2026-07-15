@@ -69,6 +69,4 @@
       <text class="list-end-text">— {{favorites.length}} RECORDS —</text>
     </view>
   </scroll-view>
-
-  <bottom-nav selected="{{3}}" />
 </view>

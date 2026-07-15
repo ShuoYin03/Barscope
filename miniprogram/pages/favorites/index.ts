@@ -41,9 +41,6 @@ Page({
   },
 
   onShow() {
-    if (typeof this.getTabBar === 'function') {
-      this.getTabBar()?.setData({ selected: 3 })
-    }
     this.setData({ themeClass: getThemeClass() })
     const app = getApp<IAppOption>()
     const loggedIn = !!app.globalData.userInfo
