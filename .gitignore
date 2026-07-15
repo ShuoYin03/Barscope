@@ -11,3 +11,5 @@ project.private.config.json
 .gstack/
 
 crawler/backups/
+
+CLAUDE.md
