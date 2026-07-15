@@ -98,6 +98,10 @@
   border-bottom: 2rpx solid var(--off-white);
 }
 .chart-item:last-child { border-bottom: none; }
+.podium-item {
+  position: relative;
+  min-height: 150rpx;
+}
 .chart-rank {
   font-family: var(--font-bebas);
   font-weight: 700;
@@ -109,6 +113,60 @@
   letter-spacing: 1rpx;
   color: var(--accent);
 }
+
+.medal-wrap {
+  position: relative;
+  width: 68rpx;
+  height: 78rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.medal-ribbon {
+  position: absolute;
+  top: 0;
+  width: 18rpx;
+  height: 38rpx;
+  border-radius: 3rpx 3rpx 1rpx 1rpx;
+  transform-origin: top center;
+}
+.medal-ribbon-l {
+  left: 18rpx;
+  transform: rotate(-14deg);
+}
+.medal-ribbon-r {
+  right: 18rpx;
+  transform: rotate(14deg);
+}
+.medal-disc {
+  position: relative;
+  z-index: 2;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 4rpx solid rgba(255,255,255,.28);
+  box-shadow: 0 0 16rpx rgba(0,0,0,.28), inset 0 0 0 3rpx rgba(0,0,0,.12);
+}
+.medal-rank {
+  font-family: var(--font-bebas);
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1;
+  color: #111111;
+  text-shadow: 0 1rpx 0 rgba(255,255,255,.35);
+}
+.medal-1 .medal-disc { background: #FFD400; }
+.medal-1 .medal-ribbon { background: #FF3B30; }
+.medal-2 .medal-disc { background: #E8EDF2; }
+.medal-2 .medal-ribbon { background: #4A90E2; }
+.medal-3 .medal-disc { background: #F07A24; }
+.medal-3 .medal-ribbon { background: #8E44AD; }
+
 .chart-info {
   flex: 1;
   min-width: 0;
@@ -151,10 +209,30 @@
   flex-shrink: 0;
 }
 
-/* Fixed podium colors: intentionally independent from light/dark theme variables. */
-.chart-score.top-1 { color: #D4AF37; }
-.chart-score.top-2 { color: #C0C0C0; }
-.chart-score.top-3 { color: #CD7F32; }
+/* Fixed high-saturation podium colors: independent from light/dark theme variables. */
+.chart-score.top-1 { color: #FFD400; }
+.chart-score.top-2 { color: #E8EDF2; }
+.chart-score.top-3 { color: #F07A24; }
+
+.ranking-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx 44rpx 10rpx;
+  background: var(--black);
+}
+.ranking-section-line {
+  flex: 1;
+  height: 2rpx;
+  background: var(--gray-light);
+}
+.ranking-section-label {
+  font-family: var(--font-bebas);
+  font-size: 18rpx;
+  letter-spacing: 4rpx;
+  color: var(--gray-mid);
+  white-space: nowrap;
+}
 
 .list-end {
   padding: 36rpx 32rpx 120rpx;
