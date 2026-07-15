@@ -1,75 +1,86 @@
 <view class="page {{themeClass}}">
-  <view
-    class="back-btn"
-    style="top: {{capsuleTop}}px; height: {{capsuleHeight}}px"
-    bindtap="onBack"
-  >
-    <text class="back-icon">‹</text>
-    <text class="back-label">返回</text>
-  </view>
+  <block wx:if="{{isUpdating}}">
+    <view class="edit-topbar" style="padding-top: {{capsuleTop}}px; min-height: {{capsuleTop + capsuleHeight + 18}}px">
+      <view class="edit-back" style="height: {{capsuleHeight}}px" bindtap="onBack">
+        <text class="edit-back-icon">←</text>
+      </view>
+      <view class="edit-heading" style="height: {{capsuleHeight}}px">
+        <text class="edit-brand">EDIT PROFILE</text>
+        <text class="edit-brand-cn">编辑资料</text>
+      </view>
+    </view>
 
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" style="padding-top: {{capsuleTop + capsuleHeight + 16}}px">
-    <text wx:if="{{isUpdating}}" class="edit-title">编辑资料</text>
-    <view wx:else class="logo-area">
-      <view class="logo-vinyl-disc">
-        <view class="logo-vinyl-label">
-          <text class="logo-vinyl-text">韵</text>
+    <scroll-view class="edit-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="edit-cover" bindtap="onChooseCover">
+        <image wx:if="{{coverUrl}}" class="edit-cover-img" src="{{coverUrl}}" mode="aspectFill" />
+        <view wx:else class="edit-cover-img edit-cover-ph">
+          <text class="edit-cover-label">＋ 添加主页封面</text>
         </view>
-        <view class="logo-vinyl-spindle" />
+        <view class="edit-cover-overlay"><text>更换封面</text></view>
       </view>
-      <text class="logo-zh">BEATWEEN</text>
-      <text class="logo-en">韵镜</text>
-      <text class="tagline">授权头像和昵称，加入说唱评分社区</text>
-    </view>
 
-    <view class="cover-section">
-      <view class="cover-frame" bindtap="onChooseCover">
-        <image wx:if="{{coverUrl}}" class="cover-img" src="{{coverUrl}}" mode="aspectFill" />
-        <view wx:else class="cover-img cover-ph"><text class="cover-plus">+ 设置封面图</text></view>
+      <view class="edit-identity">
+        <view class="edit-avatar-wrap">
+          <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+            <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+            <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">＋</text></view>
+          </button>
+        </view>
+        <view class="edit-identity-copy">
+          <text class="edit-identity-title">头像与主页</text>
+          <text class="edit-identity-sub">点击头像或封面即可更换</text>
+        </view>
       </view>
-      <text class="cover-hint">封面图 · 展示在你的个人主页顶部</text>
-    </view>
 
-    <view class="avatar-section">
-      <view class="avatar-frame">
-        <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-          <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
-          <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view>
-        </button>
+      <view class="edit-section-label"><text>SIDE A — 基本资料</text></view>
+
+      <view class="edit-fields">
+        <view class="edit-field">
+          <view class="edit-field-head"><text class="edit-field-name">昵称</text><text class="edit-field-note">公开显示</text></view>
+          <input type="nickname" class="edit-input" placeholder="输入昵称" placeholder-class="nick-ph" bindinput="onNickInput" value="{{nickName}}" />
+        </view>
+
+        <view class="edit-field">
+          <view class="edit-field-head"><text class="edit-field-name">个人简介</text><text class="edit-field-note">{{bio.length}} / 100</text></view>
+          <textarea class="edit-textarea" placeholder="介绍你的听歌偏好、关注的场景或想说的话" placeholder-class="nick-ph" bindinput="onBioInput" value="{{bio}}" maxlength="100" />
+        </view>
       </view>
-      <text class="avatar-hint">点击授权并裁剪头像</text>
+
+      <view class="edit-privacy">
+        <text class="edit-privacy-kicker">PRIVACY</text>
+        <text class="edit-privacy-copy">头像、封面、昵称与简介仅用于韵镜个人主页和社区互动。</text>
+      </view>
+
+      <view class="edit-actions">
+        <view class="edit-save {{loading ? 'loading' : ''}}" bindtap="onLogin">
+          <text>{{loading ? '保存中…' : '保存资料'}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </block>
+
+  <block wx:else>
+    <view class="back-btn" style="top: {{capsuleTop}}px; height: {{capsuleHeight}}px" bindtap="onBack">
+      <text class="back-icon">‹</text><text class="back-label">返回</text>
     </view>
 
-    <view class="nick-section">
-      <text class="nick-label">昵称</text>
-      <input
-        type="nickname"
-        class="nick-input"
-        placeholder="点击使用微信昵称"
-        placeholder-class="nick-ph"
-        bindinput="onNickInput"
-        value="{{nickName}}"
-      />
-    </view>
+    <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" style="padding-top: {{capsuleTop + capsuleHeight + 16}}px">
+      <view class="logo-area">
+        <view class="logo-vinyl-disc"><view class="logo-vinyl-label"><text class="logo-vinyl-text">韵</text></view><view class="logo-vinyl-spindle" /></view>
+        <text class="logo-zh">BEATWEEN</text><text class="logo-en">韵镜</text><text class="tagline">授权头像和昵称，加入说唱评分社区</text>
+      </view>
 
-    <view class="nick-section">
-      <text class="nick-label">个人简介</text>
-      <textarea
-        class="bio-input"
-        placeholder="写点什么介绍一下自己（选填）"
-        placeholder-class="nick-ph"
-        bindinput="onBioInput"
-        value="{{bio}}"
-        maxlength="100"
-        auto-height
-      />
-      <text class="bio-count">{{bio.length}}/100</text>
-    </view>
+      <view class="cover-section">
+        <view class="cover-frame" bindtap="onChooseCover"><image wx:if="{{coverUrl}}" class="cover-img" src="{{coverUrl}}" mode="aspectFill" /><view wx:else class="cover-img cover-ph"><text class="cover-plus">+ 设置封面图</text></view></view>
+        <text class="cover-hint">封面图 · 展示在你的个人主页顶部</text>
+      </view>
 
-    <view class="login-btn {{loading ? 'loading' : ''}}" bindtap="onLogin">
-      <text>{{loading ? '处理中...' : (isUpdating ? '保存资料' : '授权并登录')}}</text>
-    </view>
+      <view class="avatar-section"><view class="avatar-frame"><button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"><image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" /><view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view></button></view><text class="avatar-hint">点击授权并裁剪头像</text></view>
 
-    <text class="hint">头像、封面与昵称仅用于韵镜个人主页和社区互动</text>
-  </scroll-view>
+      <view class="nick-section"><text class="nick-label">昵称</text><input type="nickname" class="nick-input" placeholder="点击使用微信昵称" placeholder-class="nick-ph" bindinput="onNickInput" value="{{nickName}}" /></view>
+      <view class="nick-section"><text class="nick-label">个人简介</text><textarea class="bio-input" placeholder="写点什么介绍一下自己（选填）" placeholder-class="nick-ph" bindinput="onBioInput" value="{{bio}}" maxlength="100" auto-height /><text class="bio-count">{{bio.length}}/100</text></view>
+      <view class="login-btn {{loading ? 'loading' : ''}}" bindtap="onLogin"><text>{{loading ? '处理中...' : '授权并登录'}}</text></view>
+      <text class="hint">头像、封面与昵称仅用于韵镜个人主页和社区互动</text>
+    </scroll-view>
+  </block>
 </view>
