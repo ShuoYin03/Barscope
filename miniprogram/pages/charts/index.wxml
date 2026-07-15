@@ -1,13 +1,11 @@
 <view class="page {{themeClass}}">
-  <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="topbar-l">
       <text class="topbar-title">CHARTS</text>
-      <text class="topbar-sub">总榜 · 全部专辑</text>
+      <text class="topbar-sub">{{periodSubtitle}}</text>
     </view>
   </view>
 
-  <!-- PERIOD PICKER (vinyl chips) -->
   <view class="period-bar">
     <view
       wx:for="{{periods}}"
@@ -20,7 +18,6 @@
     </view>
   </view>
 
-  <!-- CHART LIST -->
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view wx:if="{{loading}}" class="chart-list">
       <view wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}" wx:key="*this" class="skel-row">
@@ -38,11 +35,7 @@
       <block wx:for="{{list}}" wx:key="rank">
         <view wx:if="{{index === 0}}" class="chart-side"><section-header side="A" title="TOP CHARTS" /></view>
         <view wx:if="{{item.rank === 6}}" class="chart-side"><section-header side="B" title="6–10" /></view>
-        <view
-          class="chart-item"
-          bindtap="onAlbumTap"
-          data-id="{{item.albumId}}"
-        >
+        <view class="chart-item" bindtap="onAlbumTap" data-id="{{item.albumId}}">
           <text class="chart-rank {{item.rank <= 5 ? 'aside' : 'bside'}}">{{item.rank <= 5 ? 'A' + item.rank : 'B' + (item.rank - 5)}}</text>
           <view class="vinyl-cover-wrap">
             <view class="vinyl-disc-peek" />
@@ -57,9 +50,8 @@
           <text class="chart-score">{{item.scoreDisplay}}</text>
         </view>
       </block>
-      <view wx:if="{{list.length > 0}}" class="list-end">
-        <text class="list-end-text">— END OF SIDE B —</text>
-      </view>
+      <view wx:if="{{list.length > 0}}" class="list-end"><text class="list-end-text">— END OF SIDE B —</text></view>
+      <view wx:if="{{list.length === 0}}" class="list-end"><text class="list-end-text">— 暂无符合条件的专辑 —</text></view>
     </view>
   </scroll-view>
 
