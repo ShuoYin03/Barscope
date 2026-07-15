@@ -8,7 +8,7 @@
     <text class="back-label">返回</text>
   </view>
 
-  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" style="padding-top: {{statusBarHeight}}px">
+  <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" style="padding-top: {{capsuleTop + capsuleHeight + 16}}px">
     <text wx:if="{{isUpdating}}" class="edit-title">编辑资料</text>
     <view wx:else class="logo-area">
       <view class="logo-vinyl-disc">
@@ -22,19 +22,23 @@
       <text class="tagline">授权头像和昵称，加入说唱评分社区</text>
     </view>
 
-    <view class="media-section">
+    <view class="cover-section">
       <view class="cover-frame" bindtap="onChooseCover">
         <image wx:if="{{coverUrl}}" class="cover-img" src="{{coverUrl}}" mode="aspectFill" />
         <view wx:else class="cover-img cover-ph"><text class="cover-plus">+ 设置封面图</text></view>
       </view>
-      <view class="avatar-frame-overlap">
+      <text class="cover-hint">封面图 · 展示在你的个人主页顶部</text>
+    </view>
+
+    <view class="avatar-section">
+      <view class="avatar-frame">
         <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
           <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
           <view wx:else class="avatar-img avatar-ph"><text class="avatar-plus">+</text></view>
         </button>
       </view>
+      <text class="avatar-hint">点击授权并裁剪头像</text>
     </view>
-    <text class="media-hint">点击封面或头像可以更换</text>
 
     <view class="nick-section">
       <text class="nick-label">昵称</text>
