@@ -28,7 +28,7 @@
     <view class="stat-strip">
       <view class="stat-cell"><text class="stat-num">{{reviewCount}}</text><text class="stat-lbl">乐评</text></view>
       <view class="stat-cell"><text class="stat-num">{{likesReceived}}</text><text class="stat-lbl">获赞</text></view>
-      <view class="stat-cell"><text class="stat-num">{{followerCount}}</text><text class="stat-lbl">关注者</text></view>
+      <view class="stat-cell stat-badge" bindtap="onViewFollowers"><text class="stat-num">{{followerCount}}</text><text class="stat-lbl">关注者 →</text></view>
       <view class="stat-cell"><text class="stat-num">{{followingCount}}</text><text class="stat-lbl">关注中</text></view>
     </view>
 
