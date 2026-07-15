@@ -38,11 +38,15 @@
         <text class="ranking-copy">仅统计已有评分的专辑</text>
       </view>
 
+      <view wx:if="{{list.length > 0}}" class="ranking-section-head podium-section-head">
+        <text class="ranking-section-title">PODIUM</text>
+        <view class="ranking-section-rule" />
+      </view>
+
       <block wx:for="{{list}}" wx:key="albumId">
-        <view wx:if="{{item.rank === 4}}" class="ranking-section-divider">
-          <view class="ranking-section-line" />
-          <text class="ranking-section-label">THE REST</text>
-          <view class="ranking-section-line" />
+        <view wx:if="{{item.rank === 4}}" class="ranking-section-head rest-section-head">
+          <text class="ranking-section-title">THE REST</text>
+          <view class="ranking-section-rule" />
         </view>
 
         <view class="chart-item {{item.rank <= 3 ? 'podium-item podium-' + item.rank : ''}}" bindtap="onAlbumTap" data-id="{{item.albumId}}">
@@ -50,7 +54,9 @@
             <view class="medal-ribbon medal-ribbon-l" />
             <view class="medal-ribbon medal-ribbon-r" />
             <view class="medal-disc">
-              <text class="medal-rank">{{item.rank}}</text>
+              <view class="medal-disc-inner">
+                <text class="medal-rank">{{item.rank}}</text>
+              </view>
             </view>
           </view>
           <text wx:else class="chart-rank">{{item.rank}}</text>
