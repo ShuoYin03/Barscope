@@ -21,13 +21,7 @@
       <view class="artist-submit-row" bindtap="onSubmitAlbumRequest"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">提交专辑</text><text class="artist-submit-desc">未收录？提交审核</text></view><text class="artist-all-arrow">›</text></view>
       <view class="side-row"><text class="side-text">SIDE B — 年份 YEAR</text><view class="side-rule" /></view>
       <scroll-view class="timeline-scroll" scroll-x enhanced show-scrollbar="{{false}}" scroll-into-view="{{yearScrollIntoView}}" scroll-with-animation="{{true}}">
-        <view class="timeline-track">
-          <view class="timeline-line" />
-          <view wx:for="{{years}}" wx:key="name" id="year-{{item.name}}" class="timeline-item {{activeYear === item.name ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item.name}}">
-            <view class="timeline-dot" />
-            <text class="timeline-label">{{item.name}}</text>
-          </view>
-        </view>
+        <view class="timeline-track"><view class="timeline-line" /><view wx:for="{{years}}" wx:key="name" id="year-{{item.name}}" class="timeline-item {{activeYear === item.name ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item.name}}"><view class="timeline-dot" /><text class="timeline-label">{{item.name}}</text></view></view>
       </scroll-view>
       <view class="side-row"><text class="side-text">SIDE C — {{activeYear ? activeYear : '全部'}}{{activeMonth ? '.' + activeMonth : ''}} · {{loading ? '加载中' : total + ' 张'}}</text><view class="side-rule" /></view>
       <view wx:if="{{loading}}" class="empty-state"><text class="empty-text">加载中…</text></view>
@@ -48,13 +42,12 @@
       <view class="side-row"><text class="side-text">SIDE B — SUBMIT</text><view class="side-rule" /></view>
       <view class="artist-submit-row" bindtap="onSubmitArtistRequest"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">提交 rapper</text><text class="artist-submit-desc">未收录？提交审核</text></view><text class="artist-all-arrow">›</text></view>
       <view class="side-row artist-result-title"><text class="side-text">SIDE C — {{activeBrand}} · {{artistLoading ? '加载中' : artistTotal + ' 位'}}</text><view class="side-rule" /></view>
-      <view wx:if="{{artistLoading}}" class="empty-state"><text class="empty-text">加载中…</text></view>
-      <view wx:elif="{{artistVisibleList.length === 0}}" class="empty-state"><text class="empty-text">这个分类暂无艺人</text></view>
+      <view wx:if="{{artistLoading}}" class="empty-state"><text class="empty-text">加载中…</text></view><view wx:elif="{{artistVisibleList.length === 0}}" class="empty-state"><text class="empty-text">这个分类暂无艺人</text></view>
       <view wx:elif="{{activeBrand === '全部'}}" class="artist-all-list with-alpha-index"><view wx:for="{{artistLetterGroups}}" wx:key="letter" id="artist-letter-{{item.letter === '#' ? 'num' : item.letter}}"><view class="artist-letter-row"><text class="artist-letter-title">{{item.letter}}</text><view class="artist-letter-rule" /></view><view wx:for="{{item.list}}" wx:for-item="artist" wx:key="artistId" class="artist-all-row" bindtap="onArtistTap" data-artist-id="{{artist.artistId}}" data-artist="{{artist.artistName}}"><view class="artist-all-avatar"><image wx:if="{{artist.picUrl}}" class="artist-all-img" src="{{artist.picUrl}}" mode="aspectFill" /><text wx:else class="artist-all-initial">{{artist.letter}}</text></view><view class="artist-all-info"><text class="artist-all-name">{{artist.artistName}}</text><text class="artist-all-meta">{{artist.albumSize || 0}} 张专辑</text></view><text class="artist-all-arrow">›</text></view></view></view>
       <view wx:else class="artist-grid"><view wx:for="{{artistVisibleList}}" wx:key="artistId" class="artist-tile" bindtap="onArtistTap" data-artist-id="{{item.artistId}}" data-artist="{{item.artistName}}"><view class="artist-tile-avatar"><image wx:if="{{item.picUrl}}" class="artist-tile-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else class="artist-tile-initial">{{item.letter}}</text></view><text class="artist-tile-name">{{item.artistName}}</text><text class="artist-tile-meta">{{item.albumSize || 0}} 张专辑</text></view></view>
     </block>
   </scroll-view>
-  <view wx:if="{{monthIndexVisible && viewMode === 'albums' && activeYear && activeYear !== 'ALL' && activeYear !== '2010s' && activeYear !== '2000s'}}" class="month-index transient"><view wx:for="{{months}}" wx:key="*this" class="month-index-item {{activeMonth === item ? 'active' : ''}}" bindtap="onMonthTap" data-month="{{item}}"><text>{{item}}</text></view></view>
+  <view wx:if="{{viewMode === 'albums' && activeYear && activeYear !== 'ALL' && activeYear !== '2010s' && activeYear !== '2000s'}}" class="month-index transient {{monthIndexVisible ? 'visible' : ''}}"><view wx:for="{{months}}" wx:key="*this" class="month-index-item {{activeMonth === item ? 'active' : ''}}" bindtap="onMonthTap" data-month="{{item}}"><text>{{item}}</text></view></view>
   <view wx:if="{{viewMode === 'albums' && activeYear === 'ALL' && allAlbumLetters.length > 1}}" class="alphabet-index"><view wx:for="{{allAlbumLetters}}" wx:key="*this" class="alphabet-index-item {{activeAlbumLetter === item ? 'active' : ''}}" bindtap="onAlbumLetterTap" data-letter="{{item}}"><text>{{item}}</text></view></view>
   <view wx:if="{{viewMode === 'artists' && activeBrand === '全部' && artistLetters.length > 1}}" class="alphabet-index"><view wx:for="{{artistLetters}}" wx:key="*this" class="alphabet-index-item {{activeLetter === item ? 'active' : ''}}" bindtap="onLetterTap" data-letter="{{item}}"><text>{{item}}</text></view></view>
   <bottom-nav selected="{{2}}" />
