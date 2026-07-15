@@ -15,6 +15,15 @@
     <!-- TICKER -->
     <ticker songs="{{tickerSongs}}" />
 
+    <!-- ── LATEST RELEASES — larger and slower scrolling cover wall ── -->
+    <view class="section-block">
+      <section-header side="A" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
+      <view wx:if="{{loading}}" class="marquee-skel">
+        <view wx:for="{{[1,2,3]}}" wx:key="*this" class="sk" style="width:250rpx;height:250rpx;flex-shrink:0;" />
+      </view>
+      <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
+    </view>
+
     <!-- ── ON THIS DAY — old albums released on this same date, past years ── -->
     <swiper wx:if="{{!loading && onThisDayList.length}}" class="hero-swiper" autoplay="{{onThisDayList.length > 1}}" interval="5000" duration="380" circular="{{onThisDayList.length > 1}}" indicator-dots="{{onThisDayList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
       <swiper-item wx:for="{{onThisDayList}}" wx:key="albumId">
@@ -53,9 +62,9 @@
       <cover-marquee list="{{heroList}}" />
     </view>
 
-    <!-- ── SIDE A — TOP CHARTS (H-A text rows) ────────────────────── -->
+    <!-- ── SIDE B — TOP CHARTS (H-A text rows) ────────────────────── -->
     <view class="section-block">
-      <section-header side="A" title="TOP CHARTS" />
+      <section-header side="B" title="TOP CHARTS" />
       <view wx:if="{{loading}}" class="ca-list">
         <view class="ca-rows">
           <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
@@ -77,15 +86,6 @@
         </view>
         <view class="ca-more" bindtap="onChartMore"><text>更多 →</text></view>
       </view>
-    </view>
-
-    <!-- ── SECTION 02: NEW RELEASES (scrolling cover wall) ────────────── -->
-    <view class="section-block">
-      <section-header side="B" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
-      <view wx:if="{{loading}}" class="marquee-skel">
-        <view wx:for="{{[1,2,3,4]}}" wx:key="*this" class="sk" style="width:200rpx;height:200rpx;flex-shrink:0;" />
-      </view>
-      <cover-marquee wx:else list="{{newReleases}}" />
     </view>
 
     <!-- ── SECTION 04: RECENT REVIEWS ─────────────────────────────── -->
