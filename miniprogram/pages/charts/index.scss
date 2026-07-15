@@ -98,7 +98,7 @@
   background: var(--black);
 }
 .podium-section-head { padding-top: 2rpx; }
-.rest-section-head { padding-top: 28rpx; }
+.field-section-head { padding-top: 28rpx; }
 .ranking-section-title {
   font-family: var(--font-bebas);
   font-size: 20rpx;
@@ -117,16 +117,12 @@
   display: flex;
   align-items: center;
   gap: 24rpx;
+  height: 194rpx;
   padding: 22rpx 32rpx;
+  box-sizing: border-box;
   border-bottom: 2rpx solid var(--off-white);
 }
 .chart-item:last-child { border-bottom: none; }
-.podium-item {
-  position: relative;
-  min-height: 150rpx;
-  padding-top: 26rpx;
-  padding-bottom: 26rpx;
-}
 .chart-rank {
   font-family: var(--font-bebas);
   font-weight: 700;
@@ -137,23 +133,6 @@
   line-height: 1;
   letter-spacing: 1rpx;
   color: var(--accent);
-}
-
-.podium-rank-wrap {
-  width: 68rpx;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-}
-.podium-rank-wrap .chart-rank {
-  width: auto;
-}
-.podium-emoji {
-  font-size: 30rpx;
-  line-height: 1;
 }
 
 .chart-info {
