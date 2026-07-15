@@ -33,6 +33,42 @@ function addCount(map, id, name, increment = 1, currentId = '', currentNameKey =
   else map.set(key, { key, artistId, name: artistName, count: increment, collected: false })
 }
 
+async function mapWithConcurrency(items, limit, fn) {
+  let cursor = 0
+  async function worker() {
+    while (cursor < items.length) {
+      const idx = cursor++
+      await fn(items[idx], idx)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+}
+
+// Ingestion (cloudCrawler) only stores lightweight album metadata — trackCount comes straight from
+// NetEase's album summary, but the detailed per-track `tracks` array (which carries each track's
+// featuring `guests`) is left empty until something triggers syncAlbumTracks. Today the only trigger
+// is a user opening that album's detail page, so an artist whose albums nobody has opened yet has
+// zero usable featuring data. Do the same lazy sync here (server-to-server, mirroring the
+// cloudCrawlerDailyTrigger → cloudCrawler pattern) so a first-ever visit to the artist page still
+// produces a real SIDE B instead of silently reporting nothing. Best-effort: a sync failure for one
+// album just leaves it out of this computation rather than failing the whole request.
+async function ensureTracksSynced(albums) {
+  const pending = albums.filter(a => a && a.sourceId && (!Array.isArray(a.tracks) || !a.tracks.length)).slice(0, 30)
+  if (!pending.length) return
+  await mapWithConcurrency(pending, 6, async album => {
+    try {
+      const res = await cloud.callFunction({ name: 'syncAlbumTracks', data: { albumId: album._id } })
+      const r = res.result || {}
+      if (r.success) {
+        album.tracks = r.tracks || []
+        album.featuringGuests = r.featuringGuests || []
+      }
+    } catch (e) {
+      // leave album.tracks as-is; this album is just skipped below
+    }
+  })
+}
+
 async function fetchCareerAlbums(artistId) {
   const key = String(artistId)
   const [ownerRes, coCreatorRes, legacyRes] = await Promise.all([
@@ -73,6 +109,7 @@ exports.main = async event => {
 
   try {
     const albums = await fetchCareerAlbums(artistId)
+    await ensureTracksSynced(albums)
     const counts = new Map()
     const currentNameKey = normalizeName(artistName)
 
