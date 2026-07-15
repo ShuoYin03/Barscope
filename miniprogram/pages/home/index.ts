@@ -27,11 +27,13 @@ Page({
     themeClass: '',
     tickerSongs: FALLBACK_TICKER_SONGS,
     loading: true,
+    isLoggedIn: false,
     recentHotItems: [] as any[],
     heroSwiperList: [] as any[],
     chartItems: [] as any[],
     newReleases: [] as any[],
     reviews: [] as any[],
+    followingFeedList: [] as any[],
     topCritics: [] as any[],
     totalAlbums: 0,
     totalArtists: 0,
@@ -43,7 +45,8 @@ Page({
   },
   onShow() {
     if (typeof this.getTabBar === 'function') this.getTabBar()?.setData({ selected: 0 })
-    this.setData({ themeClass: getThemeClass() })
+    const app = getApp<IAppOption>()
+    this.setData({ themeClass: getThemeClass(), isLoggedIn: !!app.globalData.userInfo })
     this._loadData()
   },
   _loadData() {
@@ -57,8 +60,9 @@ Page({
     const p7 = safeCallFunction('getReviews', { totalCount: true })
     const p8 = safeCallFunction('getOnThisDay', { limit: 8 })
     const p9 = safeCallFunction('getReviews', { monthlyTopCritics: true, limit: 8 })
+    const p10 = safeCallFunction('getReviews', { followingFeed: true, pageSize: 6 })
 
-    Promise.all([p1, p2, p3, p4, p5, p6, p7, p8, p9]).then((results: any[]) => {
+    Promise.all([p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]).then((results: any[]) => {
       const chartsRes = results[0]
       const reviewsRes = results[1]
       const totalRes = results[2]
@@ -68,6 +72,7 @@ Page({
       const reviewCountRes = results[6]
       const onThisDayRes = results[7]
       const topCriticsRes = results[8]
+      const followingFeedRes = results[9]
 
       const chartItems = chartsRes.success
         ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) }))
@@ -128,6 +133,21 @@ Page({
         ? (topCriticsRes.list || []).map((c: any) => ({ ...c, initial: c.nickName ? c.nickName[0] : '?' }))
         : []
 
+      const followingFeedList = followingFeedRes?.success
+        ? (followingFeedRes.list || []).map((r: any) => ({
+            _id: r._id,
+            authorOpenId: r.authorOpenId || '',
+            userName: r.userName,
+            initial: r.initial,
+            userType: r.userType,
+            timeAgo: r.timeAgo,
+            albumId: r.albumId,
+            albumTitle: r.albumTitle,
+            ratingText: r.rating ? Number(r.rating).toFixed(1) : '—',
+            content: r.content,
+          }))
+        : []
+
       this.setData({
         tickerSongs,
         recentHotItems,
@@ -135,6 +155,7 @@ Page({
         chartItems,
         newReleases,
         reviews: reviewsRes.success ? (reviewsRes.list || []) : [],
+        followingFeedList,
         topCritics,
         totalAlbums: totalRes.success ? (totalRes.totalAlbums || 0) : 0,
         totalArtists: artistsRes.success ? (artistsRes.total || 0) : 0,
@@ -162,4 +183,6 @@ Page({
     const openId = (e.currentTarget.dataset as any).openId
     if (openId) wx.navigateTo({ url: `/pages/user/index?openId=${openId}` })
   },
+  onFollowingFeedMore() { wx.navigateTo({ url: '/pages/notifications/index' }) },
+  onGoLogin() { wx.navigateTo({ url: '/pages/login/index' }) },
 })
