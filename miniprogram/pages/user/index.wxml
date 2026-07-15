@@ -1,0 +1,45 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">USER</text></view>
+
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+  <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadProfile">重新加载</view></view>
+
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{coverUrl}}" class="cover-banner"><image class="cover-img" src="{{coverUrl}}" mode="aspectFill" /></view>
+    <view class="user-card">
+      <view class="vinyl-disc">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <block wx:else><view class="vinyl-disc-center"><text class="avatar-initial">{{nickName[0]}}</text></view><view class="vinyl-disc-spindle" /></block>
+      </view>
+      <view class="user-info-col">
+        <text class="user-name">{{nickName}}</text>
+        <view wx:if="{{isCritic}}" class="critic-badge-wrap"><text class="critic-badge">乐评人</text></view>
+        <text wx:if="{{bio}}" class="user-bio">{{bio}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!isMe}}" class="follow-bar">
+      <view class="follow-btn {{isFollowing ? 'following' : ''}}" bindtap="onToggleFollow"><text>{{isFollowing ? '已关注' : '+ 关注'}}</text></view>
+    </view>
+    <view wx:else class="follow-bar">
+      <view class="follow-btn edit" bindtap="onEditProfile"><text>编辑资料</text></view>
+    </view>
+
+    <view class="stat-strip">
+      <view class="stat-cell"><text class="stat-num">{{reviewCount}}</text><text class="stat-lbl">乐评</text></view>
+      <view class="stat-cell"><text class="stat-num">{{likesReceived}}</text><text class="stat-lbl">获赞</text></view>
+      <view class="stat-cell"><text class="stat-num">{{followerCount}}</text><text class="stat-lbl">关注者</text></view>
+      <view class="stat-cell"><text class="stat-num">{{followingCount}}</text><text class="stat-lbl">关注中</text></view>
+    </view>
+
+    <view class="side-row"><text class="side-text">最新乐评</text></view>
+    <view wx:if="{{latestReviews.length === 0}}" class="empty small">还没有发布乐评</view>
+    <block wx:else>
+      <view wx:for="{{latestReviews}}" wx:key="_id" class="review-card" bindtap="onReviewTap" data-album-id="{{item.albumId}}">
+        <view class="review-card-head"><text class="review-card-album">{{item.albumTitle}}</text><text class="review-card-score">{{item.ratingText}}</text></view>
+        <text class="review-card-content">{{item.content}}</text>
+        <view class="review-card-foot"><text class="review-card-time">{{item.timeAgo}}</text><text class="review-card-likes">♥ {{item.likes}}</text></view>
+      </view>
+    </block>
+  </scroll-view>
+</view>

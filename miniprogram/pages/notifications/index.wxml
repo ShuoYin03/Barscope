@@ -1,0 +1,36 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">NOTIFICATIONS</text></view>
+  <scroll-view class="content" scroll-y>
+
+    <view class="side-row"><text class="side-text">关注动态</text></view>
+    <view wx:if="{{feedLoading}}" class="empty small">加载中…</view>
+    <view wx:elif="{{feedList.length === 0}}" class="empty small">关注的人还没有发布新乐评，去发现页看看有哪些乐评人值得关注吧</view>
+    <block wx:else>
+      <view wx:for="{{feedList}}" wx:for-item="item" wx:key="_id" class="feed-card">
+        <view class="feed-head" catchtap="onUserTap" data-open-id="{{item.authorOpenId}}">
+          <view class="feed-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view>
+          <view class="feed-meta"><text class="feed-user">{{item.userName}}</text><text class="feed-time">{{item.timeAgo}}</text></view>
+        </view>
+        <view class="feed-body" bindtap="onItemTap" data-album-id="{{item.albumId}}">
+          <view class="feed-album-row"><text class="feed-album">{{item.albumTitle}}</text><text class="feed-score">{{item.ratingText}}</text></view>
+          <text class="feed-content">{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+
+    <view class="side-row b"><text class="side-text">系统通知</text></view>
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadList">重新加载</view></view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无通知</view>
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="_id" class="card {{item.read ? '' : 'unread'}}" bindtap="onItemTap" data-album-id="{{item.albumId}}">
+        <text class="icon">{{item.icon}}</text>
+        <view class="info">
+          <text class="message">{{item.message}}</text>
+          <text class="time">{{item.timeAgo}}</text>
+        </view>
+        <view wx:if="{{!item.read}}" class="dot" />
+      </view>
+    </block>
+  </scroll-view>
+</view>

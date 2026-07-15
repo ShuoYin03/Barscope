@@ -9,12 +9,16 @@ Page({
     themeClass: '',
     nickName: '',
     avatarUrl: '',
+    coverUrl: '',
+    bio: '',
     loading: false,
     isUpdating: false,
   },
 
   _avatarFileId: '',
   _avatarUploadPromise: null as Promise<string> | null,
+  _coverFileId: '',
+  _coverUploadPromise: null as Promise<string> | null,
 
   onLoad() {
     const app = getApp<IAppOption>()
@@ -38,6 +42,8 @@ Page({
       capsuleHeight,
       nickName: current?.nickName || '',
       avatarUrl: current?.avatarUrl || '',
+      coverUrl: current?.coverUrl || '',
+      bio: current?.bio || '',
       isUpdating: !!current,
     })
   },
@@ -73,8 +79,36 @@ Page({
       .catch(() => '')
   },
 
+  onChooseCover() {
+    if (this.data.loading) return
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const filePath = res.tempFilePaths && res.tempFilePaths[0]
+        if (!filePath) return
+        this.setData({ coverUrl: filePath })
+        this._coverFileId = ''
+        this._coverUploadPromise = this._uploadCover(filePath)
+      },
+    })
+  },
+
+  _uploadCover(filePath: string): Promise<string> {
+    if (String(filePath || '').startsWith('cloud://')) return Promise.resolve(filePath)
+    const cloudPath = `covers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+    return wx.cloud.uploadFile({ cloudPath, filePath })
+      .then((res) => { this._coverFileId = res.fileID; return res.fileID })
+      .catch(() => '')
+  },
+
   onNickInput(e: WechatMiniprogram.Input) {
     this.setData({ nickName: e.detail.value })
+  },
+
+  onBioInput(e: WechatMiniprogram.Input) {
+    this.setData({ bio: e.detail.value })
   },
 
   onLogin() {
@@ -86,7 +120,7 @@ Page({
     this.setData({ loading: true })
 
     wx.login({
-      success: () => this._resolveAvatarThenLogin(nickName),
+      success: () => this._resolveMediaThenLogin(nickName),
       fail: () => {
         this.setData({ loading: false })
         wx.showToast({ title: '获取登录凭证失败', icon: 'none' })
@@ -94,23 +128,31 @@ Page({
     })
   },
 
-  async _resolveAvatarThenLogin(nickName: string) {
-    let fileId = this._avatarFileId || (this._avatarUploadPromise ? await this._avatarUploadPromise : '')
-    if (!fileId && String(this.data.avatarUrl).startsWith('cloud://')) fileId = this.data.avatarUrl
-    if (!fileId) fileId = await this._uploadAvatar(this.data.avatarUrl)
+  async _resolveMediaThenLogin(nickName: string) {
+    let avatarFileId = this._avatarFileId || (this._avatarUploadPromise ? await this._avatarUploadPromise : '')
+    if (!avatarFileId && String(this.data.avatarUrl).startsWith('cloud://')) avatarFileId = this.data.avatarUrl
+    if (!avatarFileId) avatarFileId = await this._uploadAvatar(this.data.avatarUrl)
 
-    if (!fileId) {
+    if (!avatarFileId) {
       this.setData({ loading: false })
       wx.showToast({ title: '头像上传失败，请重试', icon: 'none' })
       return
     }
-    this._callLogin(nickName, fileId)
+
+    let coverFileId = ''
+    if (this.data.coverUrl) {
+      coverFileId = this._coverFileId || (this._coverUploadPromise ? await this._coverUploadPromise : '')
+      if (!coverFileId && String(this.data.coverUrl).startsWith('cloud://')) coverFileId = this.data.coverUrl
+      if (!coverFileId) coverFileId = await this._uploadCover(this.data.coverUrl)
+    }
+
+    this._callLogin(nickName, avatarFileId, coverFileId)
   },
 
-  _callLogin(nickName: string, avatarUrl: string) {
+  _callLogin(nickName: string, avatarUrl: string, coverUrl: string) {
     wx.cloud.callFunction({
       name: 'login',
-      data: { nickName, avatarUrl },
+      data: { nickName, avatarUrl, coverUrl, bio: this.data.bio.trim() },
       success: (res: any) => {
         const result = res.result
         if (!result.success) {
@@ -124,6 +166,7 @@ Page({
           openId: user.openId,
           nickName: user.nickName,
           avatarUrl: user.avatarUrl || '',
+          coverUrl: user.coverUrl || '',
           type: user.type,
           bio: user.bio || '',
           reviewCount: user.reviewCount || 0,

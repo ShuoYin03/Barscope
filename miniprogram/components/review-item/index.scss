@@ -1,6 +1,7 @@
 .review-item { padding:28rpx 32rpx; border-bottom:2rpx solid var(--gray-light); background:var(--off-white); }
 .review-item.is-critic { border-left:8rpx solid var(--accent); background:var(--black); }
 .review-header { display:flex; align-items:flex-start; gap:20rpx; margin-bottom:16rpx; }
+.review-user-tap { display:flex; align-items:flex-start; gap:20rpx; flex:1; min-width:0; }
 .review-avatar { width:80rpx; height:80rpx; border-radius:50%; background:radial-gradient(circle at 50% 50%,var(--accent) 0,var(--accent) 17%,var(--groove-a) 18%,var(--groove-b) 20%,var(--groove-a) 22%,var(--groove-b) 24%,var(--groove-a) 26%,var(--groove-b) 28%,var(--groove-a) 30%,var(--groove-b) 32%,var(--groove-a) 34%,var(--groove-b) 36%,var(--groove-a) 38%,var(--groove-b) 40%,var(--groove-a) 42%,var(--groove-b) 44%,var(--groove-a) 100%); position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
 .review-avatar text { font-family:var(--font-bebas); font-size:28rpx; color:var(--black); position:relative; z-index:1; }
 .review-avatar.is-critic { background:radial-gradient(circle at 50% 50%,var(--accent) 0,var(--accent) 17%,var(--groove-a) 18%,var(--groove-b) 20%,var(--groove-a) 22%,var(--groove-b) 24%,var(--groove-a) 26%,var(--groove-b) 28%,var(--groove-a) 30%,var(--groove-b) 32%,var(--groove-a) 34%,var(--groove-b) 36%,var(--groove-a) 38%,var(--groove-b) 40%,var(--groove-a) 42%,var(--groove-b) 44%,var(--groove-a) 100%); }

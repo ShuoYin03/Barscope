@@ -9,12 +9,16 @@ exports.main = async (event, context) => {
     const { data } = await db.collection('users').where({ openId: OPENID }).get()
     const nickName = String(event.nickName || '').trim()
     const avatarUrl = String(event.avatarUrl || '').trim()
+    const coverUrl = String(event.coverUrl || '').trim()
+    const bio = String(event.bio || '').trim().slice(0, 100)
 
     if (data.length > 0) {
       const existing = data[0]
       const patch = {}
       if (nickName && nickName !== existing.nickName) patch.nickName = nickName
       if (avatarUrl && avatarUrl !== existing.avatarUrl) patch.avatarUrl = avatarUrl
+      if (coverUrl && coverUrl !== existing.coverUrl) patch.coverUrl = coverUrl
+      if (bio !== (existing.bio || '')) patch.bio = bio
       if (Object.keys(patch).length) {
         await db.collection('users').doc(existing._id).update({ data: patch })
         Object.assign(existing, patch)
@@ -27,8 +31,9 @@ exports.main = async (event, context) => {
       openId: OPENID,
       nickName: nickName || '说唱迷',
       avatarUrl: avatarUrl || '',
+      coverUrl: coverUrl || '',
       type: 'normal',
-      bio: '',
+      bio: bio || '',
       reviewCount: 0,
       joinedAt: db.serverDate(),
     }

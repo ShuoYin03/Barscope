@@ -38,7 +38,11 @@ Page({
     yearRange:       '',
     list:            [] as ArtistAlbum[],
     loading:         true,
+    notCollected:    false,
+    submitStatus:    'idle' as 'idle' | 'submitting' | 'submitted' | 'pending',
   },
+
+  _artistId: '',
 
   onLoad(options: Record<string, string>) {
     const app = getApp<IAppOption>()
@@ -46,6 +50,7 @@ Page({
     const artistName = decodeURIComponent(options.artistName || '')
     const initial    = (artistName.match(/[A-Za-z]/) ? artistName[0] : artistName[0]) || '?'
 
+    this._artistId = artistId
     this.setData({
       statusBarHeight: app.globalData.statusBarHeight,
       artistName,
@@ -62,11 +67,44 @@ Page({
       data: { artistId },
       success: (res: any) => {
         const artist = res.result?.artist
-        if (!artist) return
+        if (!artist) { this.setData({ notCollected: true, loading: false }); return }
         const bannerUrl = artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
         const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
-        this.setData({ bannerUrl, avatarUrl, bioExpanded: false, ...bioState })
+        this.setData({ notCollected: false, bannerUrl, avatarUrl, bioExpanded: false, ...bioState })
+      },
+    } as any)
+  },
+
+  onSubmitArtist() {
+    if (this.data.submitStatus !== 'idle') return
+    this.setData({ submitStatus: 'submitting' })
+    wx.cloud.callFunction({
+      name: 'submitArtistRequest',
+      data: { name: this.data.artistName },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) {
+          this.setData({ submitStatus: 'idle' })
+          wx.showToast({ title: r.error || '提交失败', icon: 'none' })
+          return
+        }
+        if (r.existed && r.status === 'approved') {
+          wx.showToast({ title: '已收录，正在刷新', icon: 'none' })
+          this.setData({ submitStatus: 'idle' })
+          this._loadArtist(this._artistId)
+          this._loadAlbums(this._artistId)
+          return
+        }
+        if (r.existed) {
+          this.setData({ submitStatus: 'pending' })
+          return
+        }
+        this.setData({ submitStatus: 'submitted' })
+      },
+      fail: () => {
+        this.setData({ submitStatus: 'idle' })
+        wx.showToast({ title: '提交失败', icon: 'none' })
       },
     } as any)
   },
