@@ -46,26 +46,28 @@
 
 .content { flex: 1; min-height: 0; }
 .side-row { display: flex; align-items: center; gap: 16rpx; padding: 28rpx 32rpx 14rpx; }
-.side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); }
+.side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); white-space: nowrap; }
 .side-rule { flex: 1; height: 1px; background: var(--gray-light); }
 .side-b-row { margin-top: 8rpx; border-top: 2rpx solid var(--off-white); }
 
 .career-wrap { position: relative; min-height: 220rpx; }
-.career-albums { background: var(--black); padding-right: 82rpx; }
-.album-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 26rpx 24rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
+.career-albums { background: var(--black); padding-right: 88rpx; }
+.album-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 22rpx 24rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
 .album-row:last-child { border-bottom: none; }
 .album-info { flex: 1; min-width: 0; }
 .album-title { font-size: 28rpx; font-weight: 700; color: var(--white); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .album-meta { font-size: 22rpx; color: var(--gray-mid); margin-top: 8rpx; display: block; }
 .album-score { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); flex-shrink: 0; }
 
-.career-timeline { position: absolute; right: 8rpx; top: 8rpx; bottom: 8rpx; width: 66rpx; z-index: 12; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; background: linear-gradient(90deg, rgba(5,3,5,0), rgba(5,3,5,.92) 28%); }
-.career-timeline-line { position: absolute; top: 18rpx; bottom: 18rpx; left: 19rpx; width: 2rpx; background: var(--gray-light); }
-.career-year { position: relative; z-index: 2; min-height: 34rpx; display: flex; align-items: center; gap: 6rpx; width: 100%; color: var(--gray-mid); }
-.career-year text { font-family: var(--font-bebas); font-size: 20rpx; letter-spacing: .5rpx; }
-.career-dot { width: 10rpx; height: 10rpx; border-radius: 50%; margin-left: 14rpx; background: var(--gray-mid); border: 2rpx solid var(--black); box-sizing: border-box; flex-shrink: 0; }
+.career-timeline { position: sticky; top: 16rpx; float: right; width: 76rpx; height: 420rpx; margin-top: 8rpx; margin-right: 6rpx; margin-left: -82rpx; z-index: 12; background: linear-gradient(90deg, rgba(5,3,5,.12), rgba(5,3,5,.96) 30%); }
+.career-timeline-inner { position: relative; min-height: 100%; padding: 14rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 10rpx; }
+.career-timeline-line { position: absolute; top: 24rpx; bottom: 24rpx; left: 21rpx; width: 2rpx; background: var(--gray-light); }
+.career-year { position: relative; z-index: 2; min-height: 42rpx; display: flex; align-items: center; gap: 7rpx; width: 100%; color: var(--gray-mid); }
+.career-year text { font-family: var(--font-bebas); font-size: 20rpx; letter-spacing: .5rpx; white-space: nowrap; }
+.career-dot { width: 10rpx; height: 10rpx; border-radius: 50%; margin-left: 16rpx; background: var(--gray-mid); border: 2rpx solid var(--black); box-sizing: border-box; flex-shrink: 0; }
 .career-year.active { color: var(--accent); }
-.career-year.active .career-dot { width: 16rpx; height: 16rpx; margin-left: 11rpx; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5rpx rgba(201,78,37,.18); }
+.career-year.active .career-dot { width: 16rpx; height: 16rpx; margin-left: 13rpx; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5rpx rgba(201,78,37,.18); }
+.career-year.active text { font-size: 23rpx; }
 
 .collaborator-list { background: var(--black); padding-bottom: 42rpx; }
 .collaborator-row { min-height: 104rpx; display: flex; align-items: center; gap: 22rpx; padding: 18rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
