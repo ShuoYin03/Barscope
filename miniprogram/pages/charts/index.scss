@@ -6,32 +6,34 @@
   background: var(--black);
 }
 
-/* TOPBAR */
 .topbar {
   background: var(--black);
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
   padding: 0 44rpx 14rpx;
   box-sizing: border-box;
   flex-shrink: 0;
 }
-.topbar-l { display: flex; align-items: baseline; gap: 16rpx; }
+.topbar-l { display: flex; align-items: baseline; gap: 16rpx; min-width: 0; }
 .topbar-title {
   font-family: var(--font-bebas);
   font-size: 60rpx;
   color: var(--white);
   letter-spacing: 6rpx;
   line-height: 1;
+  flex-shrink: 0;
 }
 .topbar-sub {
+  min-width: 0;
   font-size: 18rpx;
   color: var(--gray-mid);
-  letter-spacing: 4rpx;
+  letter-spacing: 3rpx;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* PERIOD PICKER */
 .period-bar {
   display: flex;
   align-items: stretch;
@@ -42,7 +44,6 @@
   flex-shrink: 0;
   box-sizing: border-box;
 }
-
 .period-item {
   flex: 1;
   min-width: 0;
@@ -59,41 +60,44 @@
   white-space: nowrap;
   border: 2rpx solid var(--gray-light);
 }
-
 .period-item.active {
   background: var(--accent);
   color: var(--black);
   border-color: var(--accent);
 }
 
-/* LIST */
 .content { flex: 1; min-height: 0; }
 .chart-list { background: var(--black); }
 
-/* SIDE A / SIDE B dividers */
-.chart-side {
-  padding: 16rpx 0 0 12rpx;
-  background: var(--black);
+.ranking-head {
+  margin: 14rpx 44rpx 0;
+  padding: 18rpx 0 14rpx;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20rpx;
+  border-top: 2rpx solid var(--gray-light);
 }
-
-/* FOOTER */
-.list-end { padding: 32rpx; display: flex; justify-content: center; background: var(--black); }
-.list-end-text {
+.ranking-kicker {
   font-family: var(--font-bebas);
   font-size: 22rpx;
-  color: var(--gray-light);
-  letter-spacing: 6rpx;
+  letter-spacing: 5rpx;
+  color: var(--accent);
+}
+.ranking-copy {
+  font-size: 18rpx;
+  color: var(--gray-mid);
+  letter-spacing: 1rpx;
 }
 
 .chart-item {
   display: flex;
   align-items: center;
-  gap: 28rpx;
+  gap: 24rpx;
   padding: 22rpx 32rpx;
   border-bottom: 2rpx solid var(--off-white);
 }
 .chart-item:last-child { border-bottom: none; }
-
 .chart-rank {
   font-family: var(--font-bebas);
   font-weight: 700;
@@ -103,10 +107,8 @@
   flex-shrink: 0;
   line-height: 1;
   letter-spacing: 1rpx;
+  color: var(--accent);
 }
-.chart-rank.aside { color: var(--accent); }
-.chart-rank.bside { color: var(--gray-mid); }
-
 .chart-info {
   flex: 1;
   min-width: 0;
@@ -139,7 +141,6 @@
   color: var(--gray-mid);
   letter-spacing: .5rpx;
 }
-
 .chart-score {
   font-family: var(--font-bebas);
   font-weight: 700;
@@ -148,4 +149,17 @@
   line-height: 1;
   letter-spacing: 1rpx;
   flex-shrink: 0;
+}
+
+.list-end {
+  padding: 36rpx 32rpx 120rpx;
+  display: flex;
+  justify-content: center;
+  background: var(--black);
+}
+.list-end-text {
+  font-family: var(--font-bebas);
+  font-size: 22rpx;
+  color: var(--gray-light);
+  letter-spacing: 6rpx;
 }
