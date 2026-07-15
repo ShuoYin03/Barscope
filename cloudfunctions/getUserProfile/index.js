@@ -24,6 +24,26 @@ function followDocId(followerOpenId, followingOpenId) {
   return `${followerOpenId}_${followingOpenId}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
 }
 
+// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
+// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
+// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
+async function resolveCloudUrls(urls) {
+  const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
+  if (!targets.length) return new Map()
+  try {
+    const res = await cloud.getTempFileURL({ fileList: targets })
+    const map = new Map()
+    ;(res.fileList || []).forEach(f => { if (f.status === 0 && f.tempFileURL) map.set(f.fileID, f.tempFileURL) })
+    return map
+  } catch (e) {
+    console.warn('resolveCloudUrls failed:', e.message)
+    return new Map()
+  }
+}
+function applyResolvedUrl(url, map) {
+  return (url && map.get(url)) || url
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const targetOpenId = String(event.openId || '')
@@ -34,12 +54,13 @@ exports.main = async (event) => {
     if (!userRes.data.length) return { success: false, error: '用户不存在' }
     const user = userRes.data[0]
 
-    const [{ reviewCount, likesReceived }, latestReviews, followerCount, followingCount, isFollowing] = await Promise.all([
+    const [{ reviewCount, likesReceived }, latestReviews, followerCount, followingCount, isFollowing, urlMap] = await Promise.all([
       getReviewAggregate(targetOpenId),
       getLatestReviews(targetOpenId),
       countFollows({ followingOpenId: targetOpenId }),
       countFollows({ followerOpenId: targetOpenId }),
       OPENID && OPENID !== targetOpenId ? isFollowingUser(OPENID, targetOpenId) : Promise.resolve(false),
+      resolveCloudUrls([user.avatarUrl, user.coverUrl]),
     ])
 
     return {
@@ -47,8 +68,8 @@ exports.main = async (event) => {
       profile: {
         openId: targetOpenId,
         nickName: user.nickName || '匿名用户',
-        avatarUrl: user.avatarUrl || '',
-        coverUrl: user.coverUrl || '',
+        avatarUrl: applyResolvedUrl(user.avatarUrl, urlMap) || '',
+        coverUrl: applyResolvedUrl(user.coverUrl, urlMap) || '',
         bio: user.bio || '',
         type: user.type || 'normal',
         reviewCount,

@@ -254,6 +254,16 @@
 }
 .critic-avatar.is-critic { border: 2rpx solid var(--accent); }
 .critic-avatar-img { width: 100%; height: 100%; display: block; }
+.critic-avatar-wrap { position: relative; flex-shrink: 0; }
+.critic-crown {
+  position: absolute;
+  top: -22rpx;
+  left: 50%;
+  transform: translateX(-50%) rotate(-8deg);
+  font-size: 28rpx;
+  line-height: 1;
+  z-index: 2;
+}
 .critic-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .critic-name {
   font-size: 25rpx;

@@ -7,6 +7,26 @@ async function safeGet(task) {
   try { return await task() } catch (err) { console.warn('optional review metadata failed:', err.message); return { data: [] } }
 }
 
+// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
+// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
+// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
+async function resolveCloudUrls(urls) {
+  const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
+  if (!targets.length) return new Map()
+  try {
+    const res = await cloud.getTempFileURL({ fileList: targets })
+    const map = new Map()
+    ;(res.fileList || []).forEach(f => { if (f.status === 0 && f.tempFileURL) map.set(f.fileID, f.tempFileURL) })
+    return map
+  } catch (e) {
+    console.warn('resolveCloudUrls failed:', e.message)
+    return new Map()
+  }
+}
+function applyResolvedUrl(url, map) {
+  return (url && map.get(url)) || url
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const { albumId, userId, page = 1, pageSize = 20, likedBy, followingFeed } = event
@@ -71,8 +91,11 @@ async function enrichReviews(records, OPENID) {
   const replyCounts = {}
   ;(repliesRes.data || []).forEach(x => { replyCounts[x.reviewId] = (replyCounts[x.reviewId] || 0) + 1 })
 
+  const avatarMap = await resolveCloudUrls(records.map(r => r.userAvatarUrl))
+
   return records.map(r => ({
     ...r,
+    userAvatarUrl: applyResolvedUrl(r.userAvatarUrl, avatarMap),
     initial: r.userNickName ? r.userNickName[0] : '?',
     userName: r.userNickName || '匿名用户',
     score: String(r.rating || 0),
@@ -219,6 +242,8 @@ async function getMonthlyTopCritics(limit = 8) {
     })
 
     const ranked = Array.from(stats.values()).sort((a, b) => b.count - a.count).slice(0, Math.max(1, Math.min(limit, 20)))
+    const avatarMap = await resolveCloudUrls(ranked.map(r => r.avatarUrl))
+    ranked.forEach(r => { r.avatarUrl = applyResolvedUrl(r.avatarUrl, avatarMap) })
     return { success: true, monthKey, list: ranked }
   } catch (err) {
     console.error('getMonthlyTopCritics failed:', err)

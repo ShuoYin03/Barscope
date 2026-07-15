@@ -95,9 +95,27 @@
       </view>
     </view>
 
-    <!-- ── SIDE D — 关注动态 ─────────────────────────────────── -->
+    <!-- ── SIDE D — 本月乐评人榜 ─────────────────────────────────── -->
+    <view class="section-block" wx:if="{{!loading && topCritics.length}}">
+      <section-header side="D" title="本月乐评人榜" />
+      <view class="critic-rows">
+        <view wx:for="{{topCritics}}" wx:key="openId" class="critic-row" bindtap="onCriticTap" data-open-id="{{item.openId}}">
+          <text class="critic-rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text>
+          <view class="critic-avatar-wrap">
+            <text wx:if="{{index === 0}}" class="critic-crown">👑</text>
+            <view class="critic-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}">
+              <image wx:if="{{item.avatarUrl}}" class="critic-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
+              <text wx:else>{{item.initial}}</text>
+            </view>
+          </view>
+          <view class="critic-info"><text class="critic-name">{{item.nickName}}</text><text class="critic-count">本月 {{item.count}} 条乐评</text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ── SIDE E — 关注动态 ─────────────────────────────────── -->
     <view class="section-block">
-      <section-header side="D" title="关注动态" more="{{isLoggedIn && followingFeedList.length}}" bind:more="onFollowingFeedMore" />
+      <section-header side="E" title="关注动态" more="{{isLoggedIn && followingFeedList.length}}" bind:more="onFollowingFeedMore" />
       <view wx:if="{{!isLoggedIn}}" class="feed-gate">
         <text class="feed-gate-text">登录后可以看到你关注的乐评人的最新点评</text>
         <view class="feed-gate-btn" bindtap="onGoLogin"><text>去登录</text></view>
@@ -119,21 +137,6 @@
             <text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.ratingText}}</text>
           </view>
           <text class="review-text">{{item.content}}</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- ── SIDE E — 本月乐评人榜 ─────────────────────────────────── -->
-    <view class="section-block" wx:if="{{!loading && topCritics.length}}">
-      <section-header side="E" title="本月乐评人榜" />
-      <view class="critic-rows">
-        <view wx:for="{{topCritics}}" wx:key="openId" class="critic-row" bindtap="onCriticTap" data-open-id="{{item.openId}}">
-          <text class="critic-rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text>
-          <view class="critic-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}">
-            <image wx:if="{{item.avatarUrl}}" class="critic-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" />
-            <text wx:else>{{item.initial}}</text>
-          </view>
-          <view class="critic-info"><text class="critic-name">{{item.nickName}}</text><text class="critic-count">本月 {{item.count}} 条乐评</text></view>
         </view>
       </view>
     </view>

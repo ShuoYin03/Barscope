@@ -12,8 +12,33 @@ exports.main = async (event, context) => {
       return { success: false, error: 'user not found' }
     }
 
-    return { success: true, user: data[0] }
+    const user = data[0]
+    const urlMap = await resolveCloudUrls([user.avatarUrl, user.coverUrl])
+    user.avatarUrl = applyResolvedUrl(user.avatarUrl, urlMap) || ''
+    user.coverUrl = applyResolvedUrl(user.coverUrl, urlMap) || ''
+
+    return { success: true, user }
   } catch (err) {
     return { success: false, error: err.message }
   }
+}
+
+// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
+// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
+// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
+async function resolveCloudUrls(urls) {
+  const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
+  if (!targets.length) return new Map()
+  try {
+    const res = await cloud.getTempFileURL({ fileList: targets })
+    const map = new Map()
+    ;(res.fileList || []).forEach(f => { if (f.status === 0 && f.tempFileURL) map.set(f.fileID, f.tempFileURL) })
+    return map
+  } catch (e) {
+    console.warn('resolveCloudUrls failed:', e.message)
+    return new Map()
+  }
+}
+function applyResolvedUrl(url, map) {
+  return (url && map.get(url)) || url
 }
