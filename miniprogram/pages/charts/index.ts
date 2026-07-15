@@ -1,4 +1,4 @@
-type Period = 'weekly' | 'monthly' | 'annual'
+type Period = 'weekly' | 'monthly' | 'annual' | 'release2026'
 
 function fmtScore(n: number): string {
   if (!n) return '—'
@@ -33,17 +33,21 @@ interface ChartEntry {
 
 import { getThemeClass } from '../../utils/theme'
 
+const PERIOD_META: Record<Period, { label: string; subtitle: string; limit: number }> = {
+  weekly:     { label: '周榜', subtitle: '周榜 · 全部专辑', limit: 50 },
+  monthly:    { label: '月榜', subtitle: '月榜 · 全部专辑', limit: 100 },
+  annual:     { label: '年榜', subtitle: '年榜 · 全部专辑', limit: 100 },
+  release2026:{ label: '2026榜单', subtitle: '2026发行 · 专辑榜单', limit: 100 },
+}
+
 Page({
   data: {
     statusBarHeight: 20,
     topbarHeight:    64,
     themeClass: '',
     period:  'weekly' as Period,
-    periods: [
-      { key: 'weekly',  label: '周榜' },
-      { key: 'monthly', label: '月榜' },
-      { key: 'annual',  label: '年榜' },
-    ],
+    periodSubtitle: PERIOD_META.weekly.subtitle,
+    periods: (Object.keys(PERIOD_META) as Period[]).map(key => ({ key, label: PERIOD_META[key].label })),
     list:    [] as ChartEntry[],
     loading: true,
   },
@@ -65,15 +69,12 @@ Page({
   },
 
   _loadCharts(period: Period) {
-    this.setData({ loading: true })
-
-    // period 差异：weekly=最近50张, monthly=最近100张, annual=全部top100
-    const limitMap: Record<Period, number> = { weekly: 50, monthly: 100, annual: 100 }
-    const limit = limitMap[period]
+    const meta = PERIOD_META[period]
+    this.setData({ loading: true, periodSubtitle: meta.subtitle })
 
     wx.cloud.callFunction({
       name: 'getCharts',
-      data: { limit },
+      data: { period, limit: meta.limit },
       success: (res: any) => {
         const result = res.result
         if (!result.success) { this.setData({ loading: false }); return }
