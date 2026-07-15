@@ -1,0 +1,15 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">FOLLOWERS</text></view>
+
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+  <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadFollowers">重新加载</view></view>
+  <view wx:elif="{{list.length === 0}}" class="empty">还没有粉丝</view>
+
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:for="{{list}}" wx:key="openId" class="follower-row" bindtap="onUserTap" data-open-id="{{item.openId}}">
+      <view class="follower-avatar"><image wx:if="{{item.avatarUrl}}" class="follower-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view>
+      <view class="follower-info"><text class="follower-name">{{item.nickName}}</text><text wx:if="{{item.type === 'critic'}}" class="critic-badge">乐评人</text></view>
+      <view class="follow-btn {{item.isFollowing ? 'following' : ''}}" catchtap="onToggleFollow" data-open-id="{{item.openId}}"><text>{{item.isFollowing ? '已关注' : '+ 关注'}}</text></view>
+    </view>
+  </scroll-view>
+</view>

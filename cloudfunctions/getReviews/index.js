@@ -11,6 +11,7 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const { albumId, userId, page = 1, pageSize = 20, likedBy, followingFeed } = event
   if (event.dailyHotAlbums || event.dailyHotAlbum) return getBeijingDailyHotAlbums(Number(event.limit || 6))
+  if (event.monthlyTopCritics) return getMonthlyTopCritics(Number(event.limit || 8))
   if (event.totalCount) return getTotalReviewCount()
   if (likedBy) return getLikedReviews(likedBy, page, pageSize, OPENID)
   if (followingFeed) {
@@ -192,6 +193,48 @@ async function getBeijingDailyHotAlbums(limit = 6) {
     console.error('getBeijingDailyHotAlbums failed:', err)
     return { success: false, error: err.message }
   }
+}
+
+async function getMonthlyTopCritics(limit = 8) {
+  try {
+    const { start, end, monthKey } = beijingMonthRange()
+    const where = { createdAt: _.gte(start).and(_.lt(end)) }
+    const countRes = await db.collection('reviews').where(where).count()
+    const total = Number(countRes.total || 0)
+    if (!total) return { success: true, monthKey, list: [] }
+
+    const rows = []
+    for (let offset = 0; offset < total; offset += 100) {
+      const r = await db.collection('reviews').where(where).field({ authorOpenId: true, userNickName: true, userAvatarUrl: true, userType: true }).skip(offset).limit(100).get()
+      rows.push(...(r.data || []))
+    }
+
+    const stats = new Map()
+    rows.forEach(review => {
+      const openId = String(review.authorOpenId || '')
+      if (!openId) return
+      const current = stats.get(openId) || { openId, count: 0, nickName: review.userNickName || '匿名用户', avatarUrl: review.userAvatarUrl || '', userType: review.userType || 'normal' }
+      current.count += 1
+      stats.set(openId, current)
+    })
+
+    const ranked = Array.from(stats.values()).sort((a, b) => b.count - a.count).slice(0, Math.max(1, Math.min(limit, 20)))
+    return { success: true, monthKey, list: ranked }
+  } catch (err) {
+    console.error('getMonthlyTopCritics failed:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+function beijingMonthRange() {
+  const now = new Date()
+  const beijingNow = new Date(now.getTime() + 8 * 60 * 60 * 1000)
+  const y = beijingNow.getUTCFullYear()
+  const m = beijingNow.getUTCMonth()
+  const start = new Date(Date.UTC(y, m, 1) - 8 * 60 * 60 * 1000)
+  const end = new Date(Date.UTC(y, m + 1, 1) - 8 * 60 * 60 * 1000)
+  const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`
+  return { start, end, monthKey }
 }
 
 function beijingDayRange() {

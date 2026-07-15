@@ -1,0 +1,23 @@
+.page{height:100vh;display:flex;flex-direction:column;background:var(--black);color:var(--white)}
+.topbar{height:92rpx;display:flex;align-items:center;gap:24rpx;padding-left:32rpx;flex-shrink:0;border-bottom:2rpx solid var(--accent)}
+.back{font-size:42rpx;color:var(--accent)}
+.title{font-family:var(--font-bebas);font-size:40rpx;letter-spacing:5rpx}
+.content{flex:1;min-height:0}
+
+.head{padding:28rpx 32rpx 20rpx;display:flex;flex-direction:column;gap:8rpx}
+.head-title{font-size:28rpx;font-weight:800;color:var(--white)}
+.head-sub{font-size:21rpx;color:var(--gray-mid)}
+
+.badge-card{display:flex;gap:20rpx;padding:24rpx 32rpx;border-top:2rpx solid var(--gray-light)}
+.badge-card.locked{opacity:.45}
+.badge-card-icon{width:80rpx;height:80rpx;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--off-white);font-size:32rpx;color:var(--accent)}
+.badge-card.earned .badge-card-icon{background:var(--accent);color:var(--black)}
+.badge-card-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6rpx}
+.badge-card-head{display:flex;align-items:center;gap:12rpx}
+.badge-card-name{font-size:26rpx;font-weight:700;color:var(--white)}
+.badge-card-tag{font-size:18rpx;font-weight:700;color:var(--black);background:var(--accent);padding:3rpx 12rpx;letter-spacing:1rpx}
+.badge-card-desc{font-size:21rpx;color:var(--gray-mid);line-height:1.5}
+.badge-progress-track{height:10rpx;background:var(--off-white);margin-top:8rpx;overflow:hidden}
+.badge-progress-fill{height:100%;background:var(--accent)}
+.badge-progress-text{font-size:19rpx;color:var(--gray-mid);margin-top:4rpx}
+.badge-progress-dev{display:block;margin-top:8rpx;font-size:19rpx;color:var(--gray-mid);font-style:italic}

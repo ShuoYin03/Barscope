@@ -151,6 +151,7 @@
 .stat-cell:not(:last-child) { border-right: 2rpx solid var(--gray-light); }
 .stat-num { font-family: var(--font-bebas); font-size: 52rpx; color: var(--white); line-height: 1; }
 .stat-lbl { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 3rpx; }
+.stat-badge .stat-num, .stat-badge .stat-lbl { color: var(--accent); }
 
 .side-row { padding: 24rpx 32rpx 12rpx; background: var(--black); }
 .side-row.b { border-top: 4rpx solid var(--accent); margin-top: 8rpx; }

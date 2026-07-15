@@ -8,6 +8,7 @@ Page({
     reviewCount:0,likesReceived:0,followerCount:0,followingCount:0,
     isMe:false,isFollowing:false,followBusy:false,
     latestReviews:[] as any[],
+    badges:[] as any[],
   },
   onLoad(options){
     const app=getApp<IAppOption>()
@@ -38,6 +39,7 @@ Page({
         isMe:!!p.isMe,
         isFollowing:!!p.isFollowing,
         latestReviews:(p.latestReviews||[]).map((x:any)=>({...x,ratingText:x.rating?Number(x.rating).toFixed(1):'—'})),
+        badges:p.badges||[],
       })
     },fail:()=>this.setData({loading:false,loadError:'加载失败，请确认云函数已部署'})} as any)
   },
@@ -54,6 +56,8 @@ Page({
     },fail:()=>{this.setData({followBusy:false,isFollowing:wasFollowing,followerCount:this.data.followerCount+(wasFollowing?1:-1)});wx.showToast({title:'网络错误',icon:'none'})}} as any)
   },
   onEditProfile(){wx.navigateTo({url:'/pages/login/index'})},
+  onViewAllBadges(){wx.navigateTo({url:`/pages/badges/index?openId=${this.data.openId}`})},
+  onViewFollowers(){wx.navigateTo({url:`/pages/followers/index?openId=${this.data.openId}`})},
   onReviewTap(e:WechatMiniprogram.TouchEvent){
     const albumId=(e.currentTarget.dataset as any).albumId
     if(albumId)wx.navigateTo({url:`/pages/album-detail/index?id=${albumId}`})

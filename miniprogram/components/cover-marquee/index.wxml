@@ -1,15 +1,25 @@
 <view class="cover-marquee" wx:if="{{list.length}}">
   <view class="cover-marquee-inner" style="animation-duration: {{duration}};">
     <block wx:for="{{list}}" wx:key="index">
-      <view class="cover-marquee-item" bindtap="onCoverTap" data-id="{{item.albumId}}">
+      <view class="cover-marquee-item" style="width: {{itemSize}}rpx; height: {{itemSize}}rpx;" hover-class="is-hovered" hover-stay-time="900" bindtap="onCoverTap" data-id="{{item.albumId}}">
         <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
         <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
+        <view class="cover-marquee-overlay">
+          <text class="cover-overlay-title">{{item.title}}</text>
+          <text wx:if="{{item.artist}}" class="cover-overlay-artist">{{item.artist}}</text>
+          <text wx:if="{{item.dateDisplay}}" class="cover-overlay-date">{{item.dateDisplay}}</text>
+        </view>
       </view>
     </block>
     <block wx:for="{{list}}" wx:key="index">
-      <view class="cover-marquee-item" bindtap="onCoverTap" data-id="{{item.albumId}}">
+      <view class="cover-marquee-item" style="width: {{itemSize}}rpx; height: {{itemSize}}rpx;" hover-class="is-hovered" hover-stay-time="900" bindtap="onCoverTap" data-id="{{item.albumId}}">
         <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
         <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
+        <view class="cover-marquee-overlay">
+          <text class="cover-overlay-title">{{item.title}}</text>
+          <text wx:if="{{item.artist}}" class="cover-overlay-artist">{{item.artist}}</text>
+          <text wx:if="{{item.dateDisplay}}" class="cover-overlay-date">{{item.dateDisplay}}</text>
+        </view>
       </view>
     </block>
   </view>

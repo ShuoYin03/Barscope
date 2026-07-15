@@ -4,13 +4,22 @@ Component({
       type: Array,
       value: [] as any[],
     },
+    itemSize: {
+      type: Number,
+      value: 200,
+    },
+    secondsPerItem: {
+      type: Number,
+      value: 3,
+    },
   },
   data: {
     duration: '24s',
   },
   observers: {
-    list(list: any[]) {
-      const seconds = Math.max(12, (list || []).length * 3)
+    'list, secondsPerItem'(list: any[], secondsPerItem: number) {
+      const perItem = Number(secondsPerItem || 3)
+      const seconds = Math.max(16, (list || []).length * perItem)
       this.setData({ duration: seconds + 's' })
     },
   },
