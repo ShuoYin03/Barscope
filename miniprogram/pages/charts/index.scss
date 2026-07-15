@@ -31,22 +31,32 @@
   font-weight: 600;
 }
 
-/* PERIOD PICKER (vinyl chips) */
+/* PERIOD PICKER */
 .period-bar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
   background: var(--black);
   padding: 16rpx 44rpx;
-  gap: 12rpx;
+  gap: 10rpx;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .period-item {
-  padding: 10rpx 28rpx;
+  flex: 1;
+  min-width: 0;
+  height: 62rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4rpx;
+  box-sizing: border-box;
   font-family: var(--font-bebas);
-  font-size: 30rpx;
+  font-size: 26rpx;
   color: var(--gray-mid);
-  letter-spacing: 2rpx;
+  letter-spacing: 1rpx;
+  white-space: nowrap;
   border: 2rpx solid var(--gray-light);
 }
 
@@ -61,9 +71,6 @@
 .chart-list { background: var(--black); }
 
 /* SIDE A / SIDE B dividers */
-/* 分区标题（SIDE A / SIDE B）统一由 <section-header> 组件渲染。
-   榜单页的 topbar/筛选条用 44rpx 边距，这里给组件加一点下移+内缩，
-   让分区标题与页面 44rpx 边距对齐、并和上方筛选条拉开距离（仅榜单页，不影响主页）。 */
 .chart-side {
   padding: 16rpx 0 0 12rpx;
   background: var(--black);
