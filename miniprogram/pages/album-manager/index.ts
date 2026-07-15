@@ -230,8 +230,8 @@ Page({
   },
 
   onMultiCardTap(e: WechatMiniprogram.TouchEvent) {
-    if (!this.data.multiSelectMode) return
     const id = (e.currentTarget.dataset as { id: string }).id
+    if (!this.data.multiSelectMode) { if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }); return }
     const multiList = this.data.multiList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
     this.setData({ multiList, multiSelectedCount: multiList.filter(a => a.selected).length })
   },
@@ -365,10 +365,18 @@ Page({
   },
 
   onAllCardTap(e: WechatMiniprogram.TouchEvent) {
-    if (!this.data.allSelectMode) return
     const id = (e.currentTarget.dataset as { id: string }).id
+    if (!this.data.allSelectMode) { if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }); return }
     const allList = this.data.allList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
     this.setData({ allList, allSelectedCount: allList.filter(a => a.selected).length })
+  },
+  onTitleCardTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as { id: string }).id
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+  },
+  onAlbumCardTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as { id: string }).id
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
   },
 
   onAllSelectAll() {

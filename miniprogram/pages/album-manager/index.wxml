@@ -173,7 +173,7 @@
       </view>
 
       <block wx:else>
-        <view wx:for="{{titleResults}}" wx:key="_id" class="album-row">
+        <view wx:for="{{titleResults}}" wx:key="_id" class="album-row" bindtap="onTitleCardTap" data-id="{{item._id}}">
           <view class="album-cover-wrap">
             <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
             <view wx:else class="album-cover-fallback">
@@ -198,7 +198,7 @@
 
           <view
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
-            bindtap="onToggleApproved"
+            catchtap="onToggleApproved"
             data-id="{{item._id}}"
             data-approved="{{item.approved}}"
           >
@@ -378,7 +378,7 @@
           <view
             wx:if="{{!multiSelectMode}}"
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
-            bindtap="onToggleApproved"
+            catchtap="onToggleApproved"
             data-id="{{item._id}}"
             data-approved="{{item.approved}}"
           >
@@ -417,7 +417,7 @@
       </view>
 
       <block wx:else>
-        <view wx:for="{{albumList}}" wx:key="_id" class="album-row">
+        <view wx:for="{{albumList}}" wx:key="_id" class="album-row" bindtap="onAlbumCardTap" data-id="{{item._id}}">
           <view class="album-cover-wrap">
             <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
             <view wx:else class="album-cover-fallback">
@@ -443,7 +443,7 @@
 
           <view
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
-            bindtap="onToggleApproved"
+            catchtap="onToggleApproved"
             data-id="{{item._id}}"
             data-approved="{{item.approved}}"
           >
