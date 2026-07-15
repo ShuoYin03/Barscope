@@ -18,6 +18,12 @@ function fmtReleaseDate(value: any, fallbackYear?: any): string {
   return year ? `—/—/${year}` : ''
 }
 
+function isReleasedIn2026(item: any): boolean {
+  const releaseYear = String(item.releaseYear || item.year || '').trim()
+  const releaseDate = String(item.releaseDate || '').trim()
+  return releaseYear === '2026' || /^2026[-/.]/.test(releaseDate)
+}
+
 interface ChartEntry {
   rank:        number
   albumId:     string
@@ -70,19 +76,28 @@ Page({
 
   _loadCharts(period: Period) {
     const meta = PERIOD_META[period]
-    this.setData({ loading: true, periodSubtitle: meta.subtitle })
+    this.setData({ loading: true, list: [], periodSubtitle: meta.subtitle })
 
     wx.cloud.callFunction({
       name: 'getCharts',
       data: { period, limit: meta.limit },
       success: (res: any) => {
         const result = res.result
-        if (!result.success) { this.setData({ loading: false }); return }
+        if (!result.success) {
+          this.setData({ list: [], loading: false })
+          wx.showToast({ title: result.error || '加载失败', icon: 'none' })
+          return
+        }
 
-        const list: ChartEntry[] = (result.list || []).map((item: any) => {
+        const rawList = period === 'release2026'
+          ? (result.list || []).filter(isReleasedIn2026)
+          : (result.list || [])
+
+        const list: ChartEntry[] = rawList.map((item: any, index: number) => {
           const year = item.year || item.releaseYear
           return {
             ...item,
+            rank: index + 1,
             year,
             dateDisplay: fmtReleaseDate(item.releaseDate, year),
             scoreDisplay: fmtScore(item.score),
@@ -92,7 +107,7 @@ Page({
         this.setData({ list, loading: false })
       },
       fail: () => {
-        this.setData({ loading: false })
+        this.setData({ list: [], loading: false })
         wx.showToast({ title: '加载失败', icon: 'none' })
       },
     } as any)
