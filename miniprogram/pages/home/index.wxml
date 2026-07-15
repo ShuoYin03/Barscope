@@ -24,6 +24,31 @@
       <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
     </view>
 
+    <!-- ── SIDE B — RECENTLY HOT REVIEWED ALBUMS ───────────────── -->
+    <view class="section-block">
+      <section-header side="B" title="近期热评专辑" more="{{true}}" bind:more="onReviewMore" />
+      <view wx:if="{{loading}}" class="ca-list">
+        <view class="ca-rows">
+          <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
+            <view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" />
+            <view class="skel-info" style="flex:1;">
+              <view class="sk" style="width:60%;height:24rpx;" />
+            </view>
+            <view class="sk" style="width:56rpx;height:30rpx;flex-shrink:0;" />
+          </view>
+        </view>
+      </view>
+      <view wx:else class="ca-list">
+        <view class="ca-rows">
+          <view wx:for="{{recentHotItems}}" wx:key="albumId" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}">
+            <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank}}</text>
+            <view class="ca-info"><text class="ca-title">{{item.title}}</text><text class="ca-artist">{{item.artist}}</text></view>
+            <text class="ca-score">{{item.scoreDisplay}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <!-- ── ON THIS DAY, FOLLOWED BY TODAY'S HOT REVIEWS — one continuous swipe ── -->
     <swiper wx:if="{{!loading && heroSwiperList.length}}" class="hero-swiper" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
       <swiper-item wx:for="{{heroSwiperList}}" wx:key="albumId">
@@ -51,31 +76,6 @@
         </view>
       </swiper-item>
     </swiper>
-
-    <!-- ── SIDE B — RECENTLY HOT REVIEWED ALBUMS ───────────────── -->
-    <view class="section-block">
-      <section-header side="B" title="近期热评专辑" more="{{true}}" bind:more="onReviewMore" />
-      <view wx:if="{{loading}}" class="ca-list">
-        <view class="ca-rows">
-          <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
-            <view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" />
-            <view class="skel-info" style="flex:1;">
-              <view class="sk" style="width:60%;height:24rpx;" />
-            </view>
-            <view class="sk" style="width:56rpx;height:30rpx;flex-shrink:0;" />
-          </view>
-        </view>
-      </view>
-      <view wx:else class="ca-list">
-        <view class="ca-rows">
-          <view wx:for="{{recentHotItems}}" wx:key="albumId" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-            <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank}}</text>
-            <view class="ca-info"><text class="ca-title">{{item.title}}</text><text class="ca-artist">{{item.artist}}</text></view>
-            <text class="ca-score">{{item.scoreDisplay}}</text>
-          </view>
-        </view>
-      </view>
-    </view>
 
     <!-- ── SIDE C — RECENT REVIEWS ─────────────────────────────── -->
     <view class="section-block">
