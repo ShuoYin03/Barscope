@@ -27,69 +27,6 @@ function buildBioState(value: string) {
   }
 }
 
-function normalizeName(value: any) {
-  return String(value || '').trim().toLowerCase().replace(/[\s._\-·'’/]/g, '')
-}
-
-// Full-career collaborator aggregation.
-// Primary source: every album -> every track -> guests (Featuring).
-// Compatibility fallback: when an older album has no track-level guests, use the
-// album-level featuringGuests summary that was generated from its tracks.
-// Nothing is truncated here; Top 10 is applied only after library matching + sorting.
-function collectTrackCollaborators(rawList: any[], currentArtistId: string, currentArtistName: string): Collaborator[] {
-  const counts = new Map<string, Collaborator>()
-  const currentId = String(currentArtistId || '').trim()
-  const currentNameKey = normalizeName(currentArtistName)
-
-  const addCount = (id: any, rawName: any, increment = 1) => {
-    const artistId = String(id || '').trim()
-    const name = String(rawName || '').trim()
-    if (!artistId || !name || increment <= 0) return
-    if (artistId === currentId || normalizeName(name) === currentNameKey) return
-    const existing = counts.get(artistId)
-    if (existing) existing.count += increment
-    else counts.set(artistId, { artistId, name, count: increment, collected: false })
-  }
-
-  rawList.forEach((album: any) => {
-    const tracks = Array.isArray(album.tracks) ? album.tracks : []
-    let trackGuestAppearances = 0
-
-    tracks.forEach((track: any) => {
-      const seenThisTrack = new Set<string>()
-      const guests = Array.isArray(track.guests) ? track.guests : []
-
-      guests.forEach((guest: any) => {
-        const id = String(guest?.id || guest?.artistId || '').trim()
-        const name = String(guest?.name || guest?.artistName || '').trim()
-        if (!id || !name || seenThisTrack.has(id)) return
-        if (id === currentId || normalizeName(name) === currentNameKey) return
-        seenThisTrack.add(id)
-        addCount(id, name, 1)
-        trackGuestAppearances += 1
-      })
-    })
-
-    // Some older synced records keep the correct Featuring counts only in this summary.
-    // Use it only when no track-level guest data exists for this album to avoid double counting.
-    if (trackGuestAppearances === 0 && Array.isArray(album.featuringGuests)) {
-      album.featuringGuests.forEach((guest: any) => {
-        addCount(guest?.id || guest?.artistId, guest?.name || guest?.artistName, Number(guest?.count || 1))
-      })
-    }
-  })
-
-  return Array.from(counts.values())
-}
-
-function sortCollaborators(list: Collaborator[]) {
-  return list.slice().sort((a, b) =>
-    b.count - a.count ||
-    Number(b.collected) - Number(a.collected) ||
-    a.name.localeCompare(b.name)
-  )
-}
-
 import { getThemeClass } from '../../utils/theme'
 
 Page({
@@ -130,6 +67,7 @@ Page({
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, artistName, initial: initial.toUpperCase() })
     this._loadArtist(artistId)
     this._loadAlbums(artistId)
+    this._loadCollaborators(artistId, artistName)
   },
 
   _loadArtist(artistId: string) {
@@ -147,6 +85,23 @@ Page({
     } as any)
   },
 
+  _loadCollaborators(artistId: string, artistName: string) {
+    wx.cloud.callFunction({
+      name: 'getArtistCollaborators',
+      data: { artistId, artistName },
+      success: (res: any) => {
+        const result = res.result || {}
+        const collaborators: Collaborator[] = result.success ? (result.list || []) : []
+        this.setData({
+          collaborators,
+          visibleCollaborators: collaborators.slice(0, 3),
+          collaboratorsExpanded: false,
+        })
+      },
+      fail: () => this.setData({ collaborators: [], visibleCollaborators: [], collaboratorsExpanded: false }),
+    } as any)
+  },
+
   onSubmitArtist() {
     if (this.data.submitStatus !== 'idle') return
     this.setData({ submitStatus: 'submitting' })
@@ -161,6 +116,7 @@ Page({
           this.setData({ submitStatus: 'idle' })
           this._loadArtist(this._artistId)
           this._loadAlbums(this._artistId)
+          this._loadCollaborators(this._artistId, this.data.artistName)
           return
         }
         if (r.existed) { this.setData({ submitStatus: 'pending' }); return }
@@ -177,30 +133,6 @@ Page({
     this.setData({ bioExpanded: !this.data.bioExpanded })
   },
 
-  _applyCollaborators(rawCollaborators: Collaborator[]) {
-    const fallback = sortCollaborators(rawCollaborators).slice(0, 10)
-    if (!rawCollaborators.length) {
-      this.setData({ collaborators: [], visibleCollaborators: [], collaboratorsExpanded: false })
-      return
-    }
-
-    wx.cloud.callFunction({
-      name: 'getArtistAvatars',
-      data: { artistIds: rawCollaborators.map(item => item.artistId) },
-      success: (res: any) => {
-        const libraryMap = new Map<string, boolean>()
-        const rows = res.result?.success ? (res.result.list || []) : []
-        rows.forEach((row: any) => libraryMap.set(String(row.artistId), !!row.collected))
-        const ranked = sortCollaborators(rawCollaborators.map(item => ({
-          ...item,
-          collected: libraryMap.get(item.artistId) === true,
-        }))).slice(0, 10)
-        this.setData({ collaborators: ranked, visibleCollaborators: ranked.slice(0, 3), collaboratorsExpanded: false })
-      },
-      fail: () => this.setData({ collaborators: fallback, visibleCollaborators: fallback.slice(0, 3), collaboratorsExpanded: false }),
-    } as any)
-  },
-
   _loadAlbums(artistId: string) {
     wx.cloud.callFunction({
       name: 'getAlbums',
@@ -208,7 +140,6 @@ Page({
       success: (res: any) => {
         const result = res.result
         if (!result?.success) { this.setData({ loading: false }); return }
-
         const rawList: any[] = result.list || []
         const sortedRaw = rawList.slice().sort((a: any, b: any) => Number(b.releaseYear || 0) - Number(a.releaseYear || 0))
         const seenYears = new Set<number>()
@@ -226,14 +157,12 @@ Page({
             yearAnchor: firstOfYear ? `career-year-${year}` : '',
           }
         })
-
         const scored = list.filter(a => a.score > 0)
         const avgScore = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : '–'
         const years = Array.from(seenYears).sort((a, b) => b - a)
         const yearRange = years.length
           ? (Math.min(...years) === Math.max(...years) ? String(Math.min(...years)) : `${Math.min(...years)}–${Math.max(...years)}`)
           : ''
-
         this.setData({
           list,
           total: list.length,
@@ -243,9 +172,6 @@ Page({
           activeYear: years[0] || 0,
           loading: false,
         })
-
-        // Important: aggregate the entire career first. No Top 10 truncation happens before this point.
-        this._applyCollaborators(collectTrackCollaborators(rawList, artistId, this.data.artistName))
       },
       fail: () => this.setData({ loading: false }),
     } as any)
