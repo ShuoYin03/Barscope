@@ -9,10 +9,14 @@ async function safeGet(task) {
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
-  const { albumId, userId, page = 1, pageSize = 20, likedBy } = event
+  const { albumId, userId, page = 1, pageSize = 20, likedBy, followingFeed } = event
   if (event.dailyHotAlbums || event.dailyHotAlbum) return getBeijingDailyHotAlbums(Number(event.limit || 6))
   if (event.totalCount) return getTotalReviewCount()
   if (likedBy) return getLikedReviews(likedBy, page, pageSize, OPENID)
+  if (followingFeed) {
+    if (!OPENID) return { success: false, error: '请先登录' }
+    return getFollowingFeed(OPENID, page, pageSize)
+  }
   if (!albumId && !userId && !event.recent) return { success: false, error: 'albumId or userId or recent required' }
 
   try {
@@ -92,6 +96,31 @@ async function getLikedReviews(likedBy, page, pageSize, OPENID) {
     console.error('getLikedReviews failed:', err)
     return { success: false, error: err.message }
   }
+}
+
+async function getFollowingFeed(OPENID, page, pageSize) {
+  try {
+    let followingIds = []
+    try {
+      const followRes = await db.collection('follows').where({ followerOpenId: OPENID }).get()
+      followingIds = (followRes.data || []).map(x => x.followingOpenId)
+    } catch (e) {
+      if (!isCollectionMissing(e)) throw e
+    }
+    if (!followingIds.length) return { success: true, list: [] }
+    const skip = (page - 1) * pageSize
+    const result = await db.collection('reviews').where({ authorOpenId: _.in(followingIds) }).orderBy('createdAt', 'desc').skip(skip).limit(pageSize).get()
+    const list = await enrichReviews(result.data || [], OPENID)
+    return { success: true, list }
+  } catch (err) {
+    console.error('getFollowingFeed failed:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+function isCollectionMissing(e) {
+  const msg = String(e && (e.errMsg || e.message) || '')
+  return msg.includes('DATABASE_COLLECTION_NOT_EXIST') || msg.includes('collection not exists') || msg.includes('Db or Table not exist')
 }
 
 async function getTotalReviewCount() {

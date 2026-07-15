@@ -11,6 +11,7 @@ Component({
   },
   methods: {
     onTap() { this.triggerEvent('tap', { review: this.properties.review }) },
+    onAvatarTap() { const review=this.properties.review as any;const openId=review&&review.authorOpenId;if(openId)this.triggerEvent('usertap',{openId}) },
     onToggleExpand() { if (!this.data.hasLongContent) return; this.setData({ expanded: !this.data.expanded }) },
     onLike() { const review=this.properties.review as any;if(!review||this.data.localLiked||this.data.liking)return;this.setData({localLiked:true,liking:true});this.triggerEvent('like',{reviewId:review._id}) },
     onReply() { const review=this.properties.review as any;this.triggerEvent('reply',{reviewId:review&&review._id,userName:review&&review.userName}) },
