@@ -70,6 +70,10 @@ Page({
     } as any)
   },
 
+  onBack() {
+    wx.navigateBack()
+  },
+
   onLogin() {
     wx.navigateTo({ url: '/pages/login/index' })
   },

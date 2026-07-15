@@ -1,6 +1,7 @@
 <view class="page {{themeClass}}">
   <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
     <text class="topbar-title">COLLECTION</text>
     <text class="topbar-sub">收藏</text>
   </view>

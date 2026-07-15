@@ -10,11 +10,12 @@
   background: var(--black);
   display: flex;
   align-items: flex-end;
-  gap: 16rpx;
+  gap: 22rpx;
   padding: 0 32rpx 16rpx;
   box-sizing: border-box;
   flex-shrink: 0;
 }
+.back { font-size: 38rpx; color: var(--accent); line-height: 1; }
 .topbar-title { font-family: var(--font-bebas); font-size: 60rpx; color: var(--white); letter-spacing: 6rpx; line-height: 1; }
 .topbar-sub { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 4rpx; font-weight: 600; margin-bottom: 6rpx; }
 
