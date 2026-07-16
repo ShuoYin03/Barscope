@@ -4,15 +4,20 @@ const db = cloud.database()
 const FOLLOWS_COL = 'follows'
 
 const BADGE_DEFS = [
-  { id: 'first_review', name: '落笔成章', icon: '✎', metric: 'reviewCount', target: 1, desc: '留下你的第一段声音' },
-  { id: 'ten_reviews', name: '十评俱全', icon: '✎✎', metric: 'reviewCount', target: 10, desc: '累计发布 10 条乐评，开始形成自己的判断' },
-  { id: 'fifty_reviews', name: '字字珠玑', icon: '★', metric: 'reviewCount', target: 50, desc: '累计发布 50 条乐评，让观点成为风格' },
-  { id: 'ten_likes', name: '初有回声', icon: '♥', metric: 'likesReceived', target: 10, desc: '乐评累计获得 10 个赞，开始有人听见你的声音' },
-  { id: 'fifty_likes', name: '回声扩大', icon: '♥♥', metric: 'likesReceived', target: 50, desc: '乐评累计获得 50 个赞，你的观点正在扩散' },
-  { id: 'ten_followers', name: '圈内熟脸', icon: '⌁', metric: 'followerCount', target: 10, desc: '吸引 10 位关注者，开始有人等你开口' },
+  { id: 'first_review', name: '落笔成章', icon: '✎', metric: 'reviewCount', target: 1, desc: '发布第 1 条乐评' },
+  { id: 'ten_reviews', name: '十评俱全', icon: '✎✎', metric: 'reviewCount', target: 10, desc: '累计发布 10 条乐评' },
+  { id: 'fifty_reviews', name: '字字珠玑', icon: '★', metric: 'reviewCount', target: 50, desc: '累计发布 50 条乐评' },
+  { id: 'hundred_reviews', name: '评论成瘾', icon: '✦', metric: 'reviewCount', target: 100, desc: '累计发布 100 条乐评' },
+  { id: 'five_reviews', name: '初探声场', icon: '◌', metric: 'reviewCount', target: 5, desc: '累计发布 5 条乐评' },
+  { id: 'twentyfive_reviews', name: '掘金者', icon: '◇', metric: 'reviewCount', target: 25, desc: '累计发布 25 条乐评' },
+  { id: 'seventyfive_reviews', name: '深巷寻声', icon: '◎', metric: 'reviewCount', target: 75, desc: '累计发布 75 条乐评' },
+  { id: 'ten_likes', name: '初有回声', icon: '♥', metric: 'likesReceived', target: 10, desc: '累计获得 10 个赞' },
+  { id: 'fifty_likes', name: '回声扩大', icon: '♥♥', metric: 'likesReceived', target: 50, desc: '累计获得 50 个赞' },
+  { id: 'twohundred_likes', name: '意见领唱', icon: '✺', metric: 'likesReceived', target: 200, desc: '累计获得 200 个赞' },
+  { id: 'ten_followers', name: '圈内熟脸', icon: '⌁', metric: 'followerCount', target: 10, desc: '获得 10 位关注者' },
+  { id: 'fifty_followers', name: '风向标', icon: '⌁⌁', metric: 'followerCount', target: 50, desc: '获得 50 位关注者' },
 ]
-// Returns every badge (locked and earned) with progress, so the client can render a full gallery
-// as well as just the earned subset.
+
 function computeBadges(stats) {
   return BADGE_DEFS.map(b => {
     const current = Math.min(Number(stats[b.metric] || 0), b.target)
@@ -24,9 +29,6 @@ function followDocId(followerOpenId, followingOpenId) {
   return `${followerOpenId}_${followingOpenId}`.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
 }
 
-// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
-// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
-// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
 async function resolveCloudUrls(urls) {
   const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
   if (!targets.length) return new Map()
