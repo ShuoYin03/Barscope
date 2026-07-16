@@ -1,0 +1,18 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="brand">FEATURES</text></view>
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="head"><text class="category">年度企划 · COMMUNITY REPORT</text><text class="title">2026 年度最常评分用户</text><text class="intro">统计 2026-01-01 至 2026-12-31 期间发布的全部乐评，按年度评论数量排名；同数量时依次比较评论专辑数与获赞数。</text></view>
+    <view class="summary"><view><text class="summary-num">{{totalReviews}}</text><text class="summary-label">REVIEWS</text></view><view><text class="summary-num">{{totalReviewers}}</text><text class="summary-label">REVIEWERS</text></view></view>
+    <view wx:if="{{loading}}" class="empty">加载年度数据中…</view>
+    <view wx:elif="{{!list.length}}" class="empty">2026 年暂时还没有评论数据</view>
+    <view wx:else class="ranking">
+      <view wx:for="{{list}}" wx:key="openId" class="row" bindtap="onUserTap" data-openid="{{item.openId}}">
+        <text class="rank">{{index + 1}}</text>
+        <view class="avatar"><image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"/><text wx:else>{{item.nickName[0]}}</text></view>
+        <view class="info"><text class="name">{{item.nickName}}</text><text class="meta">{{item.albumCount}} 张专辑 · 均分 {{item.avgRating}} · 获赞 {{item.likesReceived}}</text><text class="words">累计写下 {{item.wordCount}} 字</text></view>
+        <view class="count"><text class="count-num">{{item.reviewCount}}</text><text class="count-label">REVIEWS</text></view>
+      </view>
+    </view>
+    <view class="end">— 2026 COMMUNITY REPORT —</view>
+  </scroll-view>
+</view>
