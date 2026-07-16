@@ -117,10 +117,11 @@
     <view class="picker-sheet" catchtap="noop">
       <view class="picker-handle" />
       <text class="picker-title">添加 2026 年专辑</text>
-      <input class="picker-input" value="{{pickerKeyword}}" bindinput="onPickerInput" placeholder="搜索专辑名 / 歌手" placeholder-style="color:#6f6762" focus />
-      <scroll-view class="picker-results" scroll-y>
+      <input class="picker-input" value="{{pickerKeyword}}" bindinput="onPickerInput" placeholder="搜索专辑名 / 歌手，或在下方按月浏览" placeholder-style="color:#6f6762" focus />
+
+      <scroll-view wx:if="{{pickerSearching}}" class="picker-results" scroll-y>
         <view wx:if="{{pickerLoading}}" class="picker-empty"><text>搜索中…</text></view>
-        <view wx:elif="{{pickerResults.length === 0}}" class="picker-empty"><text>{{pickerKeyword ? '没有匹配的 2026 年专辑' : '2026 年发行的专辑会显示在这里'}}</text></view>
+        <view wx:elif="{{pickerResults.length === 0}}" class="picker-empty"><text>没有匹配的 2026 年专辑</text></view>
         <block wx:else>
           <view wx:for="{{pickerResults}}" wx:key="_id" class="picker-row" bindtap="onPickerSelect" data-id="{{item._id}}">
             <image class="picker-cover" src="{{item.coverUrl}}" mode="aspectFill" />
@@ -131,6 +132,31 @@
           </view>
         </block>
       </scroll-view>
+
+      <view wx:else class="picker-browse-wrap">
+        <scroll-view class="picker-results with-month-index" scroll-y scroll-into-view="{{pickerScrollIntoView}}" scroll-with-animation="{{true}}">
+          <view wx:if="{{pickerAllLoading}}" class="picker-empty"><text>加载中…</text></view>
+          <view wx:elif="{{pickerAllGroups.length === 0}}" class="picker-empty"><text>暂无已收录的 2026 年专辑</text></view>
+          <block wx:else>
+            <view wx:for="{{pickerAllGroups}}" wx:for-item="group" wx:key="month" id="picker-month-{{group.month}}">
+              <view class="picker-month-label"><text>2026 · {{group.month}}月</text></view>
+              <view wx:for="{{group.list}}" wx:key="_id" class="picker-row" bindtap="onPickerSelect" data-id="{{item._id}}">
+                <image class="picker-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+                <view class="picker-row-info">
+                  <text class="picker-row-title">{{item.title}}</text>
+                  <text class="picker-row-artist">{{item.artist}}</text>
+                </view>
+              </view>
+            </view>
+          </block>
+        </scroll-view>
+        <view wx:if="{{pickerAllGroups.length > 1}}" class="picker-month-index">
+          <view wx:for="{{pickerAllGroups}}" wx:for-item="group" wx:key="month" class="picker-month-index-item {{pickerActiveMonth === group.month ? 'active' : ''}}" bindtap="onPickerMonthTap" data-month="{{group.month}}">
+            <text>{{group.month}}</text>
+          </view>
+        </view>
+      </view>
+
       <view class="picker-cancel" bindtap="onClosePicker"><text>取消</text></view>
     </view>
   </view>

@@ -35,6 +35,8 @@ function formatBallotDate(value: any): string {
 }
 
 let _pickerTimer: any = null
+const PICKER_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+const titleCollator = new Intl.Collator('zh-Hans-CN-u-co-pinyin', { sensitivity: 'base', numeric: true })
 
 Page({
   data: {
@@ -63,8 +65,14 @@ Page({
     mySaving: false,
     pickerVisible: false,
     pickerKeyword: '',
+    pickerSearching: false,
     pickerResults: [] as any[],
     pickerLoading: false,
+    pickerAllLoading: false,
+    pickerAllLoaded: false,
+    pickerAllGroups: [] as { month: string; list: any[] }[],
+    pickerActiveMonth: '',
+    pickerScrollIntoView: '',
     communityList: [] as Top10Ballot[],
     communityLoading: false,
     communityPage: 1,
@@ -215,24 +223,49 @@ Page({
     if (!this._requireLogin()) return
     if (!this.data.votingOpen) { wx.showToast({ title: '投票已截止', icon: 'none' }); return }
     if (this.data.myEntries.length >= 10) { wx.showToast({ title: '最多选择 10 张专辑', icon: 'none' }); return }
-    this.setData({ pickerVisible: true, pickerKeyword: '', pickerResults: [] })
+    this.setData({ pickerVisible: true, pickerKeyword: '', pickerSearching: false, pickerResults: [] })
+    if (!this.data.pickerAllLoaded) this._loadPickerAll()
   },
 
   onClosePicker() { this.setData({ pickerVisible: false }) },
   noop() {},
 
+  _loadPickerAll() {
+    this.setData({ pickerAllLoading: true })
+    Promise.all(PICKER_MONTHS.map(month => wx.cloud.callFunction({
+      name: 'getAlbums',
+      data: { year: '2026', month, page: 1, pageSize: 100, sortBy: 'releaseYear' },
+    }).catch(() => ({ result: { success: false, list: [] } }))))
+      .then((results: any[]) => {
+        const groups = PICKER_MONTHS.map((month, i) => {
+          const r = (results[i] && results[i].result) || {}
+          const list = (r.success ? (r.list || []) : []).slice().sort((a: any, b: any) => titleCollator.compare(a.title || '', b.title || ''))
+          return { month, list }
+        }).filter(g => g.list.length > 0)
+        this.setData({ pickerAllGroups: groups, pickerAllLoading: false, pickerAllLoaded: true })
+      })
+  },
+
+  onPickerMonthTap(e: WechatMiniprogram.TouchEvent) {
+    const month = String((e.currentTarget.dataset as any).month || '')
+    if (!month) return
+    this.setData({ pickerActiveMonth: month, pickerScrollIntoView: 'picker-month-' + month })
+  },
+
   onPickerInput(e: WechatMiniprogram.Input) {
     const keyword = e.detail.value || ''
-    this.setData({ pickerKeyword: keyword })
+    const trimmed = keyword.trim()
+    this.setData({ pickerKeyword: keyword, pickerSearching: !!trimmed })
     clearTimeout(_pickerTimer)
-    _pickerTimer = setTimeout(() => this._searchPicker(keyword), 350)
+    if (!trimmed) { this.setData({ pickerResults: [] }); return }
+    _pickerTimer = setTimeout(() => this._searchPicker(trimmed), 350)
   },
 
   _searchPicker(keyword: string) {
     this.setData({ pickerLoading: true })
     wx.cloud.callFunction({
       name: 'getAlbums',
-      data: { year: '2026', keyword: keyword.trim(), page: 1, pageSize: 30, sortBy: keyword.trim() ? 'relevance' : 'releaseYear' },
+      data: { year: '2026', keyword, page: 1, pageSize: 30, sortBy: 'relevance' },
       success: (res: any) => {
         const r = res.result || {}
         const pickedIds = new Set(this.data.myEntries.map((x: Top10Entry) => x.albumId))
@@ -245,8 +278,10 @@ Page({
 
   onPickerSelect(e: WechatMiniprogram.TouchEvent) {
     const id = String((e.currentTarget.dataset as any).id || '')
-    const album = this.data.pickerResults.find((a: any) => a._id === id)
+    const source = this.data.pickerSearching ? this.data.pickerResults : this.data.pickerAllGroups.flatMap((g: any) => g.list)
+    const album = source.find((a: any) => a._id === id)
     if (!album) return
+    if (this.data.myEntries.some((x: Top10Entry) => x.albumId === id)) { wx.showToast({ title: '已经选过这张了', icon: 'none' }); return }
     if (this.data.myEntries.length >= 10) { wx.showToast({ title: '最多选择 10 张专辑', icon: 'none' }); return }
     const entry: Top10Entry = { albumId: album._id, title: album.title || '', artist: album.artist || album.primaryArtist || '', coverUrl: album.coverUrl || '', note: '' }
     this.setData({ myEntries: [...this.data.myEntries, entry], pickerVisible: false })
