@@ -7,16 +7,26 @@
       <text wx:if="{{hasEarnedCount}}" class="head-sub">已解锁 {{earnedCount}} / {{badges.length}}</text>
     </view>
 
-    <view wx:for="{{badges}}" wx:key="id" class="badge-card {{item.earned ? 'earned' : 'locked'}}">
-      <view class="badge-card-icon"><text>{{item.icon}}</text></view>
-      <view class="badge-card-info">
-        <view class="badge-card-head"><text class="badge-card-name">{{item.name}}</text><text wx:if="{{item.earned}}" class="badge-card-tag">已解锁</text></view>
-        <text class="badge-card-desc">{{item.desc}}</text>
-        <block wx:if="{{item.hasProgress}}">
-          <view class="badge-progress-track"><view class="badge-progress-fill" style="width: {{item.pct}}%" /></view>
-          <text class="badge-progress-text">{{item.current}} / {{item.target}}</text>
-        </block>
-        <text wx:else class="badge-progress-dev">进度统计功能仍在开发中</text>
+    <view wx:for="{{sections}}" wx:key="key" class="badge-section">
+      <view class="badge-section-head">
+        <view class="badge-section-copy">
+          <text class="badge-section-title">{{item.title}}</text>
+          <text class="badge-section-subtitle">{{item.subtitle}}</text>
+        </view>
+        <view class="badge-section-rule" />
+      </view>
+
+      <view wx:for="{{item.badges}}" wx:for-item="badge" wx:key="id" class="badge-card {{badge.earned ? 'earned' : 'locked'}}">
+        <view class="badge-card-icon"><text>{{badge.icon}}</text></view>
+        <view class="badge-card-info">
+          <view class="badge-card-head"><text class="badge-card-name">{{badge.name}}</text><text wx:if="{{badge.earned}}" class="badge-card-tag">已解锁</text></view>
+          <text class="badge-card-desc">{{badge.desc}}</text>
+          <block wx:if="{{badge.hasProgress}}">
+            <view class="badge-progress-track"><view class="badge-progress-fill" style="width: {{badge.pct}}%" /></view>
+            <text class="badge-progress-text">{{badge.current}} / {{badge.target}}</text>
+          </block>
+          <text wx:else class="badge-progress-dev">进度统计功能仍在开发中</text>
+        </view>
       </view>
     </view>
   </scroll-view>
