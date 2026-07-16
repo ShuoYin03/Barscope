@@ -1,0 +1,23 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><view><text class="title">ARTIST INDEX</text><text class="subtitle">艺人资料共建</text></view></view>
+  <view class="intro"><text class="intro-title">完善艺人身份</text><text class="intro-copy">为已收录艺人补充或纠正 RAPPER / PRODUCER / LABEL 身份。所有修改将在管理员审核通过后生效。</text></view>
+  <view class="search"><input placeholder="搜索艺人 / 厂牌" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
+  <scroll-view class="content" scroll-y>
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{list.length===0}}" class="empty">没有找到相关艺人</view>
+    <view wx:for="{{list}}" wx:key="id" class="row" bindtap="onEdit" data-id="{{item.id}}">
+      <view class="avatar"><image wx:if="{{item.picUrl}}" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+      <view class="copy"><text class="name">{{item.artistName}}</text><text class="meta">{{item.albumSize || 0}} 张专辑</text><view class="role-tags"><text wx:if="{{!item.roles.length}}" class="role-tag muted">未设置身份</text><text wx:for="{{item.roles}}" wx:key="*this" class="role-tag">{{item}}</text></view></view>
+      <text class="arrow">›</text>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{editorVisible}}" class="sheet-mask" bindtap="onCloseEditor"><view class="sheet" catchtap="noop">
+    <view class="handle"></view>
+    <text class="sheet-title">{{editingArtistName}}</text>
+    <text class="sheet-subtitle">请选择正确身份，可多选</text>
+    <view class="role-grid"><view wx:for="{{roleOptions}}" wx:key="key" class="role-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleRole" data-role="{{item.key}}"><text>{{item.label}}</text><text wx:if="{{item.selected}}">✓</text></view></view>
+    <text class="review-note">提交后将进入管理员审核，审核通过前不会更改当前展示。</text>
+    <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="onSubmit">{{submitting ? '提交中…' : '提交审核'}}</view>
+  </view></view>
+</view>
