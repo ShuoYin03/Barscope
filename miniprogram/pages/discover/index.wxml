@@ -36,13 +36,11 @@
     </block>
     <block wx:else>
       <view class="side-row"><text class="side-text">SIDE A — LABEL 厂牌</text><view class="side-rule" /></view>
-      <scroll-view scroll-x show-scrollbar="{{false}}" class="brand-scroll">
+      <view class="brand-stamp brand-stamp-all {{activeBrand === '全部' ? 'active' : ''}}" bindtap="onBrandTap" data-brand="全部"><text class="brand-name">全部</text><text class="brand-count">{{artistList.length}}</text></view>
+      <scroll-view class="timeline-scroll" scroll-x enhanced show-scrollbar="{{false}}"><view class="timeline-track"><view class="timeline-line" /><view wx:for="{{brandLetters}}" wx:key="*this" class="timeline-item {{activeBrandLetter === item ? 'active' : ''}}" bindtap="onBrandLetterAxisTap" data-letter="{{item}}"><view class="timeline-dot" /><text class="timeline-label">{{item}}</text></view></view></scroll-view>
+      <scroll-view wx:if="{{activeBrandLetter}}" scroll-x show-scrollbar="{{false}}" class="brand-scroll">
         <view class="brand-stamps-horizontal">
-          <view class="brand-stamp {{activeBrand === '全部' ? 'active' : ''}}" bindtap="onBrandTap" data-brand="全部"><text class="brand-name">全部</text><text class="brand-count">{{artistList.length}}</text></view>
-          <block wx:for="{{brandLetterGroups}}" wx:key="letter">
-            <text class="brand-letter-tag">{{item.letter}}</text>
-            <view wx:for="{{item.list}}" wx:for-item="brand" wx:key="name" class="brand-stamp {{activeBrand === brand.name ? 'active' : ''}}" bindtap="onBrandTap" data-brand="{{brand.name}}"><text class="brand-name">{{brand.name}}</text><text class="brand-count">{{brand.count}}</text></view>
-          </block>
+          <view wx:for="{{currentLetterBrands}}" wx:key="name" class="brand-stamp {{activeBrand === item.name ? 'active' : ''}}" bindtap="onBrandTap" data-brand="{{item.name}}"><text class="brand-name">{{item.name}}</text><text class="brand-count">{{item.count}}</text></view>
         </view>
       </scroll-view>
       <view class="side-row"><text class="side-text">SIDE B — SUBMIT</text><view class="side-rule" /></view>
