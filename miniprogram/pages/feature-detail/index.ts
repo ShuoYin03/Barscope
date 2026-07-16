@@ -6,6 +6,11 @@ const ARTICLES: any = {
     title: '2026 中文说唱十大专辑',
     intro: '从 2026 年发行的专辑里选出你心中的十张，按喜爱程度排出 1-10 名，写下理由，所有人的榜单都会公开展示。专辑会随时间不断发行，你可以随时调整，直到 2026-12-31 截止。',
   },
+  '2026-best-newcomer': {
+    category: '年度企划',
+    title: '2026 年度最佳新人',
+    intro: '从 2026 年发行自己首张 LP / Mixtape 的新人中选出你心中的三位，按喜爱程度排出 1-3 名，写下理由，所有人的榜单都会公开展示。你可以随时调整，直到 2026-12-31 截止。',
+  },
   'long-review-template': {
     category: '深度长评',
     title: '深度乐评征稿中',
@@ -26,6 +31,9 @@ const ARTICLES: any = {
 
 interface Top10Entry { albumId: string; title: string; artist: string; coverUrl: string; note: string }
 interface Top10Ballot { _id?: string; userNickName: string; userAvatarUrl: string; entries: Top10Entry[]; updatedAt: any; updatedAtDisplay?: string }
+
+interface NewcomerEntry { artistId: string; artistName: string; avatarUrl: string; note: string }
+interface NewcomerBallot { _id?: string; userNickName: string; userAvatarUrl: string; entries: NewcomerEntry[]; updatedAt: any; updatedAtDisplay?: string }
 
 function formatBallotDate(value: any): string {
   if (!value) return ''
@@ -48,6 +56,7 @@ function withReleaseDisplay(a: any) {
 let _pickerTimer: any = null
 const PICKER_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 const titleCollator = new Intl.Collator('zh-Hans-CN-u-co-pinyin', { sensitivity: 'base', numeric: true })
+const nameCollator = new Intl.Collator('zh-Hans-CN-u-co-pinyin', { sensitivity: 'base', numeric: true })
 
 Page({
   data: {
@@ -57,7 +66,9 @@ Page({
     featureId: '',
     article: null as any,
     isTop10: false,
+    isNewcomer: false,
     isLoggedIn: false,
+    isAdmin: false,
 
     // ── proposal form (long-review-template / rapper-interview) ──
     proposalTitle: '',
@@ -89,29 +100,56 @@ Page({
     communityPage: 1,
     communityHasMore: false,
     communityTotal: 0,
+
+    // ── best newcomer vote ──
+    newcomerTab: 'mine' as 'mine' | 'community',
+    newcomerVotingOpen: true,
+    newcomerVoterTotal: 0,
+    myNewcomerEntries: [] as NewcomerEntry[],
+    myNewcomerLoading: false,
+    myNewcomerSaving: false,
+    newcomerNominees: [] as any[],
+    newcomerNomineesLoaded: false,
+    newcomerPickerVisible: false,
+    newcomerPickerKeyword: '',
+    newcomerPickerFiltered: [] as any[],
+    newcomerCommunityList: [] as NewcomerBallot[],
+    newcomerCommunityLoading: false,
+    newcomerCommunityPage: 1,
+    newcomerCommunityHasMore: false,
+    newcomerCommunityTotal: 0,
+    rebuildingNominees: false,
   },
 
   onLoad(options: any) {
     const app = getApp<IAppOption>()
     const featureId = String(options.id || '2026-top-10')
     const isTop10 = featureId === '2026-top-10'
+    const isNewcomer = featureId === '2026-best-newcomer'
     this.setData({
       statusBarHeight: app.globalData.statusBarHeight,
       topbarHeight: app.globalData.topbarHeight,
       isLoggedIn: !!app.globalData.userInfo,
+      isAdmin: !!app.globalData.isAdmin,
       featureId,
       isTop10,
+      isNewcomer,
       article: ARTICLES[featureId] || ARTICLES['2026-top-10'],
     })
     if (isTop10) {
       this._loadMyBallot()
       this._loadStats()
     }
+    if (isNewcomer) {
+      this._loadMyNewcomerBallot()
+      this._loadNewcomerStats()
+      this._loadNewcomerNominees()
+    }
   },
 
   onShow() {
     const app = getApp<IAppOption>()
-    this.setData({ themeClass: getThemeClass(), isLoggedIn: !!app.globalData.userInfo })
+    this.setData({ themeClass: getThemeClass(), isLoggedIn: !!app.globalData.userInfo, isAdmin: !!app.globalData.isAdmin })
   },
 
   onFieldInput(e: WechatMiniprogram.Input | WechatMiniprogram.TextareaInput) {
@@ -220,8 +258,11 @@ Page({
   },
 
   onCommunityReachBottom() {
-    if (this.data.top10Tab !== 'community' || !this.data.communityHasMore || this.data.communityLoading) return
-    this._loadCommunity(this.data.communityPage + 1)
+    if (this.data.isTop10) {
+      if (this.data.top10Tab === 'community' && this.data.communityHasMore && !this.data.communityLoading) this._loadCommunity(this.data.communityPage + 1)
+      return
+    }
+    if (this.data.isNewcomer) this.onNewcomerCommunityReachBottom()
   },
 
   _requireLogin(): boolean {
@@ -339,6 +380,181 @@ Page({
       },
       fail: () => { wx.hideLoading(); this.setData({ mySaving: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     } as any)
+  },
+
+  // ── best newcomer vote：我的榜单 ────────────────────────────────────────
+  _loadMyNewcomerBallot() {
+    this.setData({ myNewcomerLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageNewcomerVote',
+      data: { action: 'get_mine' },
+      success: (res: any) => {
+        const r = res.result || {}
+        this.setData({ myNewcomerLoading: false })
+        if (!r.success) { if (r.error && r.error !== '请先登录') wx.showToast({ title: r.error, icon: 'none' }); return }
+        this.setData({ myNewcomerEntries: r.entries || [], newcomerVotingOpen: r.votingOpen !== false })
+      },
+      fail: () => this.setData({ myNewcomerLoading: false }),
+    } as any)
+  },
+
+  _loadNewcomerStats() {
+    wx.cloud.callFunction({
+      name: 'manageNewcomerVote',
+      data: { action: 'stats' },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (r.success) this.setData({ newcomerVoterTotal: r.total || 0, newcomerVotingOpen: r.votingOpen !== false })
+      },
+    } as any)
+  },
+
+  _loadNewcomerNominees() {
+    wx.cloud.callFunction({
+      name: 'manageNewcomerVote',
+      data: { action: 'list_nominees' },
+      success: (res: any) => {
+        const r = res.result || {}
+        const list = (r.success ? (r.list || []) : []).slice().sort((a: any, b: any) => nameCollator.compare(a.artistName || '', b.artistName || ''))
+        const kw = this.data.newcomerPickerKeyword.trim().toLowerCase()
+        this.setData({
+          newcomerNominees: list,
+          newcomerNomineesLoaded: true,
+          newcomerPickerFiltered: kw ? list.filter((x: any) => String(x.artistName || '').toLowerCase().includes(kw)) : list,
+        })
+      },
+    } as any)
+  },
+
+  onNewcomerTabTap(e: WechatMiniprogram.TouchEvent) {
+    const tab = (e.currentTarget.dataset as any).tab as 'mine' | 'community'
+    if (tab === this.data.newcomerTab) return
+    this.setData({ newcomerTab: tab })
+    if (tab === 'community' && !this.data.newcomerCommunityList.length) this._loadNewcomerCommunity(1)
+  },
+
+  _loadNewcomerCommunity(page: number) {
+    this.setData({ newcomerCommunityLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageNewcomerVote',
+      data: { action: 'list_public', page, pageSize: 20 },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ newcomerCommunityLoading: false }); return }
+        const incoming = (r.list || []).map((d: any) => ({ ...d, updatedAtDisplay: formatBallotDate(d.updatedAt) }))
+        const newcomerCommunityList = page === 1 ? incoming : [...this.data.newcomerCommunityList, ...incoming]
+        this.setData({
+          newcomerCommunityList,
+          newcomerCommunityTotal: r.total || 0,
+          newcomerCommunityPage: page,
+          newcomerCommunityHasMore: newcomerCommunityList.length < (r.total || 0),
+          newcomerCommunityLoading: false,
+        })
+      },
+      fail: () => this.setData({ newcomerCommunityLoading: false }),
+    } as any)
+  },
+
+  onNewcomerCommunityReachBottom() {
+    if (this.data.newcomerTab !== 'community' || !this.data.newcomerCommunityHasMore || this.data.newcomerCommunityLoading) return
+    this._loadNewcomerCommunity(this.data.newcomerCommunityPage + 1)
+  },
+
+  onOpenNewcomerPicker() {
+    if (!this._requireLogin()) return
+    if (!this.data.newcomerVotingOpen) { wx.showToast({ title: '投票已截止', icon: 'none' }); return }
+    if (this.data.myNewcomerEntries.length >= 3) { wx.showToast({ title: '最多选择 3 位新人', icon: 'none' }); return }
+    this.setData({ newcomerPickerVisible: true, newcomerPickerKeyword: '', newcomerPickerFiltered: this.data.newcomerNominees })
+  },
+
+  onCloseNewcomerPicker() { this.setData({ newcomerPickerVisible: false }) },
+
+  onNewcomerPickerInput(e: WechatMiniprogram.Input) {
+    const keyword = e.detail.value || ''
+    const kw = keyword.trim().toLowerCase()
+    const filtered = kw ? this.data.newcomerNominees.filter((x: any) => String(x.artistName || '').toLowerCase().includes(kw)) : this.data.newcomerNominees
+    this.setData({ newcomerPickerKeyword: keyword, newcomerPickerFiltered: filtered })
+  },
+
+  onNewcomerPickerSelect(e: WechatMiniprogram.TouchEvent) {
+    const id = String((e.currentTarget.dataset as any).id || '')
+    const nominee = this.data.newcomerNominees.find((x: any) => x.artistId === id)
+    if (!nominee) return
+    if (this.data.myNewcomerEntries.some((x: NewcomerEntry) => x.artistId === id)) { wx.showToast({ title: '已经选过这位了', icon: 'none' }); return }
+    if (this.data.myNewcomerEntries.length >= 3) { wx.showToast({ title: '最多选择 3 位新人', icon: 'none' }); return }
+    const entry: NewcomerEntry = { artistId: nominee.artistId, artistName: nominee.artistName || '', avatarUrl: nominee.avatarUrl || '', note: '' }
+    this.setData({ myNewcomerEntries: [...this.data.myNewcomerEntries, entry], newcomerPickerVisible: false })
+  },
+
+  onRemoveNewcomerEntry(e: WechatMiniprogram.TouchEvent) {
+    const index = Number((e.currentTarget.dataset as any).index)
+    this.setData({ myNewcomerEntries: this.data.myNewcomerEntries.filter((_x, i) => i !== index) })
+  },
+
+  onMoveNewcomerEntry(e: WechatMiniprogram.TouchEvent) {
+    const index = Number((e.currentTarget.dataset as any).index)
+    const dir = String((e.currentTarget.dataset as any).dir || '')
+    const target = dir === 'up' ? index - 1 : index + 1
+    if (target < 0 || target >= this.data.myNewcomerEntries.length) return
+    const myNewcomerEntries = [...this.data.myNewcomerEntries]
+    const tmp = myNewcomerEntries[index]; myNewcomerEntries[index] = myNewcomerEntries[target]; myNewcomerEntries[target] = tmp
+    this.setData({ myNewcomerEntries })
+  },
+
+  onNewcomerEntryNoteInput(e: WechatMiniprogram.TextareaInput) {
+    const index = Number((e.currentTarget.dataset as any).index)
+    const value = e.detail.value || ''
+    this.setData({ myNewcomerEntries: this.data.myNewcomerEntries.map((x: NewcomerEntry, i: number) => i === index ? { ...x, note: value } : x) })
+  },
+
+  onSaveNewcomerBallot() {
+    if (!this._requireLogin()) return
+    if (this.data.myNewcomerSaving) return
+    if (!this.data.newcomerVotingOpen) { wx.showToast({ title: '投票已截止', icon: 'none' }); return }
+    this.setData({ myNewcomerSaving: true })
+    wx.showLoading({ title: '保存中…', mask: true })
+    const entries = this.data.myNewcomerEntries.map((x: NewcomerEntry) => ({ artistId: x.artistId, note: x.note }))
+    wx.cloud.callFunction({
+      name: 'manageNewcomerVote',
+      data: { action: 'submit', entries },
+      success: (res: any) => {
+        wx.hideLoading()
+        this.setData({ myNewcomerSaving: false })
+        const r = res.result || {}
+        if (!r.success) { wx.showToast({ title: r.error || '保存失败', icon: 'none' }); return }
+        this._loadNewcomerStats()
+        wx.showToast({ title: '已保存', icon: 'success' })
+      },
+      fail: () => { wx.hideLoading(); this.setData({ myNewcomerSaving: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    } as any)
+  },
+
+  onRebuildNominees() {
+    if (this.data.rebuildingNominees) return
+    wx.showModal({
+      title: '重新扫描新秀名单？',
+      content: '会全量扫描专辑库，找出 2026 年发行首张 LP/Mixtape 的新人，可能需要几十秒。',
+      confirmText: '扫描',
+      confirmColor: '#D45124',
+      success: (m) => {
+        if (!m.confirm) return
+        this.setData({ rebuildingNominees: true })
+        wx.showLoading({ title: '扫描中…', mask: true })
+        wx.cloud.callFunction({
+          name: 'manageNewcomerVote',
+          data: { action: 'rebuild_nominees' },
+          success: (res: any) => {
+            wx.hideLoading()
+            this.setData({ rebuildingNominees: false })
+            const r = res.result || {}
+            if (!r.success) { wx.showToast({ title: r.error || '扫描失败', icon: 'none' }); return }
+            wx.showToast({ title: `已找到 ${r.count || 0} 位新人`, icon: 'success' })
+            this._loadNewcomerNominees()
+          },
+          fail: () => { wx.hideLoading(); this.setData({ rebuildingNominees: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+        } as any)
+      },
+    })
   },
 
   onBack() { wx.navigateBack() },

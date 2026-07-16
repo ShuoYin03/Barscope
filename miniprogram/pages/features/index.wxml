@@ -14,7 +14,6 @@
         <text class="feature-arrow">{{item.cta}} →</text>
       </view>
     </view>
-    <view class="coming"><text class="coming-kicker">WAITING FOR SUBMISSIONS</text><text class="coming-copy">有想写的选题，就从这里开始。</text></view>
   </scroll-view>
   <bottom-nav selected="{{3}}" />
 </view>

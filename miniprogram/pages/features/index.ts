@@ -2,8 +2,9 @@ import { getThemeClass } from '../../utils/theme'
 
 const FEATURES = [
   { id:'2026-top-10', category:'年度企划', title:'2026 中文说唱十大专辑', subtitle:'开放投票中', status:'选出你的十张，写下理由，公开你的榜单', accent:'01', hero:true, cta:'投票' },
-  { id:'long-review-template', category:'深度长评', title:'深度乐评征稿中', subtitle:'广告位等待投稿中…', status:'等待你的长篇乐评', accent:'02', cta:'投稿' },
-  { id:'rapper-interview', category:'人物访谈', title:'Rapper 心里话', subtitle:'广告位等待投稿中…', status:'等待你的采访与人物故事', accent:'03', cta:'投稿' },
+  { id:'2026-best-newcomer', category:'年度企划', title:'2026 年度最佳新人', subtitle:'开放投票中', status:'从 2026 年发行首张 LP/Mixtape 的新人中选出你心中的三位', accent:'02', cta:'投票' },
+  { id:'long-review-template', category:'深度长评', title:'深度乐评征稿中', subtitle:'广告位等待投稿中…', status:'等待你的长篇乐评', accent:'03', cta:'投稿' },
+  { id:'rapper-interview', category:'人物访谈', title:'Rapper 心里话', subtitle:'广告位等待投稿中…', status:'等待你的采访与人物故事', accent:'04', cta:'投稿' },
 ]
 
 Page({

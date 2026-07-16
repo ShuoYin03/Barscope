@@ -6,7 +6,7 @@
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{article}}" bindscrolltolower="onCommunityReachBottom">
     <view class="article-head">
-      <text class="category">{{article.category}} · {{isTop10 ? 'COMMUNITY VOTE' : 'OPEN CALL'}}</text>
+      <text class="category">{{article.category}} · {{(isTop10 || isNewcomer) ? 'COMMUNITY VOTE' : 'OPEN CALL'}}</text>
       <text class="title">{{article.title}}</text>
       <text class="intro">{{article.intro}}</text>
     </view>
@@ -75,6 +75,70 @@
       </block>
     </block>
 
+    <block wx:elif="{{isNewcomer}}">
+      <view wx:if="{{isAdmin}}" class="newcomer-admin-row {{rebuildingNominees ? 'disabled' : ''}}" bindtap="onRebuildNominees">
+        <text>{{rebuildingNominees ? '扫描中…' : '管理员：重新扫描新秀名单'}}</text>
+      </view>
+      <view class="top10-tabs">
+        <view class="top10-tab {{newcomerTab === 'mine' ? 'active' : ''}}" bindtap="onNewcomerTabTap" data-tab="mine"><text>我的榜单</text></view>
+        <view class="top10-tab {{newcomerTab === 'community' ? 'active' : ''}}" bindtap="onNewcomerTabTap" data-tab="community"><text>社区榜单</text></view>
+      </view>
+      <view class="top10-status">
+        <text class="top10-status-text">{{newcomerVotingOpen ? '投票进行中 · 截止 2026-12-31' : '投票已截止'}}</text>
+        <text class="top10-status-count">{{newcomerVoterTotal}} 人已投票</text>
+      </view>
+
+      <block wx:if="{{newcomerTab === 'mine'}}">
+        <view wx:if="{{myNewcomerLoading}}" class="top10-empty"><text>加载中…</text></view>
+        <block wx:else>
+          <view wx:if="{{myNewcomerEntries.length === 0}}" class="top10-empty"><text>还没有选择新人，点击下方添加</text></view>
+          <view wx:for="{{myNewcomerEntries}}" wx:key="artistId" class="top10-entry-row">
+            <text class="top10-rank">{{index + 1}}</text>
+            <view class="newcomer-avatar"><image wx:if="{{item.avatarUrl}}" class="newcomer-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+            <view class="top10-entry-body">
+              <text class="top10-entry-title">{{item.artistName}}</text>
+              <textarea class="top10-note-input" value="{{item.note}}" data-index="{{index}}" bindinput="onNewcomerEntryNoteInput" maxlength="200" placeholder="写下你选择这位新人的理由（选填）" placeholder-style="color:#6f6762" auto-height />
+            </view>
+            <view class="top10-entry-actions">
+              <view class="top10-move {{index === 0 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="up" bindtap="onMoveNewcomerEntry"><text>↑</text></view>
+              <view class="top10-move {{index === myNewcomerEntries.length - 1 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="down" bindtap="onMoveNewcomerEntry"><text>↓</text></view>
+              <view class="top10-remove" data-index="{{index}}" bindtap="onRemoveNewcomerEntry"><text>×</text></view>
+            </view>
+          </view>
+
+          <view wx:if="{{myNewcomerEntries.length < 3 && newcomerVotingOpen}}" class="top10-add-btn" bindtap="onOpenNewcomerPicker">
+            <text>+ 添加新人（{{myNewcomerEntries.length}}/3）</text>
+          </view>
+          <view class="top10-save {{myNewcomerSaving ? 'disabled' : ''}}" bindtap="onSaveNewcomerBallot">
+            <text>{{myNewcomerSaving ? '保存中…' : '保存我的榜单'}}</text>
+          </view>
+        </block>
+      </block>
+
+      <block wx:else>
+        <view wx:if="{{newcomerCommunityLoading && newcomerCommunityList.length === 0}}" class="top10-empty"><text>加载中…</text></view>
+        <view wx:elif="{{newcomerCommunityList.length === 0}}" class="top10-empty"><text>还没有人公开榜单，来做第一个吧</text></view>
+        <block wx:else>
+          <view wx:for="{{newcomerCommunityList}}" wx:for-item="ballot" wx:key="_id" class="top10-card">
+            <view class="top10-card-head">
+              <view class="top10-card-avatar"><image wx:if="{{ballot.userAvatarUrl}}" class="top10-card-avatar-img" src="{{ballot.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{ballot.userNickName[0]}}</text></view>
+              <text class="top10-card-name">{{ballot.userNickName}}</text>
+              <text class="top10-card-date">{{ballot.updatedAtDisplay}}</text>
+            </view>
+            <view wx:for="{{ballot.entries}}" wx:key="artistId" class="top10-card-entry">
+              <text class="top10-card-rank">{{index + 1}}</text>
+              <view class="top10-card-entry-body">
+                <text class="top10-card-entry-title">{{item.artistName}}</text>
+                <text wx:if="{{item.note}}" class="top10-card-note">{{item.note}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{newcomerCommunityLoading}}" class="top10-empty"><text>加载中…</text></view>
+          <view wx:elif="{{!newcomerCommunityHasMore}}" class="top10-empty"><text>── 共 {{newcomerCommunityTotal}} 人 ──</text></view>
+        </block>
+      </block>
+    </block>
+
     <view wx:else class="form">
       <view class="field">
         <view class="field-head"><text class="field-label">项目标题 *</text><text class="field-count">{{proposalTitle.length}} / 80</text></view>
@@ -110,7 +174,7 @@
       </view>
     </view>
 
-    <view class="end-mark"><text>{{isTop10 ? '— COMMUNITY VOTE —' : '— OPEN CALL —'}}</text></view>
+    <view class="end-mark"><text>{{(isTop10 || isNewcomer) ? '— COMMUNITY VOTE —' : '— OPEN CALL —'}}</text></view>
   </scroll-view>
 
   <view wx:if="{{pickerVisible}}" class="picker-mask" bindtap="onClosePicker">
@@ -160,6 +224,28 @@
       </view>
 
       <view class="picker-cancel" bindtap="onClosePicker"><text>取消</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{newcomerPickerVisible}}" class="picker-mask" bindtap="onCloseNewcomerPicker">
+    <view class="picker-sheet" catchtap="noop">
+      <view class="picker-handle" />
+      <text class="picker-title">添加 2026 年度新人</text>
+      <input class="picker-input" value="{{newcomerPickerKeyword}}" bindinput="onNewcomerPickerInput" placeholder="搜索艺人名" placeholder-style="color:#6f6762" focus />
+      <scroll-view class="picker-results" scroll-y>
+        <view wx:if="{{!newcomerNomineesLoaded}}" class="picker-empty"><text>加载中…</text></view>
+        <view wx:elif="{{newcomerPickerFiltered.length === 0}}" class="picker-empty"><text>{{newcomerPickerKeyword ? '没有匹配的新人' : '暂无符合条件的新人'}}</text></view>
+        <block wx:else>
+          <view wx:for="{{newcomerPickerFiltered}}" wx:key="artistId" class="picker-row" bindtap="onNewcomerPickerSelect" data-id="{{item.artistId}}">
+            <view class="newcomer-avatar"><image wx:if="{{item.avatarUrl}}" class="newcomer-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+            <view class="picker-row-info">
+              <text class="picker-row-title">{{item.artistName}}</text>
+              <text class="picker-row-artist">首张{{item.debutReleaseType}}：{{item.debutTitle}}</text>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+      <view class="picker-cancel" bindtap="onCloseNewcomerPicker"><text>取消</text></view>
     </view>
   </view>
 </view>
