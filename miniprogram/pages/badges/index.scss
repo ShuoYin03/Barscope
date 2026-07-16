@@ -8,6 +8,13 @@
 .head-title{font-size:28rpx;font-weight:800;color:var(--white)}
 .head-sub{font-size:21rpx;color:var(--gray-mid)}
 
+.badge-section{padding-bottom:16rpx}
+.badge-section-head{display:flex;align-items:center;gap:18rpx;padding:22rpx 32rpx 12rpx}
+.badge-section-copy{display:flex;flex-direction:column;gap:2rpx;flex-shrink:0}
+.badge-section-title{font-size:25rpx;font-weight:800;color:var(--white)}
+.badge-section-subtitle{font-family:var(--font-bebas);font-size:18rpx;letter-spacing:3rpx;color:var(--gray-mid)}
+.badge-section-rule{flex:1;height:2rpx;background:var(--gray-light)}
+
 .badge-card{display:flex;gap:20rpx;padding:24rpx 32rpx;border-top:2rpx solid var(--gray-light)}
 .badge-card.locked{opacity:.45}
 .badge-card-icon{width:80rpx;height:80rpx;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--off-white);font-size:32rpx;color:var(--accent)}
