@@ -126,9 +126,38 @@ async function decideHidden(id, decision, openId) {
     await db.collection('albums').doc(id).update({ data: { movedToCandidate: false, restoredFromHiddenAt: db.serverDate(), restoredFromHiddenBy: openId } })
     return { success: true }
   }
+  await recordDeletedAlbum(doc.data, openId, '管理员从隐藏专辑列表删除')
   await Promise.all([removeRelated('reviews', 'albumId', id), removeRelated('favorites', 'albumId', id)])
   await db.collection('albums').doc(id).remove()
   return { success: true }
+}
+
+// This used to be a true hard delete with zero trace left anywhere — not even album_candidates — so a
+// later re-crawl (cloudCrawler) had no way to know this exact album had already been reviewed and
+// rejected, and would silently re-insert it as approved. Mirror the candidates' decide()/'delete' path:
+// keep a permanent album_candidates record (status:'deleted', sourceId intact) before the remove().
+async function recordDeletedAlbum(album, openId, reason) {
+  if (!album || !album.sourceId) return
+  const sourceId = String(album.sourceId)
+  const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
+  if (existing.data.length) {
+    await db.collection('album_candidates').doc(existing.data[0]._id).update({ data: {
+      status: 'deleted', decision: 'delete', candidateReason: reason, decidedAt: db.serverDate(), decidedBy: openId,
+    } })
+    return
+  }
+  const payload = Object.assign({}, album, {
+    albumOriginalId: album._id,
+    status: 'deleted',
+    decision: 'delete',
+    candidateReason: reason,
+    reportReason: reason,
+    addedAt: db.serverDate(),
+    decidedAt: db.serverDate(),
+    decidedBy: openId,
+  })
+  delete payload._id
+  await db.collection('album_candidates').add({ data: payload })
 }
 
 async function removeRelated(collection, field, value) {

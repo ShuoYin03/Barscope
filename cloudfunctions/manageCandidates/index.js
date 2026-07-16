@@ -150,7 +150,7 @@ exports.main = async (event, context) => {
   if (action === 'list_admin_albums')    return await listAdminAlbums(event.artistId, event.artistName)
   if (action === 'search_admin_albums')  return await searchAdminAlbums(event.keyword || '')
   if (action === 'toggle_album_approved') return await toggleAlbumApproved(event.albumId, !!event.approved)
-  if (action === 'cleanup_singles')      return await cleanupSingles()
+  if (action === 'cleanup_singles')      return await cleanupSingles(openId)
   if (action === 'list_all_albums')      return await listAllAlbums(event.letter || '', event.page || 1, event.pageSize || 60)
   if (action === 'album_letter_counts')  return await albumLetterCounts()
   if (action === 'backfill_album_letters') return await backfillAlbumLetters(event.skip || 0)
@@ -573,20 +573,51 @@ async function refreshAlbums(candidateId) {
 }
 
 // ── cleanup_singles ───────────────────────────────────────────────────────────
-async function cleanupSingles() {
+// Same rationale as manageAlbumCandidates' recordDeletedAlbum: a hard delete with no album_candidates
+// trace means a later re-crawl can't tell "never seen before" from "already reviewed and rejected".
+async function recordDeletedAlbum(album, reason, openId) {
+  if (!album || !album.sourceId) return
+  const sourceId = String(album.sourceId)
+  const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
+  if (existing.data.length) {
+    await db.collection('album_candidates').doc(existing.data[0]._id).update({ data: {
+      status: 'deleted', decision: 'delete', candidateReason: reason, decidedAt: db.serverDate(), decidedBy: openId || '',
+    } })
+    return
+  }
+  const payload = Object.assign({}, album, {
+    albumOriginalId: album._id,
+    status: 'deleted',
+    decision: 'delete',
+    candidateReason: reason,
+    reportReason: reason,
+    addedAt: db.serverDate(),
+    decidedAt: db.serverDate(),
+    decidedBy: openId || '',
+  })
+  delete payload._id
+  await db.collection('album_candidates').add({ data: payload })
+}
+
+async function cleanupSingles(openId) {
   try {
     // Step 1: 把没有 trackCount 字段的记录先回填为 0，让后面的循环统一处理
     await db.collection('albums')
       .where({ trackCount: _.exists(false) })
       .update({ data: { trackCount: 0 } })
 
-    // Step 2: 循环删除 trackCount <= 2（含 0）直到全部清干净
+    // Step 2: 批量删除 trackCount <= 2（含 0）直到全部清干净。先取出这一批文档留一条
+    // album_candidates(status:'deleted') 记录再删——原来是直接 .where().remove()，没有任何
+    // sourceId 痕迹，后续重新爬取同一位艺人会把这些单曲当全新专辑重新插回去。
     let totalRemoved = 0
     while (true) {
-      const r = await db.collection('albums').where({ trackCount: _.lte(2) }).remove()
-      const batch = r.stats.removed
-      totalRemoved += batch
-      if (batch === 0) break
+      const batchRes = await db.collection('albums').where({ trackCount: _.lte(2) }).limit(100).get()
+      const rows = batchRes.data || []
+      if (!rows.length) break
+      await Promise.all(rows.map(album => recordDeletedAlbum(album, `清理专辑库：曲目数 ${album.trackCount || 0} 首`, openId)))
+      const ids = rows.map(x => x._id)
+      const r = await db.collection('albums').where({ _id: _.in(ids) }).remove()
+      totalRemoved += r.stats.removed
     }
     return { success: true, removed: totalRemoved }
   } catch (e) {
@@ -595,22 +626,23 @@ async function cleanupSingles() {
 }
 
 // ── 找回被误重新收录的专辑 ─────────────────────────────────────────────────────
-// 管理员在候选区把一张专辑判定为"删除"时，albums 文档会被真的 remove() 掉，但 album_candidates
-// 那条记录会保留并打上 status:'deleted'（含 sourceId）——这是唯一留存"这张专辑曾被明确拒收"的地方。
-// 一次全量重新爬取如果又扫到同一个艺人，会把这个 sourceId 当全新专辑重新插回 albums（cloudCrawler
-// 已经加了拦截，但爬虫上次跑的时候还没有这道检查，已经误加回来的需要手动找出来复核）。
+// 一张专辑被判定"不该收录"，无论是人工在候选区删除（status:'deleted'）还是自动质检流程标记后还没人
+// 复核（status:'pending'），只要不是 status:'kept'，就说明这个 sourceId 现在不应该出现在 albums 里。
+// 只查 'deleted' 会漏掉 rescreenAlbums 那条自动质检流程留下的 'pending' 记录。一次全量重新爬取如果
+// 又扫到同一个艺人，会把这个 sourceId 当全新专辑重新插回 albums（cloudCrawler 已经加了拦截，但爬虫
+// 上次跑的时候还没有这道检查，已经误加回来的需要手动找出来复核）。
 async function findResurrectedAlbums() {
   try {
-    const deletedSourceIds = new Set()
+    const blockedSourceIds = new Set()
     let skip = 0
     while (true) {
-      const res = await db.collection('album_candidates').where({ status: 'deleted' }).field({ sourceId: true }).skip(skip).limit(1000).get()
+      const res = await db.collection('album_candidates').where({ status: _.neq('kept') }).field({ sourceId: true }).skip(skip).limit(1000).get()
       const rows = res.data || []
-      rows.forEach(x => { if (x.sourceId) deletedSourceIds.add(String(x.sourceId)) })
+      rows.forEach(x => { if (x.sourceId) blockedSourceIds.add(String(x.sourceId)) })
       if (rows.length < 1000) break
       skip += 1000
     }
-    const ids = Array.from(deletedSourceIds)
+    const ids = Array.from(blockedSourceIds)
     const matches = []
     for (let i = 0; i < ids.length; i += 100) {
       const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) })
