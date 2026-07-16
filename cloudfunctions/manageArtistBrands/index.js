@@ -19,19 +19,21 @@ async function isAdmin(openId) {
   return r.data.length > 0
 }
 
-function cleanUnique(values, limit) {
+function cleanValues(values, limit) {
   const seen = new Set()
   return (Array.isArray(values) ? values : [])
-    .map(x => String(x || '').trim().toLowerCase())
+    .map(x => String(x || '').trim())
     .filter(x => x && !seen.has(x) && seen.add(x))
     .slice(0, limit)
 }
-function cleanRoles(values) { return cleanUnique(values, 3).filter(role => ALLOWED_ROLES.has(role)) }
+function cleanRoles(values) {
+  return cleanValues(values, 3).map(x => x.toLowerCase()).filter(role => ALLOWED_ROLES.has(role))
+}
 
 async function updateArtistProfile(event) {
   const artistDocId = String(event.artistDocId || '').trim()
   if (!artistDocId) return { success:false, error:'artistDocId required' }
-  const brands = cleanUnique(event.brands, 10)
+  const brands = cleanValues(event.brands, 10)
   const roles = cleanRoles(event.roles)
   const openId = cloud.getWXContext().OPENID
   await db.collection('artist_candidates').doc(artistDocId).update({ data:{
