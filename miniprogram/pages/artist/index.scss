@@ -33,7 +33,8 @@
 .hero-disc-pin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10rpx; height: 10rpx; border-radius: 50%; background: rgba(8,6,6,.88); box-shadow: 0 0 0 2rpx rgba(255,255,255,.14); z-index: 3; }
 
 .artist-block { padding: 128rpx 32rpx 0; text-align: center; flex-shrink: 0; }
-.artist-en { font-family: var(--font-bebas); font-size: 100rpx; color: var(--white); letter-spacing: 10rpx; line-height: 1; display: block; }
+.artist-en { font-family: var(--font-bebas); color: var(--white); line-height: 1; display: block; }
+.artist-brand { display: block; margin-top: 10rpx; font-size: 20rpx; letter-spacing: 2rpx; color: var(--gray-mid); }
 .artist-stats-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 14rpx; padding-bottom: 4rpx; }
 .stat-num { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); line-height: 1; }
 .stat-unit { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 2rpx; margin: 0 16rpx 0 6rpx; }

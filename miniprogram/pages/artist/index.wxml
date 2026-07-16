@@ -26,7 +26,8 @@
     </view>
 
     <view class="artist-block">
-      <text class="artist-en">{{artistName}}</text>
+      <text class="artist-en" style="font-size:{{nameFontSize}}rpx;letter-spacing:{{nameLetterSpacing}}rpx">{{artistName}}</text>
+      <text wx:if="{{brandLabel}}" class="artist-brand">{{brandLabel}}</text>
       <view class="artist-stats-row"><text class="stat-num">{{total}}</text><text class="stat-unit">ALBUMS</text><view class="stat-sep" /><text class="stat-num">{{avgScore}}</text><text class="stat-unit">AVG</text></view>
     </view>
 

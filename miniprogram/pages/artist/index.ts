@@ -18,6 +18,18 @@ interface Collaborator {
 
 const BIO_PREVIEW_LENGTH = 150
 
+// .artist-en has no CSS way to auto-shrink to fit (no adjustsFontSizeToFitWidth in WXSS), so scale
+// font-size/letter-spacing down in tiers by character count — long aka like "SEVENGURUSFAMILY"
+// otherwise overflows the page's 32rpx side padding at the default 100rpx size.
+function computeNameFit(name: string) {
+  const len = String(name || '').length
+  if (len > 16) return { nameFontSize: 42, nameLetterSpacing: 2 }
+  if (len > 13) return { nameFontSize: 52, nameLetterSpacing: 4 }
+  if (len > 10) return { nameFontSize: 64, nameLetterSpacing: 6 }
+  if (len > 7) return { nameFontSize: 80, nameLetterSpacing: 8 }
+  return { nameFontSize: 100, nameLetterSpacing: 10 }
+}
+
 function buildBioState(value: string) {
   const bio = String(value || '').trim()
   const hasLongBio = bio.length > BIO_PREVIEW_LENGTH
@@ -35,9 +47,12 @@ Page({
     statusBarHeight: 20,
     themeClass: '',
     artistName: '',
+    nameFontSize: 100,
+    nameLetterSpacing: 10,
     initial: '',
     bannerUrl: '',
     avatarUrl: '',
+    brandLabel: '',
     briefDesc: '',
     briefDescPreview: '',
     hasLongBio: false,
@@ -65,7 +80,7 @@ Page({
     const artistName = decodeURIComponent(options.artistName || '')
     const initial = artistName[0] || '?'
     this._artistId = artistId
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight, artistName, initial: initial.toUpperCase() })
+    this.setData({ statusBarHeight: app.globalData.statusBarHeight, artistName, initial: initial.toUpperCase(), ...computeNameFit(artistName) })
     this._loadArtist(artistId)
     this._loadAlbums(artistId)
     this._loadCollaborators(artistId, artistName)
@@ -81,7 +96,8 @@ Page({
         const bannerUrl = artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
         const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
-        this.setData({ notCollected: false, bannerUrl, avatarUrl, bioExpanded: false, ...bioState })
+        const brandLabel = Array.isArray(artist.brands) ? artist.brands.filter(Boolean).join(' / ') : (artist.brand || '')
+        this.setData({ notCollected: false, bannerUrl, avatarUrl, brandLabel, bioExpanded: false, ...bioState })
       },
     } as any)
   },
