@@ -247,9 +247,14 @@
             <text>{{resyncWorking ? ('同步中 ' + resyncDone + '/' + resyncTotal) : '重新同步Tracks'}}</text>
           </view>
         </block>
-        <view wx:else class="all-action-btn ghost {{backfilling ? 'btn-disabled' : ''}}" bindtap="onBackfillLetters">
-          <text>{{backfilling ? ('索引中 ' + backfillDone) : '补全字母索引'}}</text>
-        </view>
+        <block wx:else>
+          <view class="all-action-btn ghost {{backfilling ? 'btn-disabled' : ''}}" bindtap="onBackfillLetters">
+            <text>{{backfilling ? ('索引中 ' + backfillDone) : '补全字母索引'}}</text>
+          </view>
+          <view class="all-action-btn ghost {{applyingRules ? 'btn-disabled' : ''}}" bindtap="onApplyReleaseTypeRules">
+            <text>{{applyingRules ? ('打标签中 ' + applyRulesDone) : '一键打标签'}}</text>
+          </view>
+        </block>
       </view>
 
       <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onAllReachBottom">

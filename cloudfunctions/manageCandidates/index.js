@@ -161,6 +161,7 @@ exports.main = async (event, context) => {
   if (action === 'remove_resurrected')   return await removeResurrectedAlbums(event.ids || [])
   if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
   if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
+  if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
 
   return { success: false, error: 'unknown action' }
 }
@@ -490,6 +491,28 @@ async function batchSetReleaseType(ids, releaseType) {
   const results = await Promise.allSettled(cleanIds.map(id => db.collection('albums').doc(id).update({ data: { releaseType: type } })))
   const succeeded = results.filter(r => r.status === 'fulfilled').length
   return { success: true, succeeded, failed: cleanIds.length - succeeded, releaseType: type }
+}
+
+// One-time bulk rule: multi-artist albums -> Mixtape; otherwise trackCount<=6 -> Mixtape, trackCount>6 -> LP.
+// Idempotent — safe to re-run. Client pages through with `skip` until `done`.
+async function applyReleaseTypeRules(skip) {
+  try {
+    const pageSize = 300
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, isMultiArtist: true, trackCount: true, releaseType: true }).get()
+    const docs = result.data || []
+    if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
+    let updated = 0
+    const results = await Promise.allSettled(docs.map(d => {
+      const next = d.isMultiArtist ? 'Mixtape' : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
+      if (d.releaseType === next) return Promise.resolve()
+      updated++
+      return db.collection('albums').doc(d._id).update({ data: { releaseType: next } })
+    }))
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
 }
 
 // ── decide ────────────────────────────────────────────────────────────────────

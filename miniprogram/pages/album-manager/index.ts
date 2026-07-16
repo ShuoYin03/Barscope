@@ -90,6 +90,8 @@ Page({
     allBatchWorking: false,
     backfilling: false,
     backfillDone: 0,
+    applyingRules: false,
+    applyRulesDone: 0,
 
     multiList: [] as Album[],
     multiLoading: false,
@@ -592,6 +594,39 @@ Page({
         this._runBackfillStep(r.nextSkip)
       },
       fail: () => { this.setData({ backfilling: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onApplyReleaseTypeRules() {
+    if (this.data.applyingRules) return
+    wx.showModal({
+      title: '一键打标签',
+      content: '多人合作专辑标为 Mixtape；其余专辑中曲目数 ≤6 标为 Mixtape，>6 标为 LP。将覆盖所有专辑的现有类型标签，确认继续？',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ applyingRules: true, applyRulesDone: 0 })
+        this._runApplyRulesStep(0)
+      },
+    })
+  },
+
+  _runApplyRulesStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'apply_release_type_rules', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ applyingRules: false }); wx.showToast({ title: r.error || '打标签失败', icon: 'none' }); return }
+        this.setData({ applyRulesDone: r.processed || 0 })
+        if (r.done) {
+          this.setData({ applyingRules: false })
+          wx.showToast({ title: '打标签完成', icon: 'success' })
+          this._loadAllAlbums(this.data.allActiveLetter, 1)
+          return
+        }
+        this._runApplyRulesStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ applyingRules: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     })
   },
 
