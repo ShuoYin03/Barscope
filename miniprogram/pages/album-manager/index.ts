@@ -671,7 +671,7 @@ Page({
     if (this.data.applyingRules) return
     wx.showModal({
       title: '一键打标签',
-      content: '多人合作专辑标为 Mixtape；其余专辑中曲目数 ≤6 标为 Mixtape，>6 标为 LP。将覆盖所有专辑的现有类型标签，确认继续？',
+      content: '多人合作专辑：曲目数 ≥6 标为 LP，否则 Mixtape；其余专辑：曲目数 >6 标为 LP，否则 Mixtape。将覆盖所有专辑的现有类型标签，确认继续？',
       success: (res) => {
         if (!res.confirm) return
         this.setData({ applyingRules: true, applyRulesDone: 0 })
