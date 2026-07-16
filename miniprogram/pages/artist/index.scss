@@ -34,7 +34,8 @@
 
 .artist-block { padding: 128rpx 32rpx 0; text-align: center; flex-shrink: 0; }
 .artist-en { font-family: var(--font-bebas); color: var(--white); line-height: 1; display: block; }
-.artist-brand { display: block; margin-top: 10rpx; font-size: 20rpx; letter-spacing: 2rpx; color: var(--gray-mid); }
+.artist-role { display:block; margin-top:12rpx; font-family:var(--font-bebas); font-size:20rpx; letter-spacing:3rpx; color:var(--accent); }
+.artist-brand { display: block; margin-top: 8rpx; font-size: 20rpx; letter-spacing: 2rpx; color: var(--gray-mid); }
 .artist-stats-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 14rpx; padding-bottom: 4rpx; }
 .stat-num { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); line-height: 1; }
 .stat-unit { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 2rpx; margin: 0 16rpx 0 6rpx; }
@@ -54,7 +55,6 @@
 .side-b-title-wrap { flex-shrink: 0; display: flex; flex-direction: column; gap: 6rpx; }
 .side-note { display: block; max-width: 360rpx; font-size: 16rpx; line-height: 1.4; letter-spacing: 1rpx; color: var(--gray-mid); opacity: .72; }
 
-/* SIDE A owns the timeline. Absolute positioning keeps it clipped to this section. */
 .career-wrap { position: relative; min-height: 220rpx; overflow: hidden; }
 .career-albums { background: var(--black); padding-right: 88rpx; }
 .album-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 22rpx 24rpx 32rpx; border-bottom: 2rpx solid var(--off-white); }
@@ -74,7 +74,6 @@
 .career-year.active .career-dot { width: 16rpx; height: 16rpx; margin-left: 13rpx; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5rpx rgba(201,78,37,.18); }
 .career-year.active text { font-size: 22rpx; }
 
-/* SIDE B is intentionally compact so it reads as a secondary leaderboard. */
 .collaborator-list { background: var(--black); padding: 0 32rpx 36rpx; }
 .collaborator-row { min-height: 72rpx; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 0; border-bottom: 2rpx solid var(--off-white); }
 .collaborator-rank { width: 34rpx; flex-shrink: 0; font-family: var(--font-bebas); font-size: 28rpx; color: var(--accent); text-align: left; }
