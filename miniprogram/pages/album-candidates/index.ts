@@ -14,9 +14,10 @@ Page({
     mode: 'pending' as 'pending' | 'hidden',
     hiddenScope: 'manual' as 'manual' | 'legacy',
   },
-  onLoad() {
+  onLoad(options: Record<string, string>) {
     const app = getApp<IAppOption>()
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight })
+    const mode = options.mode === 'hidden' ? 'hidden' : 'pending'
+    this.setData({ statusBarHeight: app.globalData.statusBarHeight, mode })
     this.loadCandidates()
   },
   onShow() { this.setData({ themeClass: getThemeClass() }); this.loadCandidates() },

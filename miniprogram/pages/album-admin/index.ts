@@ -1,6 +1,6 @@
 import { getThemeClass } from '../../utils/theme'
 
-type AlbumAdminSection = 'library' | 'pending' | 'ownership'
+type AlbumAdminSection = 'library' | 'pending' | 'ownership' | 'hidden'
 
 Page({
   data: {
@@ -9,6 +9,7 @@ Page({
     themeClass: '',
     pendingCount: 0,
     ownershipCount: 0,
+    hiddenCount: 0,
     loading: false,
   },
 
@@ -39,6 +40,7 @@ Page({
       const ownershipResult = results[1]?.status === 'fulfilled' ? results[1].value?.result : null
       this.setData({
         pendingCount: pendingResult?.success ? (pendingResult.pending || 0) : 0,
+        hiddenCount: pendingResult?.success ? Number(pendingResult.hidden || 0) + Number(pendingResult.legacyHidden || 0) : 0,
         ownershipCount: ownershipResult?.success ? (ownershipResult.pending || 0) : 0,
         loading: false,
       })
@@ -51,6 +53,7 @@ Page({
       library: '/pages/album-manager/index',
       pending: '/pages/album-candidates/index',
       ownership: '/pages/ownership-corrections/index',
+      hidden: '/pages/album-candidates/index?mode=hidden',
     }
     wx.navigateTo({ url: routes[section] })
   },
