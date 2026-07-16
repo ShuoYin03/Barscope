@@ -21,7 +21,9 @@
       <view class="artist-submit-row" bindtap="onSubmitAlbumRequest"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">提交专辑</text><text class="artist-submit-desc">未收录？提交审核</text></view><text class="artist-all-arrow">›</text></view>
       <view class="side-row"><text class="side-text">SIDE B — 年份 YEAR</text><view class="side-rule" /></view>
       <scroll-view class="timeline-scroll" scroll-x enhanced show-scrollbar="{{false}}" scroll-into-view="{{yearScrollIntoView}}" scroll-with-animation="{{true}}"><view class="timeline-track"><view class="timeline-line" /><view wx:for="{{years}}" wx:key="name" id="year-{{item.name}}" class="timeline-item {{activeYear === item.name ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item.name}}"><view class="timeline-dot" /><text class="timeline-label">{{item.name}}</text></view></view></scroll-view>
-      <view class="side-row"><text class="side-text">SIDE C — {{activeYear ? activeYear : '全部'}}{{activeMonth ? '.' + activeMonth : ''}} · {{loading ? '加载中' : total + ' 张'}}</text><view class="side-rule" /></view>
+      <view class="side-row"><text class="side-text">SIDE C — 类型 TYPE</text><view class="side-rule" /></view>
+      <view class="role-filter-row"><view wx:for="{{releaseTypeFilters}}" wx:key="key" class="role-chip {{activeReleaseType === item.key ? 'active' : ''}}" bindtap="onReleaseTypeTap" data-type="{{item.key}}"><text>{{item.label}}</text></view></view>
+      <view class="side-row"><text class="side-text">SIDE D — {{activeYear ? activeYear : '全部'}}{{activeMonth ? '.' + activeMonth : ''}} · {{loading ? '加载中' : total + ' 张'}}</text><view class="side-rule" /></view>
       <view wx:if="{{loading}}" class="empty-state"><text class="empty-text">加载中…</text></view>
       <view wx:elif="{{list.length === 0}}" class="empty-state"><text class="empty-text">没有找到相关专辑</text></view>
       <block wx:elif="{{activeYear === 'ALL'}}">
