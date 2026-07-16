@@ -4,6 +4,7 @@ type ArtistRole = 'rapper' | 'producer' | 'label'
 interface ArtistRow { id:string; artistId:string; artistName:string; picUrl:string; albumSize:number; brands:string[]; roles:ArtistRole[]; selected?:boolean }
 interface BrandOption { name:string; selected:boolean }
 interface RoleOption { key:ArtistRole; label:string; selected:boolean }
+interface RoleSuggestion { _id:string; artistDocId:string; artistId:string; artistName:string; previousRoles:ArtistRole[]; roles:ArtistRole[] }
 
 const ROLE_OPTIONS:{key:ArtistRole;label:string}[] = [
   { key:'rapper', label:'RAPPER' },
@@ -17,9 +18,10 @@ Page({
     brandSheetVisible:false, editingArtistId:'', editingArtistName:'', brandNames:[] as string[], brandOptions:[] as BrandOption[], selectedBrands:[] as string[],
     roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[], selectedRoles:[] as ArtistRole[], saving:false,
     batchMode:false, batchSelectedCount:0, batchRoleSheetVisible:false, batchRoles:[] as ArtistRole[], batchRoleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[], batchSaving:false,
+    reviewSheetVisible:false, roleSuggestions:[] as RoleSuggestion[], reviewLoading:false, reviewWorking:'',
   },
 
-  onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight}); this.loadArtists() },
+  onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight}); this.loadArtists(); this.loadRoleSuggestions() },
   onShow(){ this.setData({themeClass:getThemeClass()}) },
 
   loadArtists(){
@@ -27,13 +29,45 @@ Page({
     const keyword=this.data.keyword.trim()
     const listCall=wx.cloud.callFunction({name:'getArtists',data:{keyword,limit:1000}}).catch(()=>({result:{success:false,list:[]}}))
     const brandCall=keyword?wx.cloud.callFunction({name:'getArtists',data:{keyword:'',limit:1000}}).catch(()=>({result:{success:false,list:[]}})):listCall
-    Promise.all([listCall,brandCall]).then((results:any[])=>{
+    Promise.all([listCall,brandCall]).then(async(results:any[])=>{
       const listResult=results[0]?.result||{}, brandResult=results[1]?.result||{}
-      const list:ArtistRow[]=(listResult.success?(listResult.list||[]):[]).map((x:any)=>({...x,roles:Array.isArray(x.roles)?x.roles:[],selected:false}))
+      let list:ArtistRow[]=(listResult.success?(listResult.list||[]):[]).map((x:any)=>({...x,roles:Array.isArray(x.roles)?x.roles:[],selected:false}))
       const allArtists:ArtistRow[]=brandResult.success?(brandResult.list||[]):[]
       const brandNames=Array.from(new Set(allArtists.flatMap(x=>x.brands||[]).map(x=>String(x||'').trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'zh-CN'))
+
+      // Role data is read back from the same cloud function that writes it. This avoids a stale
+      // getArtists deployment making the admin list look unsaved while the artist page is correct.
+      try {
+        const roleRes:any=await wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'get_roles_map',artistDocIds:list.map(x=>x.id)}})
+        const rolesMap=roleRes.result?.rolesMap||{}
+        list=list.map(x=>({...x,roles:Array.isArray(rolesMap[x.id])?rolesMap[x.id]:x.roles}))
+      } catch(e) {}
+
       this.setData({list,brandNames,loading:false,batchSelectedCount:0})
     }).catch(()=>{ this.setData({loading:false}); wx.showToast({title:'加载失败',icon:'none'}) })
+  },
+
+  loadRoleSuggestions(){
+    this.setData({reviewLoading:true})
+    wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'list_role_suggestions'},success:(res:any)=>{
+      const r=res.result||{}
+      this.setData({roleSuggestions:r.success?(r.list||[]):[],reviewLoading:false})
+    },fail:()=>this.setData({reviewLoading:false})} as any)
+  },
+  onOpenReview(){ this.setData({reviewSheetVisible:true}); this.loadRoleSuggestions() },
+  onCloseReview(){ if(!this.data.reviewWorking)this.setData({reviewSheetVisible:false}) },
+  onReviewSuggestion(e:WechatMiniprogram.TouchEvent){
+    const ds=e.currentTarget.dataset as any
+    const id=String(ds.id||''), decision=String(ds.decision||'')
+    if(!id||this.data.reviewWorking)return
+    this.setData({reviewWorking:id})
+    wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'review_role_suggestion',suggestionId:id,decision},success:(res:any)=>{
+      const r=res.result||{}
+      if(!r.success){wx.showToast({title:r.error||'处理失败',icon:'none'});return}
+      this.setData({roleSuggestions:this.data.roleSuggestions.filter(x=>x._id!==id)})
+      this.loadArtists()
+      wx.showToast({title:decision==='approve'?'已通过':'已拒绝',icon:'success'})
+    },fail:()=>wx.showToast({title:'处理失败',icon:'none'}),complete:()=>this.setData({reviewWorking:''})} as any)
   },
 
   onSearch(e:WechatMiniprogram.Input){ this.setData({keyword:e.detail.value}); this.loadArtists() },
