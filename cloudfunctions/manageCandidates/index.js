@@ -166,6 +166,7 @@ exports.main = async (event, context) => {
   if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
   if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
   if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
+  if (action === 'purge_declined')        return await purgeDeclinedCandidates()
 
   return { success: false, error: 'unknown action' }
 }
@@ -202,6 +203,17 @@ async function upsertCandidates(candidates) {
       r.data.forEach(function(d) { existSet.add(d.artistId) })
     } catch (e) {
       // 集合尚不存在，忽略（所有记录都是新的）
+    }
+    // 被管理员批量清库过的"已拒绝"艺人也要跳过，否则清库后下次扫描会把同一批人当作全新候选重新插入
+    try {
+      const rBlocked = await db.collection('declined_artist_blocklist')
+        .where({ artistId: _.in(chunk) })
+        .field({ artistId: true })
+        .limit(chunk.length)
+        .get()
+      rBlocked.data.forEach(function(d) { existSet.add(d.artistId) })
+    } catch (e) {
+      // 集合尚不存在，忽略
     }
   }
 
@@ -760,6 +772,28 @@ async function stats() {
       approved: a.total,
       declined: d.total,
     }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── purge_declined ────────────────────────────────────────────────────────────
+// Bulk-deletes "已拒绝" artist candidates. Before deleting each batch, records a minimal
+// {artistId} entry in declined_artist_blocklist so upsertCandidates keeps skipping them —
+// otherwise a future scan would re-insert the exact same declined names as fresh candidates
+// (the same resurrection bug already fixed for albums this session, just for artist_candidates).
+// Idempotent — safe to re-run; client pages through by re-querying (no skip — the collection
+// shrinks as it deletes) until done.
+async function purgeDeclinedCandidates() {
+  try {
+    const batch = await db.collection('artist_candidates').where({ status: 'declined' }).limit(100).get()
+    const docs = batch.data || []
+    if (!docs.length) return { success: true, done: true, deleted: 0 }
+    await Promise.allSettled(docs.filter(d => d.artistId).map(d =>
+      db.collection('declined_artist_blocklist').add({ data: { artistId: d.artistId, artistName: d.artistName || '', declinedAt: db.serverDate() } })
+    ))
+    await Promise.allSettled(docs.map(d => db.collection('artist_candidates').doc(d._id).remove()))
+    return { success: true, done: false, deleted: docs.length }
   } catch (e) {
     return { success: false, error: e.message }
   }

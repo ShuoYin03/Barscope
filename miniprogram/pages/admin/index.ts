@@ -27,6 +27,7 @@ Page({
     list: [] as Candidate[], loading: false, hasMore: false, page: 1, pageSize: 20,
     deciding: {} as Record<string, boolean>, refreshing: {} as Record<string, boolean>, keyword: '',
     selectMode: false, selected: {} as Record<string, boolean>, batchDeciding: false, exporting: false,
+    purging: false, purgedCount: 0,
   },
   onLoad(options: Record<string, string>) { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }); this._loadStats(); const valid: TabKey[] = ['pending', 'approved', 'declined']; const tab = options && options.tab as TabKey; const initial: TabKey = valid.indexOf(tab) >= 0 ? tab : 'pending'; this.setData({ activeTab: initial }); this._loadList(initial, 1) },
   onShow() { this.setData({ themeClass: getThemeClass() }) },
@@ -70,4 +71,40 @@ Page({
   onDeselectAll() { this.setData({ selected: {} }) },
   onBatchApprove() { this._batchDecide('approved') }, onBatchDecline() { this._batchDecide('declined') }, onBatchRestore() { this._batchDecide('pending') },
   _batchDecide(decision: string) { const ids = Object.keys(this.data.selected); if (!ids.length || this.data.batchDeciding) return; this.setData({ batchDeciding: true }); const decisions = ids.map(id => ({ id, decision })); wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'decide', decisions }, success: (res: any) => { const r = res.result; if (r.success) { const idsSet = new Set(ids), list = this.data.list.filter((c: Candidate) => !idsSet.has(c._id)); this.setData({ list, selected: {}, selectMode: false, batchDeciding: false }); this._loadStats(); wx.showToast({ title: `已处理 ${ids.length} 位`, icon: 'success' }) } else { this.setData({ batchDeciding: false }); wx.showToast({ title: '操作失败', icon: 'error' }) } }, fail: () => { this.setData({ batchDeciding: false }); wx.showToast({ title: '网络错误', icon: 'error' }) } }) },
+  onPurgeDeclined() {
+    if (this.data.purging) return
+    const declinedTab = this.data.tabs.find((t: any) => t.key === 'declined')
+    wx.showModal({
+      title: '清空已拒绝名单？',
+      content: `将永久删除全部 ${declinedTab ? declinedTab.count : 0} 条已拒绝记录，不可恢复。这些艺人的名字会被记入屏蔽名单，之后扫描到同名合作也不会再重新出现在待审核里。`,
+      confirmText: '确认清空',
+      confirmColor: '#C94E25',
+      success: (m) => {
+        if (!m.confirm) return
+        this.setData({ purging: true, purgedCount: 0 })
+        this._runPurgeStep()
+      },
+    })
+  },
+  _runPurgeStep() {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'purge_declined' },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ purging: false }); wx.showToast({ title: r.error || '清库失败', icon: 'none' }); return }
+        const purgedCount = this.data.purgedCount + (r.deleted || 0)
+        this.setData({ purgedCount })
+        if (r.done) {
+          this.setData({ purging: false })
+          this._loadStats()
+          if (this.data.activeTab === 'declined') { this.setData({ list: [], page: 1 }); this._loadList('declined', 1) }
+          wx.showToast({ title: `已清空 ${purgedCount} 条`, icon: 'success' })
+          return
+        }
+        this._runPurgeStep()
+      },
+      fail: () => { this.setData({ purging: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    } as any)
+  },
 })

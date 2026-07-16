@@ -93,6 +93,11 @@
 .select-toggle-text { font-size: 24rpx; font-weight: 700; color: var(--gray-mid); letter-spacing: 1rpx; }
 .select-toggle.active .select-toggle-text { color: var(--black); }
 
+.purge-bar { padding: 0 24rpx 16rpx; }
+.purge-btn { padding: 18rpx 0; text-align: center; border: 2rpx solid #dc2626; }
+.purge-btn text { font-size: 24rpx; font-weight: 700; color: #dc2626; letter-spacing: 1rpx; }
+.purge-btn.btn-disabled { opacity: 0.5; }
+
 /* CONTENT */
 .content { flex: 1; min-height: 0; }
 

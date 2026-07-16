@@ -68,7 +68,6 @@ Page({
     isTop10: false,
     isNewcomer: false,
     isLoggedIn: false,
-    isAdmin: false,
 
     // ── proposal form (long-review-template / rapper-interview) ──
     proposalTitle: '',
@@ -118,7 +117,6 @@ Page({
     newcomerCommunityPage: 1,
     newcomerCommunityHasMore: false,
     newcomerCommunityTotal: 0,
-    rebuildingNominees: false,
   },
 
   onLoad(options: any) {
@@ -130,7 +128,6 @@ Page({
       statusBarHeight: app.globalData.statusBarHeight,
       topbarHeight: app.globalData.topbarHeight,
       isLoggedIn: !!app.globalData.userInfo,
-      isAdmin: !!app.globalData.isAdmin,
       featureId,
       isTop10,
       isNewcomer,
@@ -143,13 +140,12 @@ Page({
     if (isNewcomer) {
       this._loadMyNewcomerBallot()
       this._loadNewcomerStats()
-      this._loadNewcomerNominees()
     }
   },
 
   onShow() {
     const app = getApp<IAppOption>()
-    this.setData({ themeClass: getThemeClass(), isLoggedIn: !!app.globalData.userInfo, isAdmin: !!app.globalData.isAdmin })
+    this.setData({ themeClass: getThemeClass(), isLoggedIn: !!app.globalData.userInfo })
   },
 
   onFieldInput(e: WechatMiniprogram.Input | WechatMiniprogram.TextareaInput) {
@@ -464,7 +460,8 @@ Page({
     if (!this._requireLogin()) return
     if (!this.data.newcomerVotingOpen) { wx.showToast({ title: '投票已截止', icon: 'none' }); return }
     if (this.data.myNewcomerEntries.length >= 3) { wx.showToast({ title: '最多选择 3 位新人', icon: 'none' }); return }
-    this.setData({ newcomerPickerVisible: true, newcomerPickerKeyword: '', newcomerPickerFiltered: this.data.newcomerNominees })
+    this.setData({ newcomerPickerVisible: true, newcomerPickerKeyword: '', newcomerNomineesLoaded: false, newcomerPickerFiltered: [] })
+    this._loadNewcomerNominees()
   },
 
   onCloseNewcomerPicker() { this.setData({ newcomerPickerVisible: false }) },
@@ -527,34 +524,6 @@ Page({
       },
       fail: () => { wx.hideLoading(); this.setData({ myNewcomerSaving: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     } as any)
-  },
-
-  onRebuildNominees() {
-    if (this.data.rebuildingNominees) return
-    wx.showModal({
-      title: '重新扫描新秀名单？',
-      content: '会全量扫描专辑库，找出 2026 年发行首张 LP/Mixtape 的新人，可能需要几十秒。',
-      confirmText: '扫描',
-      confirmColor: '#D45124',
-      success: (m) => {
-        if (!m.confirm) return
-        this.setData({ rebuildingNominees: true })
-        wx.showLoading({ title: '扫描中…', mask: true })
-        wx.cloud.callFunction({
-          name: 'manageNewcomerVote',
-          data: { action: 'rebuild_nominees' },
-          success: (res: any) => {
-            wx.hideLoading()
-            this.setData({ rebuildingNominees: false })
-            const r = res.result || {}
-            if (!r.success) { wx.showToast({ title: r.error || '扫描失败', icon: 'none' }); return }
-            wx.showToast({ title: `已找到 ${r.count || 0} 位新人`, icon: 'success' })
-            this._loadNewcomerNominees()
-          },
-          fail: () => { wx.hideLoading(); this.setData({ rebuildingNominees: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
-        } as any)
-      },
-    })
   },
 
   onBack() { wx.navigateBack() },

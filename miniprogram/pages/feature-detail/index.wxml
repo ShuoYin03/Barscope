@@ -76,9 +76,6 @@
     </block>
 
     <block wx:elif="{{isNewcomer}}">
-      <view wx:if="{{isAdmin}}" class="newcomer-admin-row {{rebuildingNominees ? 'disabled' : ''}}" bindtap="onRebuildNominees">
-        <text>{{rebuildingNominees ? '扫描中…' : '管理员：重新扫描新秀名单'}}</text>
-      </view>
       <view class="top10-tabs">
         <view class="top10-tab {{newcomerTab === 'mine' ? 'active' : ''}}" bindtap="onNewcomerTabTap" data-tab="mine"><text>我的榜单</text></view>
         <view class="top10-tab {{newcomerTab === 'community' ? 'active' : ''}}" bindtap="onNewcomerTabTap" data-tab="community"><text>社区榜单</text></view>

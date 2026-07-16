@@ -1,8 +1,8 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+const _ = db.command
 const BALLOT_COL = 'newcomer_2026_ballots'
-const NOMINEE_COL = 'newcomer_2026_nominees'
 const MAX_ENTRIES = 3
 const DEBUT_YEAR = 2026
 const ELIGIBLE_TYPES = new Set(['LP', 'Mixtape'])
@@ -30,7 +30,6 @@ exports.main = async event => {
   if (action === 'list_public') return await listPublic(event.page || 1, event.pageSize || 20)
   if (action === 'stats') return await stats()
   if (action === 'list_nominees') return await listNominees()
-  if (action === 'rebuild_nominees') return await rebuildNominees()
   return { success: false, error: 'unknown action' }
 }
 
@@ -69,17 +68,24 @@ async function submit(rawEntries) {
 
   await ensureCollection(BALLOT_COL)
 
+  // No cached nominee list to check against — re-derive eligibility live per picked artist
+  // (bounded to MAX_ENTRIES lookups, so this stays cheap even without a cache).
+  const artistRes = await db.collection('artist_candidates').where({ status: 'approved' })
+    .field({ artistId: true, artistName: true, avatarUrl: true, picUrl: true }).limit(1000).get()
+  const artistMap = new Map((artistRes.data || []).map(a => [String(a.artistId), a]))
+
   const entries = []
   for (const raw of list) {
     const artistId = String(raw.artistId).trim()
     const note = String(raw.note || '').trim().slice(0, 200)
-    const nomineeRes = await db.collection(NOMINEE_COL).where({ artistId }).limit(1).get()
-    const nominee = (nomineeRes.data || [])[0]
-    if (!nominee) return { success: false, error: `不在候选名单中：${artistId}` }
+    const artist = artistMap.get(artistId)
+    if (!artist) return { success: false, error: `艺人不存在：${artistId}` }
+    const earliest = await findEarliestProjectForArtist(artistId)
+    if (!earliest || Number(earliest.releaseYear) !== DEBUT_YEAR) return { success: false, error: `不符合 2026 年度新人资格：${artist.artistName || artistId}` }
     entries.push({
       artistId,
-      artistName: String(nominee.artistName || ''),
-      avatarUrl: String(nominee.avatarUrl || ''),
+      artistName: String(artist.artistName || ''),
+      avatarUrl: String(artist.avatarUrl || artist.picUrl || ''),
       note,
     })
   }
@@ -124,29 +130,6 @@ async function stats() {
   }
 }
 
-async function listNominees() {
-  try {
-    const all = []
-    let skip = 0
-    while (true) {
-      const r = await db.collection(NOMINEE_COL).skip(skip).limit(100).get()
-      all.push(...(r.data || []))
-      if (!r.data || r.data.length < 100) break
-      skip += 100
-    }
-    return { success: true, list: all }
-  } catch (e) {
-    if (isCollectionMissing(e)) return { success: true, list: [] }
-    return { success: false, error: e.message }
-  }
-}
-
-async function isAdmin(openId) {
-  if (!openId) return false
-  const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-  return r.data.length > 0
-}
-
 // Owner-resolution fallback chain mirrors getAlbums' artistId query: ownerArtistIds (modern) ->
 // artistIds (legacy participants) -> neteaseArtistId (oldest docs, single-artist only).
 function resolveOwners(a) {
@@ -171,60 +154,70 @@ async function fetchAllApprovedAlbumsForScan() {
   return all
 }
 
-// Rebuilds the cached "2026 debut artist" nominee list: for every approved artist, find their
-// earliest release (by year, then by date within that year) across the whole catalog. If that
-// earliest release lands in 2026 and is tagged LP or Mixtape, they're a nominee. Full-collection
-// scan (mirrors cleanupDuplicates' fetchAllApprovedAlbums) — admin-triggered, not run per request.
-async function rebuildNominees() {
-  const { OPENID } = cloud.getWXContext()
-  if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
-
-  // Only LP/Mixtape releases count as a "project" here — an artist's earlier Beat Tape or Live
-  // release doesn't disqualify them; what matters is when their first LP/Mixtape landed.
-  const albums = await fetchAllApprovedAlbumsForScan()
-  const earliestProjectByArtist = new Map()
-  albums.forEach(a => {
-    if (!ELIGIBLE_TYPES.has(String(a.releaseType || ''))) return
-    const year = Number(a.releaseYear) || 0
-    if (!year) return
-    const dateKey = String(a.releaseDate || `${year}-13-01`)
-    resolveOwners(a).forEach(artistId => {
-      const cur = earliestProjectByArtist.get(artistId)
-      if (!cur || year < cur.year || (year === cur.year && dateKey < cur.dateKey)) {
-        earliestProjectByArtist.set(artistId, { year, dateKey, album: a })
-      }
+// Live-computes the "2026 debut artist" nominee list — no cache, no manual admin trigger.
+// Only LP/Mixtape releases count as a "project" here — an artist's earlier Beat Tape or Live
+// release doesn't disqualify them; what matters is when their first LP/Mixtape landed. Runs a
+// full-collection scan every call (mirrors cleanupDuplicates' fetchAllApprovedAlbums); this
+// stays cheap enough for a user-initiated "open the picker" action, and always reflects
+// whatever's tagged LP/Mixtape right now.
+async function listNominees() {
+  try {
+    const albums = await fetchAllApprovedAlbumsForScan()
+    const earliestProjectByArtist = new Map()
+    albums.forEach(a => {
+      if (!ELIGIBLE_TYPES.has(String(a.releaseType || ''))) return
+      const year = Number(a.releaseYear) || 0
+      if (!year) return
+      const dateKey = String(a.releaseDate || `${year}-13-01`)
+      resolveOwners(a).forEach(artistId => {
+        const cur = earliestProjectByArtist.get(artistId)
+        if (!cur || year < cur.year || (year === cur.year && dateKey < cur.dateKey)) {
+          earliestProjectByArtist.set(artistId, { year, dateKey, album: a })
+        }
+      })
     })
-  })
 
-  const debuts = []
-  earliestProjectByArtist.forEach((v, artistId) => {
-    if (v.year === DEBUT_YEAR) debuts.push({ artistId, album: v.album })
-  })
+    const debuts = []
+    earliestProjectByArtist.forEach((v, artistId) => {
+      if (v.year === DEBUT_YEAR) debuts.push({ artistId, album: v.album })
+    })
 
-  const artistRes = await db.collection('artist_candidates').where({ status: 'approved' })
-    .field({ artistId: true, artistName: true, avatarUrl: true, picUrl: true }).limit(1000).get()
-  const artistMap = new Map((artistRes.data || []).map(a => [String(a.artistId), a]))
+    const artistRes = await db.collection('artist_candidates').where({ status: 'approved' })
+      .field({ artistId: true, artistName: true, avatarUrl: true, picUrl: true }).limit(1000).get()
+    const artistMap = new Map((artistRes.data || []).map(a => [String(a.artistId), a]))
 
-  const nominees = debuts.map(x => {
-    const artist = artistMap.get(String(x.artistId))
-    if (!artist) return null
-    return {
-      artistId: String(x.artistId),
-      artistName: String(artist.artistName || ''),
-      avatarUrl: String(artist.avatarUrl || artist.picUrl || ''),
-      debutAlbumId: x.album._id,
-      debutTitle: String(x.album.title || ''),
-      debutReleaseType: String(x.album.releaseType || ''),
-    }
-  }).filter(Boolean)
+    const list = debuts.map(x => {
+      const artist = artistMap.get(String(x.artistId))
+      if (!artist) return null
+      return {
+        artistId: String(x.artistId),
+        artistName: String(artist.artistName || ''),
+        avatarUrl: String(artist.avatarUrl || artist.picUrl || ''),
+        debutAlbumId: x.album._id,
+        debutTitle: String(x.album.title || ''),
+        debutReleaseType: String(x.album.releaseType || ''),
+      }
+    }).filter(Boolean)
 
-  await ensureCollection(NOMINEE_COL)
-  const existing = await db.collection(NOMINEE_COL).limit(1000).field({ _id: true }).get()
-  await Promise.allSettled((existing.data || []).map(d => db.collection(NOMINEE_COL).doc(d._id).remove()))
-  for (let i = 0; i < nominees.length; i += 50) {
-    await Promise.allSettled(nominees.slice(i, i + 50).map(n => db.collection(NOMINEE_COL).add({ data: n })))
+    return { success: true, list }
+  } catch (e) {
+    return { success: false, error: e.message }
   }
-  return { success: true, count: nominees.length }
+}
+
+// Targeted per-artist version of the same eligibility check, used by submit() so a vote can be
+// validated without a full collection scan.
+async function findEarliestProjectForArtist(artistId) {
+  const id = String(artistId)
+  const [ownerRes, participantRes, legacyRes] = await Promise.all([
+    db.collection('albums').where({ approved: true, ownerArtistIds: _.all([id]), releaseType: _.in(['LP', 'Mixtape']) }).get(),
+    db.collection('albums').where({ approved: true, ownerArtistIds: _.exists(false), artistIds: _.all([id]), releaseType: _.in(['LP', 'Mixtape']) }).get(),
+    db.collection('albums').where({ approved: true, ownerArtistIds: _.exists(false), neteaseArtistId: id, releaseType: _.in(['LP', 'Mixtape']) }).get(),
+  ])
+  const all = [...ownerRes.data, ...participantRes.data, ...legacyRes.data]
+  if (!all.length) return null
+  all.sort((a, b) => (Number(a.releaseYear) - Number(b.releaseYear)) || String(a.releaseDate || '').localeCompare(String(b.releaseDate || '')))
+  return all[0]
 }
 
 async function ensureCollection(name) {
