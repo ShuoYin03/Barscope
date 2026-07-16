@@ -3,7 +3,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _  = db.command
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 1000
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
