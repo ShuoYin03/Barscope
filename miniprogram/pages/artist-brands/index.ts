@@ -5,6 +5,7 @@ interface ArtistRow { id:string; artistId:string; artistName:string; picUrl:stri
 interface BrandOption { name:string; selected:boolean }
 interface RoleOption { key:ArtistRole; label:string; selected:boolean }
 interface RoleSuggestion { _id:string; artistDocId:string; artistId:string; artistName:string; previousRoles:ArtistRole[]; roles:ArtistRole[] }
+interface BrandSuggestion { _id:string; brandName:string; artists:{artistDocId:string; artistId:string; artistName:string}[] }
 
 const ROLE_OPTIONS:{key:ArtistRole;label:string}[] = [
   { key:'rapper', label:'RAPPER' },
@@ -20,9 +21,10 @@ Page({
     roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[], selectedRoles:[] as ArtistRole[], saving:false,
     batchMode:false, batchSelectedCount:0, batchRoleSheetVisible:false, batchRoles:[] as ArtistRole[], batchRoleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[], batchSaving:false,
     reviewSheetVisible:false, roleSuggestions:[] as RoleSuggestion[], reviewLoading:false, reviewWorking:'',
+    brandReviewSheetVisible:false, brandSuggestions:[] as BrandSuggestion[], brandReviewLoading:false, brandReviewWorking:'',
   },
 
-  onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight}); this.loadArtists(); this.loadRoleSuggestions() },
+  onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight}); this.loadArtists(); this.loadRoleSuggestions(); this.loadBrandSuggestions() },
   onShow(){ this.setData({themeClass:getThemeClass()}) },
 
   applyListFilter(rawList:ArtistRow[], unassignedOnly=this.data.unassignedOnly){
@@ -79,6 +81,30 @@ Page({
       this.loadArtists()
       wx.showToast({title:decision==='approve'?'已通过':'已拒绝',icon:'success'})
     },fail:()=>wx.showToast({title:'处理失败',icon:'none'}),complete:()=>this.setData({reviewWorking:''})} as any)
+  },
+
+  loadBrandSuggestions(){
+    this.setData({brandReviewLoading:true})
+    wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'list_brand_suggestions'},success:(res:any)=>{
+      const r=res.result||{}
+      const list=(r.success?(r.list||[]):[]).map((x:BrandSuggestion)=>({...x,artistNamesText:(x.artists||[]).map(a=>a.artistName).join(' / ')}))
+      this.setData({brandSuggestions:list,brandReviewLoading:false})
+    },fail:()=>this.setData({brandReviewLoading:false})} as any)
+  },
+  onOpenBrandReview(){ this.setData({brandReviewSheetVisible:true}); this.loadBrandSuggestions() },
+  onCloseBrandReview(){ if(!this.data.brandReviewWorking)this.setData({brandReviewSheetVisible:false}) },
+  onReviewBrandSuggestion(e:WechatMiniprogram.TouchEvent){
+    const ds=e.currentTarget.dataset as any
+    const id=String(ds.id||''), decision=String(ds.decision||'')
+    if(!id||this.data.brandReviewWorking)return
+    this.setData({brandReviewWorking:id})
+    wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'review_brand_suggestion',suggestionId:id,decision},success:(res:any)=>{
+      const r=res.result||{}
+      if(!r.success){wx.showToast({title:r.error||'处理失败',icon:'none'});return}
+      this.setData({brandSuggestions:this.data.brandSuggestions.filter(x=>x._id!==id)})
+      this.loadArtists()
+      wx.showToast({title:decision==='approve'?'已通过':'已拒绝',icon:'success'})
+    },fail:()=>wx.showToast({title:'处理失败',icon:'none'}),complete:()=>this.setData({brandReviewWorking:''})} as any)
   },
 
   onSearch(e:WechatMiniprogram.Input){ this.setData({keyword:e.detail.value}); this.loadArtists() },

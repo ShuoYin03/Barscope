@@ -5,12 +5,14 @@ const _ = db.command
 
 const ALLOWED_ROLES = new Set(['rapper', 'producer', 'label'])
 const SUGGESTIONS_COL = 'artist_role_suggestions'
+const BRAND_SUGGESTIONS_COL = 'artist_brand_suggestions'
 
 exports.main = async event => {
   const { OPENID } = cloud.getWXContext()
   const action = String(event.action || '')
 
   if (action === 'submit_role_suggestion') return submitRoleSuggestion(event, OPENID)
+  if (action === 'submit_brand_suggestion') return submitBrandSuggestion(event, OPENID)
 
   const admin = await isAdmin(OPENID)
   if (!admin) return { success:false, error:'unauthorized' }
@@ -20,6 +22,8 @@ exports.main = async event => {
   if (action === 'get_roles_map') return getRolesMap(event)
   if (action === 'list_role_suggestions') return listRoleSuggestions()
   if (action === 'review_role_suggestion') return reviewRoleSuggestion(event, OPENID)
+  if (action === 'list_brand_suggestions') return listBrandSuggestions()
+  if (action === 'review_brand_suggestion') return reviewBrandSuggestion(event, OPENID)
   return { success:false, error:'unknown action' }
 }
 
@@ -40,14 +44,15 @@ function cleanRoles(values) {
   return cleanValues(values, 3).map(x => x.toLowerCase()).filter(role => ALLOWED_ROLES.has(role))
 }
 
-async function ensureSuggestionsCollection() {
-  try { await db.collection(SUGGESTIONS_COL).limit(1).get() }
+async function ensureCollection(name) {
+  try { await db.collection(name).limit(1).get() }
   catch (e) {
     const msg = String(e && (e.errMsg || e.message) || '')
     if (!msg.includes('DATABASE_COLLECTION_NOT_EXIST') && !msg.includes('collection not exists') && !msg.includes('Db or Table not exist')) throw e
-    try { await db.createCollection(SUGGESTIONS_COL) } catch (x) {}
+    try { await db.createCollection(name) } catch (x) {}
   }
 }
+async function ensureSuggestionsCollection() { return ensureCollection(SUGGESTIONS_COL) }
 
 async function updateArtistProfile(event) {
   const artistDocId = String(event.artistDocId || '').trim()
@@ -151,4 +156,67 @@ async function reviewRoleSuggestion(event, openId) {
 
   await db.collection(SUGGESTIONS_COL).doc(suggestionId).update({ data:{ status:decision === 'approve' ? 'approved' : 'rejected', reviewedAt:db.serverDate(), reviewedBy:openId } })
   return { success:true, decision, roles:cleanRoles(suggestion.roles), artistDocId:suggestion.artistDocId || '' }
+}
+
+// ── 用户提交厂牌（多选已收录 rapper）──────────────────────────────────────────
+async function submitBrandSuggestion(event, openId) {
+  if (!openId) return { success:false, error:'请先登录' }
+  const brandName = String(event.brandName || '').trim().slice(0, 40)
+  if (!brandName) return { success:false, error:'请输入厂牌名称' }
+  const artistIds = Array.from(new Set((Array.isArray(event.artistIds) ? event.artistIds : []).map(x => String(x || '').trim()).filter(Boolean))).slice(0, 30)
+  if (!artistIds.length) return { success:false, error:'请至少选择一位 rapper' }
+  await ensureCollection(BRAND_SUGGESTIONS_COL)
+
+  const artistRes = await db.collection('artist_candidates').where({ artistId: _.in(artistIds.map(Number)), status:'approved' }).field({ _id:true, artistId:true, artistName:true, brands:true }).limit(30).get()
+  const found = artistRes.data || []
+  if (!found.length) return { success:false, error:'未找到所选艺人' }
+  const missing = artistIds.filter(id => !found.some(a => String(a.artistId) === id))
+  if (missing.length) return { success:false, error:'部分艺人未找到，请重新选择' }
+
+  const artists = found.map(a => ({ artistDocId:a._id, artistId:String(a.artistId), artistName:a.artistName || '' }))
+
+  await db.collection(BRAND_SUGGESTIONS_COL).add({ data:{
+    brandName,
+    artists,
+    status:'pending',
+    submittedBy:openId,
+    createdAt:db.serverDate(),
+    decidedAt:null,
+  } })
+  return { success:true, pending:true }
+}
+
+async function listBrandSuggestions() {
+  await ensureCollection(BRAND_SUGGESTIONS_COL)
+  const res = await db.collection(BRAND_SUGGESTIONS_COL).where({ status:'pending' }).orderBy('createdAt','asc').limit(200).get()
+  return { success:true, list:res.data || [], total:(res.data || []).length }
+}
+
+async function reviewBrandSuggestion(event, openId) {
+  const suggestionId = String(event.suggestionId || '').trim()
+  const decision = String(event.decision || '')
+  if (!suggestionId || !['approve','reject'].includes(decision)) return { success:false, error:'invalid review request' }
+  await ensureCollection(BRAND_SUGGESTIONS_COL)
+  const doc = await db.collection(BRAND_SUGGESTIONS_COL).doc(suggestionId).get()
+  const suggestion = doc.data
+  if (!suggestion || suggestion.status !== 'pending') return { success:false, error:'申请已处理或不存在' }
+
+  if (decision === 'approve') {
+    const brandName = String(suggestion.brandName || '').trim()
+    const artists = Array.isArray(suggestion.artists) ? suggestion.artists : []
+    for (const a of artists) {
+      const artistDocId = String(a.artistDocId || '')
+      if (!artistDocId) continue
+      const artistDoc = (await db.collection('artist_candidates').doc(artistDocId).get()).data
+      if (!artistDoc) continue
+      const brands = cleanValues([...(artistDoc.brands || []), brandName], 10)
+      await db.collection('artist_candidates').doc(artistDocId).update({ data:{
+        brand: brands[0] || '', brands,
+        brandUpdatedAt: db.serverDate(), brandUpdatedBy: openId,
+      } })
+    }
+  }
+
+  await db.collection(BRAND_SUGGESTIONS_COL).doc(suggestionId).update({ data:{ status:decision === 'approve' ? 'approved' : 'rejected', reviewedAt:db.serverDate(), reviewedBy:openId } })
+  return { success:true, decision }
 }

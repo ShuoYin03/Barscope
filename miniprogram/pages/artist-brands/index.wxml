@@ -3,7 +3,8 @@
   <view class="search-row">
     <view class="search"><input placeholder="搜索 rapper / producer / label" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
     <view class="unassigned-toggle {{unassignedOnly ? 'active' : ''}}" bindtap="onToggleUnassigned">未设身份{{unassignedCount ? ' · ' + unassignedCount : ''}}</view>
-    <view class="review-toggle" bindtap="onOpenReview">审核{{roleSuggestions.length ? ' · ' + roleSuggestions.length : ''}}</view>
+    <view class="review-toggle" bindtap="onOpenReview">身份审核{{roleSuggestions.length ? ' · ' + roleSuggestions.length : ''}}</view>
+    <view class="review-toggle" bindtap="onOpenBrandReview">厂牌审核{{brandSuggestions.length ? ' · ' + brandSuggestions.length : ''}}</view>
     <view class="batch-toggle {{batchMode ? 'active' : ''}}" bindtap="onToggleBatchMode">{{batchMode ? '取消' : '批量身份'}}</view>
   </view>
   <scroll-view class="content" scroll-y>
@@ -34,6 +35,22 @@
         <view class="review-actions">
           <view class="review-reject" bindtap="onReviewSuggestion" data-id="{{item._id}}" data-decision="reject">拒绝</view>
           <view class="review-approve" bindtap="onReviewSuggestion" data-id="{{item._id}}" data-decision="approve">通过</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view></view>
+
+  <view wx:if="{{brandReviewSheetVisible}}" class="sheet-mask" bindtap="onCloseBrandReview"><view class="brand-sheet review-sheet" catchtap="noop">
+    <view class="sheet-handle"></view><text class="sheet-title">厂牌提交审核</text><text class="sheet-subtitle">用户提交的厂牌只有通过后才会同步到所选 rapper 的主页</text>
+    <scroll-view class="review-list" scroll-y>
+      <view wx:if="{{brandReviewLoading}}" class="brand-empty">加载中…</view>
+      <view wx:elif="{{!brandSuggestions.length}}" class="brand-empty">暂无待审核厂牌提交</view>
+      <view wx:for="{{brandSuggestions}}" wx:key="_id" class="review-item">
+        <text class="review-name">{{item.brandName}}</text>
+        <text class="review-change">{{item.artistNamesText}}</text>
+        <view class="review-actions">
+          <view class="review-reject" bindtap="onReviewBrandSuggestion" data-id="{{item._id}}" data-decision="reject">拒绝</view>
+          <view class="review-approve" bindtap="onReviewBrandSuggestion" data-id="{{item._id}}" data-decision="approve">通过</view>
         </view>
       </view>
     </scroll-view>
