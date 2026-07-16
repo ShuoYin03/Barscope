@@ -18,9 +18,6 @@ interface Collaborator {
 
 const BIO_PREVIEW_LENGTH = 150
 
-// .artist-en has no CSS way to auto-shrink to fit (no adjustsFontSizeToFitWidth in WXSS), so scale
-// font-size/letter-spacing down in tiers by character count — long aka like "SEVENGURUSFAMILY"
-// otherwise overflows the page's 32rpx side padding at the default 100rpx size.
 function computeNameFit(name: string) {
   const len = String(name || '').length
   if (len > 17) return { nameFontSize: 54, nameLetterSpacing: 2 }
@@ -52,6 +49,7 @@ Page({
     initial: '',
     bannerUrl: '',
     avatarUrl: '',
+    roleLabel: '',
     brandLabel: '',
     briefDesc: '',
     briefDescPreview: '',
@@ -97,7 +95,8 @@ Page({
         const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
         const brandLabel = Array.isArray(artist.brands) ? artist.brands.filter(Boolean).join(' | ') : (artist.brand || '')
-        this.setData({ notCollected: false, bannerUrl, avatarUrl, brandLabel, bioExpanded: false, ...bioState })
+        const roleLabel = Array.isArray(artist.roles) ? artist.roles.filter(Boolean).map((x:string)=>String(x).toUpperCase()).join(' / ') : ''
+        this.setData({ notCollected: false, bannerUrl, avatarUrl, roleLabel, brandLabel, bioExpanded: false, ...bioState })
       },
     } as any)
   },
@@ -109,11 +108,7 @@ Page({
       success: (res: any) => {
         const result = res.result || {}
         const collaborators: Collaborator[] = result.success ? (result.list || []) : []
-        this.setData({
-          collaborators,
-          visibleCollaborators: collaborators.slice(0, 3),
-          collaboratorsExpanded: false,
-        })
+        this.setData({ collaborators, visibleCollaborators: collaborators.slice(0, 3), collaboratorsExpanded: false })
       },
       fail: () => this.setData({ collaborators: [], visibleCollaborators: [], collaboratorsExpanded: false }),
     } as any)
@@ -144,11 +139,7 @@ Page({
   },
 
   onShow() { this.setData({ themeClass: getThemeClass() }) },
-
-  onBioToggle() {
-    if (!this.data.hasLongBio) return
-    this.setData({ bioExpanded: !this.data.bioExpanded })
-  },
+  onBioToggle() { if (this.data.hasLongBio) this.setData({ bioExpanded: !this.data.bioExpanded }) },
 
   _loadAlbums(artistId: string) {
     wx.cloud.callFunction({
@@ -164,31 +155,13 @@ Page({
           const year = Number(a.releaseYear || 0)
           const firstOfYear = !!year && !seenYears.has(year)
           if (year) seenYears.add(year)
-          return {
-            id: a._id,
-            title: a.title || '',
-            year,
-            trackCount: a.trackCount || 0,
-            score: Math.round((a.avgScore || 0) * 10) / 10,
-            coverUrl: a.coverUrl || '',
-            yearAnchor: firstOfYear ? `career-year-${year}` : '',
-          }
+          return { id: a._id, title: a.title || '', year, trackCount: a.trackCount || 0, score: Math.round((a.avgScore || 0) * 10) / 10, coverUrl: a.coverUrl || '', yearAnchor: firstOfYear ? `career-year-${year}` : '' }
         })
         const scored = list.filter(a => a.score > 0)
         const avgScore = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : '–'
         const years = Array.from(seenYears).sort((a, b) => b - a)
-        const yearRange = years.length
-          ? (Math.min(...years) === Math.max(...years) ? String(Math.min(...years)) : `${Math.min(...years)}–${Math.max(...years)}`)
-          : ''
-        this.setData({
-          list,
-          total: list.length,
-          avgScore,
-          yearRange,
-          years,
-          activeYear: years[0] || 0,
-          loading: false,
-        })
+        const yearRange = years.length ? (Math.min(...years) === Math.max(...years) ? String(Math.min(...years)) : `${Math.min(...years)}–${Math.max(...years)}`) : ''
+        this.setData({ list, total: list.length, avgScore, yearRange, years, activeYear: years[0] || 0, loading: false })
       },
       fail: () => this.setData({ loading: false }),
     } as any)
@@ -196,29 +169,20 @@ Page({
 
   onYearTap(e: WechatMiniprogram.TouchEvent) {
     const year = Number((e.currentTarget.dataset as any).year || 0)
-    if (!year) return
-    this.setData({ activeYear: year, scrollIntoView: `career-year-${year}` })
+    if (year) this.setData({ activeYear: year, scrollIntoView: `career-year-${year}` })
   },
-
   onCollaboratorsMore() {
     const expanded = !this.data.collaboratorsExpanded
-    this.setData({
-      collaboratorsExpanded: expanded,
-      visibleCollaborators: expanded ? this.data.collaborators.slice(0, 10) : this.data.collaborators.slice(0, 3),
-    })
+    this.setData({ collaboratorsExpanded: expanded, visibleCollaborators: expanded ? this.data.collaborators.slice(0, 10) : this.data.collaborators.slice(0, 3) })
   },
-
   onCollaboratorTap(e: WechatMiniprogram.TouchEvent) {
     const dataset = e.currentTarget.dataset as any
     const artistId = String(dataset.artistId || '')
     const artistName = String(dataset.artistName || '')
     const collected = dataset.collected === true || dataset.collected === 'true'
-    if (!artistId || !collected) return
-    wx.navigateTo({ url: `/pages/artist/index?artistId=${encodeURIComponent(artistId)}&artistName=${encodeURIComponent(artistName)}` })
+    if (artistId && collected) wx.navigateTo({ url: `/pages/artist/index?artistId=${encodeURIComponent(artistId)}&artistName=${encodeURIComponent(artistName)}` })
   },
-
   onBack() { wx.navigateBack() },
-
   onAlbumTap(e: WechatMiniprogram.TouchEvent) {
     const id = (e.currentTarget.dataset as { id: string }).id
     wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
