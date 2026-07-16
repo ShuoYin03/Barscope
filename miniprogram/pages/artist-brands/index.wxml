@@ -2,6 +2,7 @@
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">ARTISTS / 厂牌</text></view>
   <view class="search-row">
     <view class="search"><input placeholder="搜索 rapper / producer / label" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
+    <view class="review-toggle" bindtap="onOpenReview">审核{{roleSuggestions.length ? ' · ' + roleSuggestions.length : ''}}</view>
     <view class="batch-toggle {{batchMode ? 'active' : ''}}" bindtap="onToggleBatchMode">{{batchMode ? '取消' : '批量身份'}}</view>
   </view>
   <scroll-view class="content" scroll-y>
@@ -20,6 +21,22 @@
   </scroll-view>
 
   <view wx:if="{{batchMode && batchSelectedCount>0}}" class="batch-bar"><text>已选 {{batchSelectedCount}} 位</text><view bindtap="onOpenBatchRoles">设置身份</view></view>
+
+  <view wx:if="{{reviewSheetVisible}}" class="sheet-mask" bindtap="onCloseReview"><view class="brand-sheet review-sheet" catchtap="noop">
+    <view class="sheet-handle"></view><text class="sheet-title">身份修改审核</text><text class="sheet-subtitle">用户提交的修改只有通过后才会同步到艺人主页</text>
+    <scroll-view class="review-list" scroll-y>
+      <view wx:if="{{reviewLoading}}" class="brand-empty">加载中…</view>
+      <view wx:elif="{{!roleSuggestions.length}}" class="brand-empty">暂无待审核修改</view>
+      <view wx:for="{{roleSuggestions}}" wx:key="_id" class="review-item">
+        <text class="review-name">{{item.artistName}}</text>
+        <text class="review-change">{{item.previousRoles.length ? item.previousRoles.join(' / ') : '未设置'}} → {{item.roles.length ? item.roles.join(' / ') : '清除身份'}}</text>
+        <view class="review-actions">
+          <view class="review-reject" bindtap="onReviewSuggestion" data-id="{{item._id}}" data-decision="reject">拒绝</view>
+          <view class="review-approve" bindtap="onReviewSuggestion" data-id="{{item._id}}" data-decision="approve">通过</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view></view>
 
   <view wx:if="{{brandSheetVisible}}" class="sheet-mask" bindtap="onCloseBrandSheet"><view class="brand-sheet" catchtap="noop">
     <view class="sheet-handle"></view><text class="sheet-title">设置 {{editingArtistName}}</text>
