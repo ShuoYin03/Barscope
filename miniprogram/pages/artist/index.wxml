@@ -14,7 +14,7 @@
       <view wx:if="{{visibleCollaborators.length}}" class="collaborator-list"><view wx:for="{{visibleCollaborators}}" wx:key="key" class="collaborator-row {{item.collected ? 'collected' : 'uncollected'}}" bindtap="onCollaboratorTap" data-artist-id="{{item.artistId}}" data-artist-name="{{item.name}}" data-collected="{{item.collected}}"><text class="collaborator-rank">{{index + 1}}</text><view class="collaborator-info"><text class="collaborator-name">{{item.name}}</text><text class="collaborator-count">共同合作 {{item.count}} 首</text></view><text wx:if="{{item.collected}}" class="collaborator-arrow">›</text></view></view><view wx:else class="collaborator-empty"><text>暂无可识别的 Track Featuring 数据</text></view>
       <view class="side-row side-c-row"><text class="side-text">SIDE C — ROLE 身份</text><view class="side-rule" /></view>
       <view class="role-edit-row" bindtap="onOpenRoleSuggest"><view class="role-edit-copy"><text class="role-edit-title">修改 {{artistName}} 的身份</text><text class="role-edit-desc">{{roleLabel ? '当前：' + roleLabel : '尚未设置身份'}} · 点击提交修改建议</text></view><text class="role-edit-arrow">›</text></view>
-      <view class="page-bottom-spacer"></view>
+      <view style="height: 180rpx;"></view>
     </scroll-view>
   </block>
 
