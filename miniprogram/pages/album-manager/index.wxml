@@ -18,6 +18,7 @@
       <view class="mode-tab {{searchMode === 'title' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="title"><text>按专辑名</text></view>
       <view class="mode-tab {{searchMode === 'all' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="all"><text>全部</text></view>
       <view class="mode-tab {{searchMode === 'multi' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="multi"><text>多人合作</text></view>
+      <view class="mode-tab {{searchMode === 'uncategorized' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="uncategorized"><text>未分类</text></view>
     </view>
 
     <view class="search-bar" wx:if="{{searchMode === 'artist' || searchMode === 'title' || searchMode === 'all'}}">
@@ -330,7 +331,7 @@
     </block>
 
     <!-- ── 多人合作专辑 ── -->
-    <block wx:else>
+    <block wx:elif="{{searchMode === 'multi'}}">
       <view class="all-action-bar">
         <view class="all-action-btn" bindtap="onToggleMultiSelectMode">
           <text>{{multiSelectMode ? '取消批量' : '批量选择'}}</text>
@@ -410,6 +411,89 @@
         </view>
         <view wx:elif="{{!multiHasMore && multiList.length > 0}}" class="list-end">
           <text class="list-end-text">── 共 {{multiTotal}} 张 ──</text>
+        </view>
+      </block>
+      </scroll-view>
+    </block>
+
+    <!-- ── 未分类专辑（没有 LP/Mixtape/Live/Beat Tape 类型标签）── -->
+    <block wx:else>
+      <view class="all-action-bar">
+        <view class="all-action-btn" bindtap="onToggleUncategorizedSelectMode">
+          <text>{{uncategorizedSelectMode ? '取消批量' : '批量选择'}}</text>
+        </view>
+        <block wx:if="{{uncategorizedSelectMode}}">
+          <view class="all-action-btn" bindtap="onUncategorizedSelectAll"><text>{{uncategorizedSelectedCount ? '取消全选' : '全选'}}</text></view>
+          <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onUncategorizedBatchShow"><text>批量显示</text></view>
+          <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onUncategorizedBatchHide"><text>批量隐藏</text></view>
+          <view class="all-action-btn accent" bindtap="onUncategorizedBatchOwnership"><text>批量设置归属</text></view>
+          <view class="all-action-btn accent" bindtap="onUncategorizedBatchSetType"><text>批量设置类型</text></view>
+          <view class="all-action-btn ghost {{resyncWorking ? 'btn-disabled' : ''}}" bindtap="onUncategorizedBatchResync">
+            <text>{{resyncWorking ? ('同步中 ' + resyncDone + '/' + resyncTotal) : '重新同步Tracks'}}</text>
+          </view>
+        </block>
+      </view>
+      <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onUncategorizedReachBottom">
+      <block wx:if="{{uncategorizedLoading && uncategorizedList.length === 0}}">
+        <view wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this" class="album-skeleton">
+          <view class="sk skel-cover"></view>
+          <view class="skel-body">
+            <view class="sk skel-name"></view>
+            <view class="sk skel-meta"></view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:elif="{{uncategorizedList.length === 0}}" class="empty-state">
+        <text class="empty-icon">○</text>
+        <text class="empty-text">暂无未分类专辑</text>
+      </view>
+
+      <block wx:else>
+        <view wx:for="{{uncategorizedList}}" wx:key="_id" class="album-row {{uncategorizedSelectMode ? 'selectable' : ''}} {{item.selected ? 'selected' : ''}}" bindtap="onUncategorizedCardTap" data-id="{{item._id}}">
+          <view wx:if="{{uncategorizedSelectMode}}" class="select-box {{item.selected ? 'checked' : ''}}"><text wx:if="{{item.selected}}">✓</text></view>
+          <view class="album-cover-wrap">
+            <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view wx:else class="album-cover-fallback">
+              <text class="album-cover-icon">♪</text>
+            </view>
+            <view wx:if="{{!item.approved}}" class="cover-hidden-badge">
+              <text class="cover-hidden-text">隐藏</text>
+            </view>
+          </view>
+
+          <view class="album-info">
+            <text class="album-title">{{item.title}}</text>
+            <text class="album-artist">{{item.artist}}</text>
+            <view class="album-meta-row">
+              <text class="album-meta">{{item.releaseYear}}</text>
+              <view wx:if="{{item.trackCount > 0}}" class="meta-dot"></view>
+              <text wx:if="{{item.trackCount > 0}}" class="album-meta">{{item.trackCount}} 首</text>
+              <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
+              <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
+            </view>
+          </view>
+
+          <view wx:if="{{!uncategorizedSelectMode}}" class="release-tag" catchtap="onSetReleaseType" data-id="{{item._id}}">
+            <text>类型</text>
+          </view>
+
+          <view
+            wx:if="{{!uncategorizedSelectMode}}"
+            class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
+            catchtap="onToggleApproved"
+            data-id="{{item._id}}"
+            data-approved="{{item.approved}}"
+          >
+            <text class="toggle-text">{{item.approved ? '显示' : '隐藏'}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{uncategorizedLoading}}" class="load-more">
+          <text class="load-more-text">加载中…</text>
+        </view>
+        <view wx:elif="{{!uncategorizedHasMore && uncategorizedList.length > 0}}" class="list-end">
+          <text class="list-end-text">── 共 {{uncategorizedTotal}} 张 ──</text>
         </view>
       </block>
       </scroll-view>

@@ -155,6 +155,7 @@ exports.main = async (event, context) => {
   if (action === 'album_letter_counts')  return await albumLetterCounts()
   if (action === 'backfill_album_letters') return await backfillAlbumLetters(event.skip || 0)
   if (action === 'list_multi_artist_albums') return await listMultiArtistAlbums(event.page || 1, event.pageSize || 60)
+  if (action === 'list_uncategorized_albums') return await listUncategorizedAlbums(event.page || 1, event.pageSize || 60)
   if (action === 'rebuild_multi_artist_index') return await rebuildMultiArtistIndex(event.skip || 0)
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
   if (action === 'find_resurrected')     return await findResurrectedAlbums()
@@ -361,6 +362,21 @@ async function listAllAlbums(letter, page, pageSize) {
   if (!letter) return { success: false, error: 'missing letter' }
   try {
     const query = db.collection('albums').where({ titleLetter: letter })
+    const total = Number((await query.count()).total || 0)
+    const start = (page - 1) * pageSize
+    const result = await query.orderBy('title', 'asc').skip(start).limit(pageSize).get()
+    return { success: true, list: result.data, total, page, pageSize }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// Albums with no releaseType set (either the field never got written, or it was explicitly
+// cleared) — surfaced separately so admins can find and tag the backlog without paging through
+// the whole letter-sorted library.
+async function listUncategorizedAlbums(page, pageSize) {
+  try {
+    const query = db.collection('albums').where(_.or([{ releaseType: _.exists(false) }, { releaseType: '' }]))
     const total = Number((await query.count()).total || 0)
     const start = (page - 1) * pageSize
     const result = await query.orderBy('title', 'asc').skip(start).limit(pageSize).get()
