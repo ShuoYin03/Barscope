@@ -1,7 +1,15 @@
 import { getThemeClass } from '../../utils/theme'
 
-interface ArtistRow { id:string; artistId:string; artistName:string; picUrl:string; albumSize:number; brands:string[] }
+type ArtistRole = 'rapper' | 'producer' | 'label'
+interface ArtistRow { id:string; artistId:string; artistName:string; picUrl:string; albumSize:number; brands:string[]; roles:ArtistRole[] }
 interface BrandOption { name:string; selected:boolean }
+interface RoleOption { key:ArtistRole; label:string; selected:boolean }
+
+const ROLE_OPTIONS:{key:ArtistRole;label:string}[] = [
+  { key:'rapper', label:'RAPPER' },
+  { key:'producer', label:'PRODUCER' },
+  { key:'label', label:'LABEL' },
+]
 
 Page({
   data:{
@@ -16,6 +24,8 @@ Page({
     brandNames:[] as string[],
     brandOptions:[] as BrandOption[],
     selectedBrands:[] as string[],
+    roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[],
+    selectedRoles:[] as ArtistRole[],
     saving:false,
   },
 
@@ -61,14 +71,29 @@ Page({
     const artist=this.data.list.find(x=>x.id===id)
     if(!artist)return
     const selectedBrands=[...(artist.brands||[])]
+    const selectedRoles=[...(artist.roles||[])] as ArtistRole[]
     const brandNames=Array.from(new Set([...this.data.brandNames,...selectedBrands])).sort((a,b)=>a.localeCompare(b,'zh-CN'))
     this.setData({
       brandSheetVisible:true,
       editingArtistId:id,
       editingArtistName:artist.artistName,
       selectedBrands,
+      selectedRoles,
       brandNames,
       brandOptions:brandNames.map(name=>({name,selected:selectedBrands.includes(name)})),
+      roleOptions:ROLE_OPTIONS.map(role=>({...role,selected:selectedRoles.includes(role.key)})),
+    })
+  },
+
+  onToggleRole(e:WechatMiniprogram.TouchEvent){
+    const role=String((e.currentTarget.dataset as any).role||'') as ArtistRole
+    if(!ROLE_OPTIONS.some(x=>x.key===role))return
+    const selectedRoles=this.data.selectedRoles.includes(role)
+      ? this.data.selectedRoles.filter(x=>x!==role)
+      : [...this.data.selectedRoles,role]
+    this.setData({
+      selectedRoles,
+      roleOptions:ROLE_OPTIONS.map(item=>({...item,selected:selectedRoles.includes(item.key)})),
     })
   },
 
@@ -99,19 +124,22 @@ Page({
     if(this.data.saving||!this.data.editingArtistId)return
     const id=this.data.editingArtistId
     const brands=this.data.selectedBrands
+    const roles=this.data.selectedRoles
     this.setData({saving:true})
     wx.cloud.callFunction({
       name:'manageArtistBrands',
-      data:{action:'update',artistDocId:id,brands},
+      data:{action:'update',artistDocId:id,brands,roles},
       success:(res:any)=>{
         const r=res.result||{}
         if(!r.success){wx.showToast({title:r.error||'保存失败',icon:'none'});return}
         const savedBrands=r.brands||[]
+        const savedRoles=r.roles||[]
         const brandNames=Array.from(new Set([...this.data.brandNames,...savedBrands])).sort((a,b)=>a.localeCompare(b,'zh-CN'))
         this.setData({
-          list:this.data.list.map(x=>x.id===id?{...x,brands:savedBrands}:x),
+          list:this.data.list.map(x=>x.id===id?{...x,brands:savedBrands,roles:savedRoles}:x),
           brandNames,
           brandOptions:brandNames.map(name=>({name,selected:savedBrands.includes(name)})),
+          roleOptions:ROLE_OPTIONS.map(role=>({...role,selected:savedRoles.includes(role.key)})),
           brandSheetVisible:false,
         })
         wx.showToast({title:'已更新',icon:'success'})
