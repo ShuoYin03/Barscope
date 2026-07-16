@@ -16,7 +16,24 @@ interface Collaborator {
   collected: boolean
 }
 
+type ArtistRole = 'rapper' | 'producer' | 'label'
+interface RoleOption { key: ArtistRole; label: string; selected: boolean }
+const ROLE_OPTIONS:{key:ArtistRole;label:string}[] = [
+  { key:'rapper', label:'RAPPER' },
+  { key:'producer', label:'PRODUCER' },
+  { key:'label', label:'LABEL' },
+]
+
 const BIO_PREVIEW_LENGTH = 150
+
+function computeNameFit(name: string) {
+  const len = String(name || '').length
+  if (len > 17) return { nameFontSize: 54, nameLetterSpacing: 2 }
+  if (len > 13) return { nameFontSize: 66, nameLetterSpacing: 4 }
+  if (len > 10) return { nameFontSize: 76, nameLetterSpacing: 6 }
+  if (len > 7) return { nameFontSize: 86, nameLetterSpacing: 8 }
+  return { nameFontSize: 100, nameLetterSpacing: 10 }
+}
 
 function buildBioState(value: string) {
   const bio = String(value || '').trim()
@@ -35,9 +52,14 @@ Page({
     statusBarHeight: 20,
     themeClass: '',
     artistName: '',
+    nameFontSize: 100,
+    nameLetterSpacing: 10,
     initial: '',
     bannerUrl: '',
     avatarUrl: '',
+    roleLabel: '',
+    roles: [] as ArtistRole[],
+    brandLabel: '',
     briefDesc: '',
     briefDescPreview: '',
     hasLongBio: false,
@@ -55,6 +77,10 @@ Page({
     loading: true,
     notCollected: false,
     submitStatus: 'idle' as 'idle' | 'submitting' | 'submitted' | 'pending',
+    roleSheetVisible: false,
+    suggestedRoles: [] as ArtistRole[],
+    roleOptions: ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[],
+    roleSuggestionSubmitting: false,
   },
 
   _artistId: '',
@@ -65,7 +91,7 @@ Page({
     const artistName = decodeURIComponent(options.artistName || '')
     const initial = artistName[0] || '?'
     this._artistId = artistId
-    this.setData({ statusBarHeight: app.globalData.statusBarHeight, artistName, initial: initial.toUpperCase() })
+    this.setData({ statusBarHeight: app.globalData.statusBarHeight, artistName, initial: initial.toUpperCase(), ...computeNameFit(artistName) })
     this._loadArtist(artistId)
     this._loadAlbums(artistId)
     this._loadCollaborators(artistId, artistName)
@@ -81,8 +107,43 @@ Page({
         const bannerUrl = artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
         const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
-        this.setData({ notCollected: false, bannerUrl, avatarUrl, bioExpanded: false, ...bioState })
+        const brandLabel = Array.isArray(artist.brands) ? artist.brands.filter(Boolean).join(' | ') : (artist.brand || '')
+        const roles = Array.isArray(artist.roles) ? artist.roles.filter((x:string)=>ROLE_OPTIONS.some(r=>r.key===x)) : []
+        const roleLabel = roles.map((x:string)=>String(x).toUpperCase()).join(' / ')
+        this.setData({ notCollected: false, bannerUrl, avatarUrl, roles, roleLabel, brandLabel, bioExpanded: false, ...bioState })
       },
+    } as any)
+  },
+
+  onOpenRoleSuggest() {
+    const suggestedRoles=[...this.data.roles]
+    this.setData({
+      roleSheetVisible:true,
+      suggestedRoles,
+      roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:suggestedRoles.includes(x.key)})),
+    })
+  },
+  onToggleSuggestedRole(e:WechatMiniprogram.TouchEvent) {
+    const role=String((e.currentTarget.dataset as any).role||'') as ArtistRole
+    if(!ROLE_OPTIONS.some(x=>x.key===role))return
+    const suggestedRoles=this.data.suggestedRoles.includes(role)?this.data.suggestedRoles.filter(x=>x!==role):[...this.data.suggestedRoles,role]
+    this.setData({suggestedRoles,roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:suggestedRoles.includes(x.key)}))})
+  },
+  onCloseRoleSuggest(){ if(!this.data.roleSuggestionSubmitting)this.setData({roleSheetVisible:false}) },
+  onSubmitRoleSuggestion(){
+    if(this.data.roleSuggestionSubmitting)return
+    this.setData({roleSuggestionSubmitting:true})
+    wx.cloud.callFunction({
+      name:'manageArtistBrands',
+      data:{action:'submit_role_suggestion',artistId:this._artistId,artistName:this.data.artistName,roles:this.data.suggestedRoles},
+      success:(res:any)=>{
+        const r=res.result||{}
+        if(!r.success){wx.showToast({title:r.error||'提交失败',icon:'none'});return}
+        this.setData({roleSheetVisible:false})
+        wx.showToast({title:'已提交管理员审核',icon:'success'})
+      },
+      fail:()=>wx.showToast({title:'提交失败',icon:'none'}),
+      complete:()=>this.setData({roleSuggestionSubmitting:false}),
     } as any)
   },
 
@@ -93,11 +154,7 @@ Page({
       success: (res: any) => {
         const result = res.result || {}
         const collaborators: Collaborator[] = result.success ? (result.list || []) : []
-        this.setData({
-          collaborators,
-          visibleCollaborators: collaborators.slice(0, 3),
-          collaboratorsExpanded: false,
-        })
+        this.setData({ collaborators, visibleCollaborators: collaborators.slice(0, 3), collaboratorsExpanded: false })
       },
       fail: () => this.setData({ collaborators: [], visibleCollaborators: [], collaboratorsExpanded: false }),
     } as any)
@@ -128,11 +185,7 @@ Page({
   },
 
   onShow() { this.setData({ themeClass: getThemeClass() }) },
-
-  onBioToggle() {
-    if (!this.data.hasLongBio) return
-    this.setData({ bioExpanded: !this.data.bioExpanded })
-  },
+  onBioToggle() { if (this.data.hasLongBio) this.setData({ bioExpanded: !this.data.bioExpanded }) },
 
   _loadAlbums(artistId: string) {
     wx.cloud.callFunction({
@@ -148,31 +201,13 @@ Page({
           const year = Number(a.releaseYear || 0)
           const firstOfYear = !!year && !seenYears.has(year)
           if (year) seenYears.add(year)
-          return {
-            id: a._id,
-            title: a.title || '',
-            year,
-            trackCount: a.trackCount || 0,
-            score: Math.round((a.avgScore || 0) * 10) / 10,
-            coverUrl: a.coverUrl || '',
-            yearAnchor: firstOfYear ? `career-year-${year}` : '',
-          }
+          return { id: a._id, title: a.title || '', year, trackCount: a.trackCount || 0, score: Math.round((a.avgScore || 0) * 10) / 10, coverUrl: a.coverUrl || '', yearAnchor: firstOfYear ? `career-year-${year}` : '' }
         })
         const scored = list.filter(a => a.score > 0)
         const avgScore = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : '–'
         const years = Array.from(seenYears).sort((a, b) => b - a)
-        const yearRange = years.length
-          ? (Math.min(...years) === Math.max(...years) ? String(Math.min(...years)) : `${Math.min(...years)}–${Math.max(...years)}`)
-          : ''
-        this.setData({
-          list,
-          total: list.length,
-          avgScore,
-          yearRange,
-          years,
-          activeYear: years[0] || 0,
-          loading: false,
-        })
+        const yearRange = years.length ? (Math.min(...years) === Math.max(...years) ? String(Math.min(...years)) : `${Math.min(...years)}–${Math.max(...years)}`) : ''
+        this.setData({ list, total: list.length, avgScore, yearRange, years, activeYear: years[0] || 0, loading: false })
       },
       fail: () => this.setData({ loading: false }),
     } as any)
@@ -180,31 +215,23 @@ Page({
 
   onYearTap(e: WechatMiniprogram.TouchEvent) {
     const year = Number((e.currentTarget.dataset as any).year || 0)
-    if (!year) return
-    this.setData({ activeYear: year, scrollIntoView: `career-year-${year}` })
+    if (year) this.setData({ activeYear: year, scrollIntoView: `career-year-${year}` })
   },
-
   onCollaboratorsMore() {
     const expanded = !this.data.collaboratorsExpanded
-    this.setData({
-      collaboratorsExpanded: expanded,
-      visibleCollaborators: expanded ? this.data.collaborators.slice(0, 10) : this.data.collaborators.slice(0, 3),
-    })
+    this.setData({ collaboratorsExpanded: expanded, visibleCollaborators: expanded ? this.data.collaborators.slice(0, 10) : this.data.collaborators.slice(0, 3) })
   },
-
   onCollaboratorTap(e: WechatMiniprogram.TouchEvent) {
     const dataset = e.currentTarget.dataset as any
     const artistId = String(dataset.artistId || '')
     const artistName = String(dataset.artistName || '')
     const collected = dataset.collected === true || dataset.collected === 'true'
-    if (!artistId || !collected) return
-    wx.navigateTo({ url: `/pages/artist/index?artistId=${encodeURIComponent(artistId)}&artistName=${encodeURIComponent(artistName)}` })
+    if (artistId && collected) wx.navigateTo({ url: `/pages/artist/index?artistId=${encodeURIComponent(artistId)}&artistName=${encodeURIComponent(artistName)}` })
   },
-
   onBack() { wx.navigateBack() },
-
   onAlbumTap(e: WechatMiniprogram.TouchEvent) {
     const id = (e.currentTarget.dataset as { id: string }).id
     wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
   },
+  noop(){},
 })

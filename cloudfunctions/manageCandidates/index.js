@@ -150,13 +150,19 @@ exports.main = async (event, context) => {
   if (action === 'list_admin_albums')    return await listAdminAlbums(event.artistId, event.artistName)
   if (action === 'search_admin_albums')  return await searchAdminAlbums(event.keyword || '')
   if (action === 'toggle_album_approved') return await toggleAlbumApproved(event.albumId, !!event.approved)
-  if (action === 'cleanup_singles')      return await cleanupSingles()
+  if (action === 'cleanup_singles')      return await cleanupSingles(openId)
   if (action === 'list_all_albums')      return await listAllAlbums(event.letter || '', event.page || 1, event.pageSize || 60)
   if (action === 'album_letter_counts')  return await albumLetterCounts()
   if (action === 'backfill_album_letters') return await backfillAlbumLetters(event.skip || 0)
   if (action === 'list_multi_artist_albums') return await listMultiArtistAlbums(event.page || 1, event.pageSize || 60)
+  if (action === 'list_uncategorized_albums') return await listUncategorizedAlbums(event.page || 1, event.pageSize || 60)
   if (action === 'rebuild_multi_artist_index') return await rebuildMultiArtistIndex(event.skip || 0)
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
+  if (action === 'find_resurrected')     return await findResurrectedAlbums()
+  if (action === 'remove_resurrected')   return await removeResurrectedAlbums(event.ids || [])
+  if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
+  if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
+  if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
 
   return { success: false, error: 'unknown action' }
 }
@@ -365,6 +371,21 @@ async function listAllAlbums(letter, page, pageSize) {
   }
 }
 
+// Albums with no releaseType set (either the field never got written, or it was explicitly
+// cleared) — surfaced separately so admins can find and tag the backlog without paging through
+// the whole letter-sorted library.
+async function listUncategorizedAlbums(page, pageSize) {
+  try {
+    const query = db.collection('albums').where(_.or([{ releaseType: _.exists(false) }, { releaseType: '' }]))
+    const total = Number((await query.count()).total || 0)
+    const start = (page - 1) * pageSize
+    const result = await query.orderBy('title', 'asc').skip(start).limit(pageSize).get()
+    return { success: true, list: result.data, total, page, pageSize }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
 async function albumLetterCounts() {
   try {
     const counts = await Promise.all(LETTER_ORDER.split('').map(async letter => {
@@ -457,6 +478,55 @@ async function toggleAlbumApproved(albumId, approved) {
   try {
     await db.collection('albums').doc(albumId).update({ data: { approved } })
     return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── set_release_type / batch_set_release_type ───────────────────────────────
+const RELEASE_TYPES = new Set(['LP', 'Mixtape', 'Live', 'Beat Tape'])
+
+async function setReleaseType(albumId, releaseType) {
+  const id = String(albumId || '').trim()
+  if (!id) return { success: false, error: 'missing albumId' }
+  const type = String(releaseType || '').trim()
+  if (type && !RELEASE_TYPES.has(type)) return { success: false, error: 'invalid releaseType' }
+  try {
+    await db.collection('albums').doc(id).update({ data: { releaseType: type } })
+    return { success: true, releaseType: type }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function batchSetReleaseType(ids, releaseType) {
+  const cleanIds = (Array.isArray(ids) ? ids : []).map(String).filter(Boolean).slice(0, 200)
+  if (!cleanIds.length) return { success: false, error: 'no ids' }
+  const type = String(releaseType || '').trim()
+  if (type && !RELEASE_TYPES.has(type)) return { success: false, error: 'invalid releaseType' }
+  const results = await Promise.allSettled(cleanIds.map(id => db.collection('albums').doc(id).update({ data: { releaseType: type } })))
+  const succeeded = results.filter(r => r.status === 'fulfilled').length
+  return { success: true, succeeded, failed: cleanIds.length - succeeded, releaseType: type }
+}
+
+// One-time bulk rule: multi-artist albums -> LP if trackCount>=7 else Mixtape;
+// single-artist albums -> LP if trackCount>6 else Mixtape.
+// Idempotent — safe to re-run. Client pages through with `skip` until `done`.
+async function applyReleaseTypeRules(skip) {
+  try {
+    const pageSize = 300
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, isMultiArtist: true, trackCount: true, releaseType: true }).get()
+    const docs = result.data || []
+    if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
+    let updated = 0
+    const results = await Promise.allSettled(docs.map(d => {
+      const next = d.isMultiArtist ? (Number(d.trackCount) >= 7 ? 'LP' : 'Mixtape') : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
+      if (d.releaseType === next) return Promise.resolve()
+      updated++
+      return db.collection('albums').doc(d._id).update({ data: { releaseType: next } })
+    }))
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
   } catch (e) {
     return { success: false, error: e.message }
   }
@@ -571,25 +641,106 @@ async function refreshAlbums(candidateId) {
 }
 
 // ── cleanup_singles ───────────────────────────────────────────────────────────
-async function cleanupSingles() {
+// Same rationale as manageAlbumCandidates' recordDeletedAlbum: a hard delete with no album_candidates
+// trace means a later re-crawl can't tell "never seen before" from "already reviewed and rejected".
+async function recordDeletedAlbum(album, reason, openId) {
+  if (!album || !album.sourceId) return
+  const sourceId = String(album.sourceId)
+  const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
+  if (existing.data.length) {
+    await db.collection('album_candidates').doc(existing.data[0]._id).update({ data: {
+      status: 'deleted', decision: 'delete', candidateReason: reason, decidedAt: db.serverDate(), decidedBy: openId || '',
+    } })
+    return
+  }
+  const payload = Object.assign({}, album, {
+    albumOriginalId: album._id,
+    status: 'deleted',
+    decision: 'delete',
+    candidateReason: reason,
+    reportReason: reason,
+    addedAt: db.serverDate(),
+    decidedAt: db.serverDate(),
+    decidedBy: openId || '',
+  })
+  delete payload._id
+  await db.collection('album_candidates').add({ data: payload })
+}
+
+async function cleanupSingles(openId) {
   try {
     // Step 1: 把没有 trackCount 字段的记录先回填为 0，让后面的循环统一处理
     await db.collection('albums')
       .where({ trackCount: _.exists(false) })
       .update({ data: { trackCount: 0 } })
 
-    // Step 2: 循环删除 trackCount <= 2（含 0）直到全部清干净
+    // Step 2: 批量删除 trackCount <= 2（含 0）直到全部清干净。先取出这一批文档留一条
+    // album_candidates(status:'deleted') 记录再删——原来是直接 .where().remove()，没有任何
+    // sourceId 痕迹，后续重新爬取同一位艺人会把这些单曲当全新专辑重新插回去。
     let totalRemoved = 0
     while (true) {
-      const r = await db.collection('albums').where({ trackCount: _.lte(2) }).remove()
-      const batch = r.stats.removed
-      totalRemoved += batch
-      if (batch === 0) break
+      const batchRes = await db.collection('albums').where({ trackCount: _.lte(2) }).limit(100).get()
+      const rows = batchRes.data || []
+      if (!rows.length) break
+      await Promise.all(rows.map(album => recordDeletedAlbum(album, `清理专辑库：曲目数 ${album.trackCount || 0} 首`, openId)))
+      const ids = rows.map(x => x._id)
+      const r = await db.collection('albums').where({ _id: _.in(ids) }).remove()
+      totalRemoved += r.stats.removed
     }
     return { success: true, removed: totalRemoved }
   } catch (e) {
     return { success: false, error: e.message }
   }
+}
+
+// ── 找回被误重新收录的专辑 ─────────────────────────────────────────────────────
+// 一张专辑被判定"不该收录"，无论是人工在候选区删除（status:'deleted'）还是自动质检流程标记后还没人
+// 复核（status:'pending'），只要不是 status:'kept'，就说明这个 sourceId 现在不应该出现在 albums 里。
+// 只查 'deleted' 会漏掉 rescreenAlbums 那条自动质检流程留下的 'pending' 记录。一次全量重新爬取如果
+// 又扫到同一个艺人，会把这个 sourceId 当全新专辑重新插回 albums（cloudCrawler 已经加了拦截，但爬虫
+// 上次跑的时候还没有这道检查，已经误加回来的需要手动找出来复核）。
+async function findResurrectedAlbums() {
+  try {
+    const blockedSourceIds = new Set()
+    let skip = 0
+    while (true) {
+      const res = await db.collection('album_candidates').where({ status: _.neq('kept') }).field({ sourceId: true }).skip(skip).limit(1000).get()
+      const rows = res.data || []
+      rows.forEach(x => { if (x.sourceId) blockedSourceIds.add(String(x.sourceId)) })
+      if (rows.length < 1000) break
+      skip += 1000
+    }
+    const ids = Array.from(blockedSourceIds)
+    const matches = []
+    for (let i = 0; i < ids.length; i += 100) {
+      const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) })
+        .field({ _id: true, title: true, artist: true, sourceId: true, approved: true }).get()
+      matches.push(...(res.data || []))
+    }
+    return { success: true, total: matches.length, list: matches }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function removeResurrectedAlbums(ids) {
+  const list = Array.isArray(ids) ? ids.filter(Boolean) : []
+  if (!list.length) return { success: false, error: '缺少专辑ID列表' }
+  let removed = 0
+  const errors = []
+  for (const id of list) {
+    try {
+      await Promise.all([
+        db.collection('reviews').where({ albumId: id }).remove().catch(() => {}),
+        db.collection('favorites').where({ albumId: id }).remove().catch(() => {}),
+      ])
+      await db.collection('albums').doc(id).remove()
+      removed += 1
+    } catch (e) {
+      errors.push({ id, error: e.message })
+    }
+  }
+  return { success: true, removed, errors }
 }
 
 // ── stats ─────────────────────────────────────────────────────────────────────

@@ -21,7 +21,11 @@ interface Album {
   reviewCount: number
   trackCount: number
   selected?: boolean
+  releaseType?: string
 }
+
+const RELEASE_TYPE_OPTIONS = ['LP', 'Mixtape', 'Live', 'Beat Tape']
+const RELEASE_TYPE_CLEAR = '清除标签'
 
 interface LetterCount { letter: string; count: number }
 
@@ -53,7 +57,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     view: 'artists' as 'artists' | 'albums',
-    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi',
+    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi' | 'uncategorized',
     artistList: [] as Artist[],
     artistLoading: false,
     artistHasMore: false,
@@ -86,6 +90,8 @@ Page({
     allBatchWorking: false,
     backfilling: false,
     backfillDone: 0,
+    applyingRules: false,
+    applyRulesDone: 0,
 
     multiList: [] as Album[],
     multiLoading: false,
@@ -97,6 +103,15 @@ Page({
     multiSelectedCount: 0,
     multiReindexing: false,
     multiReindexDone: 0,
+
+    uncategorizedList: [] as Album[],
+    uncategorizedLoading: false,
+    uncategorizedPage: 1,
+    uncategorizedPageSize: 60,
+    uncategorizedTotal: 0,
+    uncategorizedHasMore: false,
+    uncategorizedSelectMode: false,
+    uncategorizedSelectedCount: 0,
 
     ownerPickerVisible: false,
     ownerPickerAlbumCount: 0,
@@ -169,11 +184,12 @@ Page({
   },
 
   onSearchModeTap(e: WechatMiniprogram.TouchEvent) {
-    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' }).mode
+    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' }).mode
     if (mode === this.data.searchMode) return
     this.setData({ searchMode: mode })
     if (mode === 'all' && !this.data.allLetters.length) this._loadLetterCounts()
     if (mode === 'multi' && !this.data.multiList.length) this._loadMultiArtistAlbums(1)
+    if (mode === 'uncategorized' && !this.data.uncategorizedList.length) this._loadUncategorizedAlbums(1)
   },
 
   // ── 多人合作专辑 ──────────────────────────────────────────────────────
@@ -206,19 +222,77 @@ Page({
 
 
   _selectedAlbums() {
-    return this.data.searchMode === 'multi'
-      ? this.data.multiList.filter(a => a.selected)
-      : this.data.allList.filter(a => a.selected)
+    if (this.data.searchMode === 'multi') return this.data.multiList.filter(a => a.selected)
+    if (this.data.searchMode === 'uncategorized') return this.data.uncategorizedList.filter(a => a.selected)
+    return this.data.allList.filter(a => a.selected)
   },
 
   _clearBatchSelection() {
     this.setData({
       allSelectedCount: 0,
       multiSelectedCount: 0,
+      uncategorizedSelectedCount: 0,
       allList: this.data.allList.map(a => ({ ...a, selected: false })),
       multiList: this.data.multiList.map(a => ({ ...a, selected: false })),
+      uncategorizedList: this.data.uncategorizedList.map(a => ({ ...a, selected: false })),
     })
   },
+
+  // ── 未分类专辑（没有 LP/Mixtape/Live/Beat Tape 类型标签）──────────────────
+  _loadUncategorizedAlbums(page: number) {
+    this.setData({ uncategorizedLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'list_uncategorized_albums', page, pageSize: this.data.uncategorizedPageSize },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ uncategorizedLoading: false }); return }
+        const incoming = (r.list || []) as Album[]
+        const newList = page === 1 ? incoming : [...this.data.uncategorizedList, ...incoming]
+        this.setData({
+          uncategorizedList: newList,
+          uncategorizedTotal: r.total || 0,
+          uncategorizedPage: page,
+          uncategorizedHasMore: newList.length < (r.total || 0),
+          uncategorizedLoading: false,
+        })
+      },
+      fail: () => this.setData({ uncategorizedLoading: false }),
+    })
+  },
+
+  onUncategorizedReachBottom() {
+    if (this.data.searchMode !== 'uncategorized' || !this.data.uncategorizedHasMore || this.data.uncategorizedLoading) return
+    this._loadUncategorizedAlbums(this.data.uncategorizedPage + 1)
+  },
+
+  onToggleUncategorizedSelectMode() {
+    const uncategorizedSelectMode = !this.data.uncategorizedSelectMode
+    this.setData({
+      uncategorizedSelectMode,
+      uncategorizedList: this.data.uncategorizedList.map(a => ({ ...a, selected: false })),
+      uncategorizedSelectedCount: 0,
+    })
+  },
+
+  onUncategorizedCardTap(e: WechatMiniprogram.TouchEvent) {
+    const id = (e.currentTarget.dataset as { id: string }).id
+    if (!this.data.uncategorizedSelectMode) { if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` }); return }
+    const uncategorizedList = this.data.uncategorizedList.map(a => a._id === id ? { ...a, selected: !a.selected } : a)
+    this.setData({ uncategorizedList, uncategorizedSelectedCount: uncategorizedList.filter(a => a.selected).length })
+  },
+
+  onUncategorizedSelectAll() {
+    const shouldSelect = this.data.uncategorizedSelectedCount === 0
+    const uncategorizedList = this.data.uncategorizedList.map(a => ({ ...a, selected: shouldSelect }))
+    this.setData({ uncategorizedList, uncategorizedSelectedCount: shouldSelect ? uncategorizedList.length : 0 })
+  },
+
+  onUncategorizedBatchShow() { this._batchToggleApproved(true) },
+  onUncategorizedBatchHide() { this._batchToggleApproved(false) },
+  onUncategorizedBatchOwnership() { this.onAllBatchOwnership() },
+  onUncategorizedBatchResync() { this.onAllBatchResync() },
+  onUncategorizedBatchSetType() { this._batchSetReleaseType() },
 
   onToggleMultiSelectMode() {
     const multiSelectMode = !this.data.multiSelectMode
@@ -413,7 +487,8 @@ Page({
             const patch = (a: Album) => idSet.has(a._id) ? { ...a, approved, selected: false } : a
             const allList = this.data.allList.map(patch)
             const multiList = this.data.multiList.map(patch)
-            this.setData({ allList, multiList, allSelectedCount: 0, multiSelectedCount: 0 })
+            const uncategorizedList = this.data.uncategorizedList.map(patch)
+            this.setData({ allList, multiList, uncategorizedList, allSelectedCount: 0, multiSelectedCount: 0, uncategorizedSelectedCount: 0 })
             wx.showToast({ title: `已处理 ${r.succeeded || 0} 张`, icon: 'success' })
           },
           fail: () => { wx.hideLoading(); this.setData({ allBatchWorking: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
@@ -550,8 +625,9 @@ Page({
             const allList = this.data.allList.map(patch)
             const titleResults = this.data.titleResults.map(patch)
             const multiList = this.data.multiList.map(patch)
+            const uncategorizedList = this.data.uncategorizedList.map(patch)
             this.setData({
-              allList, titleResults, multiList, allSelectedCount: 0, multiSelectedCount: 0,
+              allList, titleResults, multiList, uncategorizedList, allSelectedCount: 0, multiSelectedCount: 0, uncategorizedSelectedCount: 0,
               ownerPickerVisible: false, ownerPickerSelected: [], ownerPickerKeyword: '',
             })
             const failedCount = (r.failed || []).length
@@ -588,6 +664,39 @@ Page({
         this._runBackfillStep(r.nextSkip)
       },
       fail: () => { this.setData({ backfilling: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onApplyReleaseTypeRules() {
+    if (this.data.applyingRules) return
+    wx.showModal({
+      title: '一键打标签',
+      content: '多人合作专辑：曲目数 ≥7 标为 LP，否则 Mixtape；其余专辑：曲目数 >6 标为 LP，否则 Mixtape。将覆盖所有专辑的现有类型标签，确认继续？',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ applyingRules: true, applyRulesDone: 0 })
+        this._runApplyRulesStep(0)
+      },
+    })
+  },
+
+  _runApplyRulesStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'apply_release_type_rules', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ applyingRules: false }); wx.showToast({ title: r.error || '打标签失败', icon: 'none' }); return }
+        this.setData({ applyRulesDone: r.processed || 0 })
+        if (r.done) {
+          this.setData({ applyingRules: false })
+          wx.showToast({ title: '打标签完成', icon: 'success' })
+          this._loadAllAlbums(this.data.allActiveLetter, 1)
+          return
+        }
+        this._runApplyRulesStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ applyingRules: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     })
   },
 
@@ -757,6 +866,79 @@ Page({
       },
     })
   },
+
+  onSetReleaseType(e: WechatMiniprogram.TouchEvent) {
+    const { id } = e.currentTarget.dataset as { id: string }
+    if (!id) return
+    const itemList = [...RELEASE_TYPE_OPTIONS, RELEASE_TYPE_CLEAR]
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const picked = itemList[res.tapIndex]
+        const releaseType = picked === RELEASE_TYPE_CLEAR ? '' : picked
+        wx.cloud.callFunction({
+          name: 'manageCandidates',
+          data: { action: 'set_release_type', albumId: id, releaseType },
+          success: (r: any) => {
+            if (!r.result?.success) { wx.showToast({ title: r.result?.error || '操作失败', icon: 'none' }); return }
+            const patch = (a: Album) => a._id === id ? { ...a, releaseType } : a
+            const uncategorizedList = releaseType ? this.data.uncategorizedList.filter(a => a._id !== id) : this.data.uncategorizedList.map(patch)
+            this.setData({
+              albumList: this.data.albumList.map(patch),
+              titleResults: this.data.titleResults.map(patch),
+              allList: this.data.allList.map(patch),
+              multiList: this.data.multiList.map(patch),
+              uncategorizedList,
+              uncategorizedTotal: releaseType ? Math.max(0, this.data.uncategorizedTotal - (this.data.uncategorizedList.length - uncategorizedList.length)) : this.data.uncategorizedTotal,
+            })
+            wx.showToast({ title: releaseType ? `已设为 ${releaseType}` : '已清除标签', icon: 'success' })
+          },
+          fail: () => wx.showToast({ title: '网络错误', icon: 'error' }),
+        } as any)
+      },
+    })
+  },
+
+  _batchSetReleaseType() {
+    const ids = this._selectedAlbums().map(a => a._id)
+    if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
+    const itemList = [...RELEASE_TYPE_OPTIONS, RELEASE_TYPE_CLEAR]
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const picked = itemList[res.tapIndex]
+        const releaseType = picked === RELEASE_TYPE_CLEAR ? '' : picked
+        wx.showLoading({ title: '处理中…', mask: true })
+        wx.cloud.callFunction({
+          name: 'manageCandidates',
+          data: { action: 'batch_set_release_type', ids, releaseType },
+          success: (r: any) => {
+            wx.hideLoading()
+            const result = r.result || {}
+            if (!result.success) { wx.showToast({ title: result.error || '操作失败', icon: 'none' }); return }
+            const idSet = new Set(ids)
+            const patch = (a: Album) => idSet.has(a._id) ? { ...a, releaseType, selected: false } : a
+            const uncategorizedList = releaseType ? this.data.uncategorizedList.filter(a => !idSet.has(a._id)) : this.data.uncategorizedList.map(patch)
+            this.setData({
+              albumList: this.data.albumList.map(patch),
+              titleResults: this.data.titleResults.map(patch),
+              allList: this.data.allList.map(patch),
+              multiList: this.data.multiList.map(patch),
+              uncategorizedList,
+              uncategorizedTotal: releaseType ? Math.max(0, this.data.uncategorizedTotal - (this.data.uncategorizedList.length - uncategorizedList.length)) : this.data.uncategorizedTotal,
+              allSelectedCount: 0,
+              multiSelectedCount: 0,
+              uncategorizedSelectedCount: 0,
+            })
+            wx.showToast({ title: `已处理 ${result.succeeded || 0} 张`, icon: 'success' })
+          },
+          fail: () => { wx.hideLoading(); wx.showToast({ title: '网络错误', icon: 'none' }) },
+        } as any)
+      },
+    })
+  },
+  onAllBatchSetType() { this._batchSetReleaseType() },
+  onMultiBatchSetType() { this._batchSetReleaseType() },
 
   onUnload() { clearTimeout(_searchTimer); clearTimeout(_titleSearchTimer); clearTimeout(_ownerSearchTimer) },
 })

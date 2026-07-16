@@ -1,33 +1,56 @@
 <view class="page {{themeClass}}">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">ARTISTS / 厂牌</text></view>
-  <view class="search"><input placeholder="搜索 rapper" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
+  <view class="search-row">
+    <view class="search"><input placeholder="搜索 rapper / producer / label" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
+    <view class="unassigned-toggle {{unassignedOnly ? 'active' : ''}}" bindtap="onToggleUnassigned">未设身份{{unassignedCount ? ' · ' + unassignedCount : ''}}</view>
+    <view class="review-toggle" bindtap="onOpenReview">审核{{roleSuggestions.length ? ' · ' + roleSuggestions.length : ''}}</view>
+    <view class="batch-toggle {{batchMode ? 'active' : ''}}" bindtap="onToggleBatchMode">{{batchMode ? '取消' : '批量身份'}}</view>
+  </view>
   <scroll-view class="content" scroll-y>
     <view wx:if="{{loading}}" class="empty">加载中…</view>
-    <view wx:elif="{{list.length===0}}" class="empty">没有找到 rapper</view>
-    <view wx:for="{{list}}" wx:key="id" class="row" bindtap="onEdit" data-id="{{item.id}}">
+    <view wx:elif="{{list.length===0}}" class="empty">{{unassignedOnly ? '当前没有未设置身份的艺人' : '没有找到创作者 / 厂牌'}}</view>
+    <view wx:for="{{list}}" wx:key="id" class="row {{item.selected ? 'selected' : ''}}" bindtap="onRowTap" data-id="{{item.id}}">
+      <view wx:if="{{batchMode}}" class="check {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view>
       <view class="avatar"><image wx:if="{{item.picUrl}}" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
-      <view class="copy"><text class="name">{{item.artistName}}</text><text class="meta">{{item.albumSize || 0}} 张专辑</text><view class="tags"><text wx:if="{{!item.brands.length}}" class="empty-tag">未设置厂牌</text><text wx:for="{{item.brands}}" wx:key="*this" class="tag">{{item}}</text></view></view>
-      <text class="arrow">›</text>
+      <view class="copy">
+        <text class="name">{{item.artistName}}</text><text class="meta">{{item.albumSize || 0}} 张专辑</text>
+        <view class="role-tags"><text wx:if="{{!item.roles.length}}" class="role-tag empty-role-tag">未设置身份</text><text wx:for="{{item.roles}}" wx:key="*this" class="role-tag">{{item}}</text></view>
+        <view class="tags"><text wx:if="{{!item.brands.length}}" class="empty-tag">未设置厂牌</text><text wx:for="{{item.brands}}" wx:key="*this" class="tag">{{item}}</text></view>
+      </view>
+      <text wx:if="{{!batchMode}}" class="arrow">›</text>
     </view>
   </scroll-view>
 
-  <view wx:if="{{brandSheetVisible}}" class="sheet-mask" bindtap="onCloseBrandSheet">
-    <view class="brand-sheet" catchtap="noop">
-      <view class="sheet-handle"></view>
-      <text class="sheet-title">设置 {{editingArtistName}} 的厂牌</text>
-      <text class="sheet-subtitle">从已有厂牌中选择，可多选</text>
-      <scroll-view class="brand-options" scroll-y>
-        <view wx:if="{{brandOptions.length===0}}" class="brand-empty">暂无已有厂牌</view>
-        <view class="brand-grid">
-          <view wx:for="{{brandOptions}}" wx:key="name" class="brand-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleBrand" data-brand="{{item.name}}">
-            <text>{{item.name}}</text><text wx:if="{{item.selected}}" class="brand-check">✓</text>
-          </view>
+  <view wx:if="{{batchMode && batchSelectedCount>0}}" class="batch-bar"><text>已选 {{batchSelectedCount}} 位</text><view bindtap="onOpenBatchRoles">设置身份</view></view>
+
+  <view wx:if="{{reviewSheetVisible}}" class="sheet-mask" bindtap="onCloseReview"><view class="brand-sheet review-sheet" catchtap="noop">
+    <view class="sheet-handle"></view><text class="sheet-title">身份修改审核</text><text class="sheet-subtitle">用户提交的修改只有通过后才会同步到艺人主页</text>
+    <scroll-view class="review-list" scroll-y>
+      <view wx:if="{{reviewLoading}}" class="brand-empty">加载中…</view>
+      <view wx:elif="{{!roleSuggestions.length}}" class="brand-empty">暂无待审核修改</view>
+      <view wx:for="{{roleSuggestions}}" wx:key="_id" class="review-item">
+        <text class="review-name">{{item.artistName}}</text>
+        <text class="review-change">{{item.previousRoles.length ? item.previousRoles.join(' / ') : '未设置'}} → {{item.roles.length ? item.roles.join(' / ') : '清除身份'}}</text>
+        <view class="review-actions">
+          <view class="review-reject" bindtap="onReviewSuggestion" data-id="{{item._id}}" data-decision="reject">拒绝</view>
+          <view class="review-approve" bindtap="onReviewSuggestion" data-id="{{item._id}}" data-decision="approve">通过</view>
         </view>
-      </scroll-view>
-      <view class="sheet-actions">
-        <view class="clear-btn" bindtap="onClearBrands"><text>清除厂牌</text></view>
-        <view class="save-btn {{saving ? 'disabled' : ''}}" bindtap="onSaveBrands"><text>{{saving ? '保存中…' : '保存'}}</text></view>
       </view>
-    </view>
-  </view>
+    </scroll-view>
+  </view></view>
+
+  <view wx:if="{{brandSheetVisible}}" class="sheet-mask" bindtap="onCloseBrandSheet"><view class="brand-sheet" catchtap="noop">
+    <view class="sheet-handle"></view><text class="sheet-title">设置 {{editingArtistName}}</text>
+    <text class="section-label">身份</text><text class="sheet-subtitle">RAPPER / PRODUCER / LABEL，可多选</text>
+    <view class="role-grid"><view wx:for="{{roleOptions}}" wx:key="key" class="role-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleRole" data-role="{{item.key}}"><text>{{item.label}}</text><text wx:if="{{item.selected}}" class="brand-check">✓</text></view></view>
+    <text class="section-label brand-section-label">所属厂牌</text><text class="sheet-subtitle">从已有厂牌中选择，可多选</text>
+    <scroll-view class="brand-options" scroll-y><view wx:if="{{brandOptions.length===0}}" class="brand-empty">暂无已有厂牌</view><view class="brand-grid"><view wx:for="{{brandOptions}}" wx:key="name" class="brand-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleBrand" data-brand="{{item.name}}"><text>{{item.name}}</text><text wx:if="{{item.selected}}" class="brand-check">✓</text></view></view></scroll-view>
+    <view class="sheet-actions"><view class="clear-btn" bindtap="onClearBrands"><text>清除厂牌</text></view><view class="save-btn {{saving ? 'disabled' : ''}}" bindtap="onSaveBrands"><text>{{saving ? '保存中…' : '保存'}}</text></view></view>
+  </view></view>
+
+  <view wx:if="{{batchRoleSheetVisible}}" class="sheet-mask" bindtap="onCloseBatchRoleSheet"><view class="brand-sheet compact-sheet" catchtap="noop">
+    <view class="sheet-handle"></view><text class="sheet-title">批量设置 {{batchSelectedCount}} 位身份</text><text class="sheet-subtitle">所选身份将覆盖这些人的现有身份</text>
+    <view class="role-grid"><view wx:for="{{batchRoleOptions}}" wx:key="key" class="role-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleBatchRole" data-role="{{item.key}}"><text>{{item.label}}</text><text wx:if="{{item.selected}}" class="brand-check">✓</text></view></view>
+    <view class="sheet-actions"><view class="save-btn {{batchSaving ? 'disabled' : ''}}" bindtap="onSaveBatchRoles"><text>{{batchSaving ? '保存中…' : '批量保存'}}</text></view></view>
+  </view></view>
 </view>

@@ -1,9 +1,8 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-const _  = db.command
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 1000
 
 exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
@@ -34,6 +33,25 @@ exports.main = async (event, context) => {
 
     for (const group of groups) {
       const keep = group.keep
+      const allItems = [keep, ...group.remove]
+
+      // Preserve every artist association before deleting duplicate documents.
+      try {
+        const mergedArtistIds = Array.from(new Set(allItems.flatMap(a => [
+          ...(Array.isArray(a.artistIds) ? a.artistIds : []),
+          a.neteaseArtistId,
+        ]).filter(Boolean).map(String)))
+        const mergedOwnerArtistIds = Array.from(new Set(allItems.flatMap(a =>
+          Array.isArray(a.ownerArtistIds) ? a.ownerArtistIds : []
+        ).filter(Boolean).map(String)))
+        const patch = {}
+        if (mergedArtistIds.length) patch.artistIds = mergedArtistIds
+        if (mergedOwnerArtistIds.length) patch.ownerArtistIds = mergedOwnerArtistIds
+        if (Object.keys(patch).length) await db.collection('albums').doc(keep._id).update({ data: patch })
+      } catch (e) {
+        errors.push(`merge ownership ${keep._id}: ${e.message}`)
+      }
+
       for (const dup of group.remove) {
         try {
           const reviewRes = await db.collection('reviews')
@@ -103,6 +121,7 @@ async function fetchAllAlbums() {
         title: true,
         artist: true,
         primaryArtist: true,
+        releaseDate: true,
         releaseYear: true,
         coverUrl: true,
         sourceId: true,
@@ -112,6 +131,8 @@ async function fetchAllAlbums() {
         reviewCount: true,
         trackCount: true,
         neteaseArtistId: true,
+        artistIds: true,
+        ownerArtistIds: true,
       })
       .skip(skip)
       .limit(PAGE_SIZE)
@@ -124,40 +145,58 @@ async function fetchAllAlbums() {
 }
 
 function buildDuplicateGroups(albums) {
-  const buckets = new Map()
-
-  albums.forEach(album => {
-    const key = duplicateKey(album)
-    if (!key) return
-    if (!buckets.has(key)) buckets.set(key, [])
-    buckets.get(key).push(album)
-  })
-
   const groups = []
-  buckets.forEach((items, key) => {
+  const assigned = new Set()
+
+  // Tier 1: exact upstream identity. sourceId identifies the album itself, not the artist page
+  // it was discovered from, so duplicates must be grouped globally across artists.
+  const sourceBuckets = new Map()
+  albums.forEach(album => {
+    const sourceId = String(album.sourceId || '').trim()
+    if (!sourceId) return
+    const key = `sourceId:${sourceId}`
+    if (!sourceBuckets.has(key)) sourceBuckets.set(key, [])
+    sourceBuckets.get(key).push(album)
+  })
+  sourceBuckets.forEach((items, key) => {
     if (items.length < 2) return
     const sorted = items.slice().sort(preferKeep)
-    groups.push({ key, keep: sorted[0], remove: sorted.slice(1) })
+    groups.push({ key, matchType: 'sourceId', keep: sorted[0], remove: sorted.slice(1) })
+    items.forEach(a => assigned.add(a._id))
   })
+
+  // Tier 2: strict semantic identity for historical rows that were imported under different
+  // sourceIds. Requiring title + release date/year + track count keeps this conservative.
+  const semanticBuckets = new Map()
+  albums.forEach(album => {
+    if (assigned.has(album._id)) return
+    const key = semanticDuplicateKey(album)
+    if (!key) return
+    if (!semanticBuckets.has(key)) semanticBuckets.set(key, [])
+    semanticBuckets.get(key).push(album)
+  })
+  semanticBuckets.forEach((items, key) => {
+    if (items.length < 2) return
+    const sorted = items.slice().sort(preferKeep)
+    groups.push({ key, matchType: 'semantic', keep: sorted[0], remove: sorted.slice(1) })
+  })
+
   return groups
 }
 
-function duplicateKey(album) {
-  const sourceId = String(album.sourceId || '').trim()
-  const artistId = String(album.neteaseArtistId || '').trim()
-
-  if (sourceId) {
-    // Same sourceId + same neteaseArtistId = true duplicate (re-imported)
-    // Same sourceId + different neteaseArtistId = same album on two artists' pages, keep both
-    return `sourceId:${sourceId}|artistId:${artistId || '_'}`
-  }
-
+function semanticDuplicateKey(album) {
   const title = normalizeTitle(album.title || '')
-  const year = album.releaseYear || ''
-  const coverKey = normalizeCover(album.coverUrl || '')
-  if (!title || !year || !coverKey) return ''
+  const release = normalizeRelease(album)
+  const trackCount = Number(album.trackCount || 0)
+  if (!title || !release || !trackCount) return ''
+  return `semantic:${title}|${release}|tracks:${trackCount}`
+}
 
-  return `legacy:${title}|${year}|${coverKey}|artistId:${artistId || '_'}`
+function normalizeRelease(album) {
+  const date = String(album.releaseDate || '').trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+  const year = Number(album.releaseYear || 0)
+  return year ? String(year) : ''
 }
 
 function normalizeTitle(title) {
@@ -165,10 +204,6 @@ function normalizeTitle(title) {
     .toLowerCase()
     .replace(/[\s\u3000]+/g, '')
     .replace(/[《》「」『』【】\[\]()（）.,，。:：;；!！?？'"“”‘’_-]/g, '')
-}
-
-function normalizeCover(url) {
-  return String(url || '').split('?')[0].trim()
 }
 
 function preferKeep(a, b) {
@@ -212,6 +247,7 @@ async function recalcAlbumScore(albumId) {
 function toSummary(group) {
   return {
     key: group.key,
+    matchType: group.matchType,
     keep: {
       _id: group.keep._id,
       title: group.keep.title,

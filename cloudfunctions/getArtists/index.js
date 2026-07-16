@@ -7,6 +7,7 @@ const db = cloud.database()
 const PINYIN_STARTS = [['A','阿'],['B','芭'],['C','嚓'],['D','搭'],['E','蛾'],['F','发'],['G','噶'],['H','哈'],['J','击'],['K','喀'],['L','垃'],['M','妈'],['N','拿'],['O','哦'],['P','啪'],['Q','期'],['R','然'],['S','撒'],['T','塌'],['W','挖'],['X','昔'],['Y','压'],['Z','匝']]
 const LETTER_ORDER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'
 const HIGHER_BROTHERS_IDS = new Set(['1132392', '27868624', '29303235', '29304235'])
+const ALLOWED_ROLES = new Set(['rapper', 'producer', 'label'])
 
 function normalize(v){ return String(v || '').trim().toLowerCase().replace(/[\s._\-·'’]/g, '') }
 function searchForms(name){
@@ -40,6 +41,12 @@ function cleanBrands(values){
   const seen = new Set()
   return (Array.isArray(values) ? values : []).map(x => String(x || '').trim()).filter(x => x && !seen.has(x) && seen.add(x))
 }
+function cleanRoles(values){
+  const seen = new Set()
+  return (Array.isArray(values) ? values : [])
+    .map(x => String(x || '').trim().toLowerCase())
+    .filter(x => ALLOWED_ROLES.has(x) && !seen.has(x) && seen.add(x))
+}
 
 exports.main = async event => {
   const keyword = String(event.keyword || '').trim()
@@ -47,7 +54,7 @@ exports.main = async event => {
   try {
     const conditions = { status: 'approved' }
     const [res, albumCountMap] = await Promise.all([
-      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true, brand:true, brands:true }).limit(1000).get(),
+      db.collection('artist_candidates').where(conditions).field({ _id:true, artistId:true, artistName:true, picUrl:true, avatarUrl:true, coverUrl:true, fansSize:true, brand:true, brands:true, roles:true }).limit(1000).get(),
       fetchAlbumCounts(),
     ])
     const all = (res.data || []).filter(a => a.artistId && a.artistName)
@@ -59,6 +66,7 @@ exports.main = async event => {
       const legacyBrand = BRAND_MAP[artistId] || ''
       const brands = managedBrands.length ? managedBrands : (legacyBrand ? [legacyBrand] : [])
       if (HIGHER_BROTHERS_IDS.has(artistId) && !brands.includes('成都集团')) brands.push('成都集团')
+      const roles = cleanRoles(a.roles)
       const stats = albumCountMap.get(artistId) || { total:0, approved:0, hidden:0 }
       return {
         id:a._id,
@@ -72,6 +80,7 @@ exports.main = async event => {
         letter:firstLetter(artistName),
         brand:brands[0] || '',
         brands,
+        roles,
       }
     }).sort((a,b) => {
       const la = LETTER_ORDER.indexOf(a.letter) >= 0 ? LETTER_ORDER.indexOf(a.letter) : 26

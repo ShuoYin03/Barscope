@@ -1,0 +1,16 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">TYPE FIX</text></view>
+  <view class="head"><view><text class="head-title">类型纠错审核</text><text class="head-desc">用户提交的专辑类型修改会进入这里</text></view><text class="count">{{list.length}} 待处理</text></view>
+  <scroll-view class="content" scroll-y>
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadList">重新加载</view></view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无类型纠错申请</view>
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="_id" class="card">
+        <image class="cover" src="{{item.albumCoverUrl}}" mode="aspectFill" />
+        <view class="info"><text class="album">{{item.albumTitle}}</text><text class="artist">当前：{{item.currentReleaseType || '未设置'}}</text><text class="target">改为：{{item.targetReleaseType}}</text><text class="reason">原因：{{item.reason}}</text></view>
+        <view class="actions"><view class="approve" bindtap="decide" data-id="{{item._id}}" data-decision="approve">批准</view><view class="decline" bindtap="decide" data-id="{{item._id}}" data-decision="decline">拒绝</view></view>
+      </view>
+    </block>
+  </scroll-view>
+</view>
