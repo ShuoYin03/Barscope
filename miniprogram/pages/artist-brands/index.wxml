@@ -2,12 +2,13 @@
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">ARTISTS / 厂牌</text></view>
   <view class="search-row">
     <view class="search"><input placeholder="搜索 rapper / producer / label" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
+    <view class="unassigned-toggle {{unassignedOnly ? 'active' : ''}}" bindtap="onToggleUnassigned">未设身份{{unassignedCount ? ' · ' + unassignedCount : ''}}</view>
     <view class="review-toggle" bindtap="onOpenReview">审核{{roleSuggestions.length ? ' · ' + roleSuggestions.length : ''}}</view>
     <view class="batch-toggle {{batchMode ? 'active' : ''}}" bindtap="onToggleBatchMode">{{batchMode ? '取消' : '批量身份'}}</view>
   </view>
   <scroll-view class="content" scroll-y>
     <view wx:if="{{loading}}" class="empty">加载中…</view>
-    <view wx:elif="{{list.length===0}}" class="empty">没有找到创作者 / 厂牌</view>
+    <view wx:elif="{{list.length===0}}" class="empty">{{unassignedOnly ? '当前没有未设置身份的艺人' : '没有找到创作者 / 厂牌'}}</view>
     <view wx:for="{{list}}" wx:key="id" class="row {{item.selected ? 'selected' : ''}}" bindtap="onRowTap" data-id="{{item.id}}">
       <view wx:if="{{batchMode}}" class="check {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view>
       <view class="avatar"><image wx:if="{{item.picUrl}}" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
