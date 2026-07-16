@@ -196,6 +196,10 @@
             </view>
           </view>
 
+          <view class="release-tag {{item.releaseType ? 'set' : ''}}" catchtap="onSetReleaseType" data-id="{{item._id}}">
+            <text>{{item.releaseType || '类型'}}</text>
+          </view>
+
           <view
             class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
             catchtap="onToggleApproved"
@@ -238,6 +242,7 @@
           <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchShow"><text>批量显示</text></view>
           <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchHide"><text>批量隐藏</text></view>
           <view class="all-action-btn accent" bindtap="onAllBatchOwnership"><text>批量设置归属</text></view>
+          <view class="all-action-btn accent" bindtap="onAllBatchSetType"><text>批量设置类型</text></view>
           <view class="all-action-btn ghost {{resyncWorking ? 'btn-disabled' : ''}}" bindtap="onAllBatchResync">
             <text>{{resyncWorking ? ('同步中 ' + resyncDone + '/' + resyncTotal) : '重新同步Tracks'}}</text>
           </view>
@@ -294,6 +299,10 @@
               </view>
             </view>
 
+            <view wx:if="{{!allSelectMode}}" class="release-tag {{item.releaseType ? 'set' : ''}}" catchtap="onSetReleaseType" data-id="{{item._id}}">
+              <text>{{item.releaseType || '类型'}}</text>
+            </view>
+
             <view
               wx:if="{{!allSelectMode}}"
               class="toggle-btn {{item.approved ? 'toggle-on' : 'toggle-off'}} {{toggling[item._id] ? 'btn-disabled' : ''}}"
@@ -326,6 +335,7 @@
           <view class="all-action-btn accent {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onMultiBatchShow"><text>批量显示</text></view>
           <view class="all-action-btn danger {{allBatchWorking ? 'btn-disabled' : ''}}" bindtap="onMultiBatchHide"><text>批量隐藏</text></view>
           <view class="all-action-btn accent" bindtap="onMultiBatchOwnership"><text>批量设置归属</text></view>
+          <view class="all-action-btn accent" bindtap="onMultiBatchSetType"><text>批量设置类型</text></view>
           <view class="all-action-btn ghost {{resyncWorking ? 'btn-disabled' : ''}}" bindtap="onMultiBatchResync">
             <text>{{resyncWorking ? ('同步中 ' + resyncDone + '/' + resyncTotal) : '重新同步Tracks'}}</text>
           </view>
@@ -373,6 +383,10 @@
               <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
               <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
             </view>
+          </view>
+
+          <view wx:if="{{!multiSelectMode}}" class="release-tag {{item.releaseType ? 'set' : ''}}" catchtap="onSetReleaseType" data-id="{{item._id}}">
+            <text>{{item.releaseType || '类型'}}</text>
           </view>
 
           <view
@@ -439,6 +453,10 @@
               <view wx:if="{{item.reviewCount > 0}}" class="meta-dot"></view>
               <text wx:if="{{item.reviewCount > 0}}" class="album-meta">{{item.reviewCount}} 评</text>
             </view>
+          </view>
+
+          <view class="release-tag {{item.releaseType ? 'set' : ''}}" catchtap="onSetReleaseType" data-id="{{item._id}}">
+            <text>{{item.releaseType || '类型'}}</text>
           </view>
 
           <view

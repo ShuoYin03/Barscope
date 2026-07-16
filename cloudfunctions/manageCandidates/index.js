@@ -159,6 +159,8 @@ exports.main = async (event, context) => {
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
   if (action === 'find_resurrected')     return await findResurrectedAlbums()
   if (action === 'remove_resurrected')   return await removeResurrectedAlbums(event.ids || [])
+  if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
+  if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
 
   return { success: false, error: 'unknown action' }
 }
@@ -462,6 +464,32 @@ async function toggleAlbumApproved(albumId, approved) {
   } catch (e) {
     return { success: false, error: e.message }
   }
+}
+
+// ── set_release_type / batch_set_release_type ───────────────────────────────
+const RELEASE_TYPES = new Set(['LP', 'Mixtape', 'Live', 'Beat Tape'])
+
+async function setReleaseType(albumId, releaseType) {
+  const id = String(albumId || '').trim()
+  if (!id) return { success: false, error: 'missing albumId' }
+  const type = String(releaseType || '').trim()
+  if (type && !RELEASE_TYPES.has(type)) return { success: false, error: 'invalid releaseType' }
+  try {
+    await db.collection('albums').doc(id).update({ data: { releaseType: type } })
+    return { success: true, releaseType: type }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function batchSetReleaseType(ids, releaseType) {
+  const cleanIds = (Array.isArray(ids) ? ids : []).map(String).filter(Boolean).slice(0, 200)
+  if (!cleanIds.length) return { success: false, error: 'no ids' }
+  const type = String(releaseType || '').trim()
+  if (type && !RELEASE_TYPES.has(type)) return { success: false, error: 'invalid releaseType' }
+  const results = await Promise.allSettled(cleanIds.map(id => db.collection('albums').doc(id).update({ data: { releaseType: type } })))
+  const succeeded = results.filter(r => r.status === 'fulfilled').length
+  return { success: true, succeeded, failed: cleanIds.length - succeeded, releaseType: type }
 }
 
 // ── decide ────────────────────────────────────────────────────────────────────

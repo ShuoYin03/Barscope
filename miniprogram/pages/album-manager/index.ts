@@ -21,7 +21,11 @@ interface Album {
   reviewCount: number
   trackCount: number
   selected?: boolean
+  releaseType?: string
 }
+
+const RELEASE_TYPE_OPTIONS = ['LP', 'Mixtape', 'Live', 'Beat Tape']
+const RELEASE_TYPE_CLEAR = '清除标签'
 
 interface LetterCount { letter: string; count: number }
 
@@ -757,6 +761,72 @@ Page({
       },
     })
   },
+
+  onSetReleaseType(e: WechatMiniprogram.TouchEvent) {
+    const { id } = e.currentTarget.dataset as { id: string }
+    if (!id) return
+    const itemList = [...RELEASE_TYPE_OPTIONS, RELEASE_TYPE_CLEAR]
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const picked = itemList[res.tapIndex]
+        const releaseType = picked === RELEASE_TYPE_CLEAR ? '' : picked
+        wx.cloud.callFunction({
+          name: 'manageCandidates',
+          data: { action: 'set_release_type', albumId: id, releaseType },
+          success: (r: any) => {
+            if (!r.result?.success) { wx.showToast({ title: r.result?.error || '操作失败', icon: 'none' }); return }
+            const patch = (a: Album) => a._id === id ? { ...a, releaseType } : a
+            this.setData({
+              albumList: this.data.albumList.map(patch),
+              titleResults: this.data.titleResults.map(patch),
+              allList: this.data.allList.map(patch),
+              multiList: this.data.multiList.map(patch),
+            })
+            wx.showToast({ title: releaseType ? `已设为 ${releaseType}` : '已清除标签', icon: 'success' })
+          },
+          fail: () => wx.showToast({ title: '网络错误', icon: 'error' }),
+        } as any)
+      },
+    })
+  },
+
+  _batchSetReleaseType() {
+    const ids = this._selectedAlbums().map(a => a._id)
+    if (!ids.length) { wx.showToast({ title: '请先选择专辑', icon: 'none' }); return }
+    const itemList = [...RELEASE_TYPE_OPTIONS, RELEASE_TYPE_CLEAR]
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const picked = itemList[res.tapIndex]
+        const releaseType = picked === RELEASE_TYPE_CLEAR ? '' : picked
+        wx.showLoading({ title: '处理中…', mask: true })
+        wx.cloud.callFunction({
+          name: 'manageCandidates',
+          data: { action: 'batch_set_release_type', ids, releaseType },
+          success: (r: any) => {
+            wx.hideLoading()
+            const result = r.result || {}
+            if (!result.success) { wx.showToast({ title: result.error || '操作失败', icon: 'none' }); return }
+            const idSet = new Set(ids)
+            const patch = (a: Album) => idSet.has(a._id) ? { ...a, releaseType, selected: false } : a
+            this.setData({
+              albumList: this.data.albumList.map(patch),
+              titleResults: this.data.titleResults.map(patch),
+              allList: this.data.allList.map(patch),
+              multiList: this.data.multiList.map(patch),
+              allSelectedCount: 0,
+              multiSelectedCount: 0,
+            })
+            wx.showToast({ title: `已处理 ${result.succeeded || 0} 张`, icon: 'success' })
+          },
+          fail: () => { wx.hideLoading(); wx.showToast({ title: '网络错误', icon: 'none' }) },
+        } as any)
+      },
+    })
+  },
+  onAllBatchSetType() { this._batchSetReleaseType() },
+  onMultiBatchSetType() { this._batchSetReleaseType() },
 
   onUnload() { clearTimeout(_searchTimer); clearTimeout(_titleSearchTimer); clearTimeout(_ownerSearchTimer) },
 })

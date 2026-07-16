@@ -238,6 +238,17 @@
 .toggle-text { font-size: 22rpx; font-weight: 700; color: var(--white); letter-spacing: 1rpx; }
 .toggle-off .toggle-text { color: var(--gray-mid); }
 
+.release-tag {
+  flex-shrink: 0;
+  padding: 10rpx 16rpx;
+  margin-right: 12rpx;
+  border: 2rpx solid var(--gray-mid);
+  display: flex; align-items: center; justify-content: center;
+}
+.release-tag text { font-family: var(--font-bebas); font-size: 20rpx; color: var(--gray-mid); letter-spacing: 1rpx; }
+.release-tag.set { border-color: var(--accent); }
+.release-tag.set text { color: var(--accent); }
+
 /* FOOTER */
 .load-more, .list-end { display: flex; justify-content: center; padding: 32rpx; }
 .load-more-text { font-size: 24rpx; color: var(--gray-mid); }
