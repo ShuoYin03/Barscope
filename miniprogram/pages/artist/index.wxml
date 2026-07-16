@@ -1,79 +1,17 @@
 <view class="page {{themeClass}}">
   <block wx:if="{{notCollected}}">
-    <view class="nc-back-bar" style="padding-top: {{statusBarHeight + 8}}px" bindtap="onBack">
-      <text class="back-ch">←</text>
-      <text class="back-lbl">返回</text>
-    </view>
-    <view class="nc-content">
-      <view class="nc-disc"><view class="nc-disc-lbl"><text class="nc-disc-icon">?</text></view></view>
-      <text class="nc-title">{{artistName}}</text>
-      <text class="nc-sub">该 rapper 尚未被收录到 BEATWEEN 曲库</text>
-      <view class="nc-btn {{submitStatus !== 'idle' ? 'disabled' : ''}}" bindtap="onSubmitArtist">
-        <text>{{submitStatus==='submitted' ? '已提交，等待管理员审核' : submitStatus==='pending' ? '审核中，请耐心等待' : submitStatus==='submitting' ? '提交中…' : '提交收录申请'}}</text>
-      </view>
-      <text wx:if="{{submitStatus === 'idle'}}" class="nc-hint">提交后管理员会审核，通过后该艺人主页即可查看</text>
-    </view>
+    <view class="nc-back-bar" style="padding-top: {{statusBarHeight + 8}}px" bindtap="onBack"><text class="back-ch">←</text><text class="back-lbl">返回</text></view>
+    <view class="nc-content"><view class="nc-disc"><view class="nc-disc-lbl"><text class="nc-disc-icon">?</text></view></view><text class="nc-title">{{artistName}}</text><text class="nc-sub">该 rapper 尚未被收录到 BEATWEEN 曲库</text><view class="nc-btn {{submitStatus !== 'idle' ? 'disabled' : ''}}" bindtap="onSubmitArtist"><text>{{submitStatus==='submitted' ? '已提交，等待管理员审核' : submitStatus==='pending' ? '审核中，请耐心等待' : submitStatus==='submitting' ? '提交中…' : '提交收录申请'}}</text></view><text wx:if="{{submitStatus === 'idle'}}" class="nc-hint">提交后管理员会审核，通过后该艺人主页即可查看</text></view>
   </block>
-
   <block wx:else>
-    <view class="hero-wrap">
-      <view class="cover-banner">
-        <image wx:if="{{bannerUrl}}" class="banner-img" src="{{bannerUrl}}" mode="aspectFill" />
-        <view class="banner-overlay" />
-      </view>
-      <view class="back-bar" style="padding-top: {{statusBarHeight + 8}}px" bindtap="onBack"><text class="back-ch">←</text><text class="back-lbl">返回</text></view>
-      <view class="hero-disc-wrap"><view class="hero-disc"><view class="hero-disc-lbl"><image wx:if="{{avatarUrl}}" class="artist-avatar-img" src="{{avatarUrl}}" mode="aspectFill" /><text wx:else class="hero-disc-initial">{{initial}}</text></view><view class="hero-disc-pin" /></view></view>
-    </view>
-
-    <view class="artist-block">
-      <text class="artist-en" style="font-size:{{nameFontSize}}rpx;letter-spacing:{{nameLetterSpacing}}rpx">{{artistName}}</text>
-      <text wx:if="{{brandLabel}}" class="artist-brand">{{brandLabel}}</text>
-      <view class="artist-stats-row"><text class="stat-num">{{total}}</text><text class="stat-unit">ALBUMS</text><view class="stat-sep" /><text class="stat-num">{{avgScore}}</text><text class="stat-unit">AVG</text></view>
-    </view>
-
+    <view class="hero-wrap"><view class="cover-banner"><image wx:if="{{bannerUrl}}" class="banner-img" src="{{bannerUrl}}" mode="aspectFill" /><view class="banner-overlay" /></view><view class="back-bar" style="padding-top: {{statusBarHeight + 8}}px" bindtap="onBack"><text class="back-ch">←</text><text class="back-lbl">返回</text></view><view class="hero-disc-wrap"><view class="hero-disc"><view class="hero-disc-lbl"><image wx:if="{{avatarUrl}}" class="artist-avatar-img" src="{{avatarUrl}}" mode="aspectFill" /><text wx:else class="hero-disc-initial">{{initial}}</text></view><view class="hero-disc-pin" /></view></view></view>
+    <view class="artist-block"><text class="artist-en" style="font-size:{{nameFontSize}}rpx;letter-spacing:{{nameLetterSpacing}}rpx">{{artistName}}</text><text wx:if="{{roleLabel}}" class="artist-role">{{roleLabel}}</text><text wx:if="{{brandLabel}}" class="artist-brand">{{brandLabel}}</text><view class="artist-stats-row"><text class="stat-num">{{total}}</text><text class="stat-unit">ALBUMS</text><view class="stat-sep" /><text class="stat-num">{{avgScore}}</text><text class="stat-unit">AVG</text></view></view>
     <view class="orange-rule" />
-
     <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{scrollIntoView}}" scroll-with-animation="{{true}}">
       <view class="side-row"><text class="side-text">SIDE A — CAREER TIMELINE · {{total}} 张</text><view class="side-rule" /></view>
-
-      <view class="career-wrap">
-        <view wx:if="{{loading}}" class="album-list career-albums"><view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="skel-row"><view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:65%;height:28rpx;" /><view class="sk" style="width:40%;height:22rpx;margin-top:10rpx;" /></view><view class="sk" style="width:48rpx;height:40rpx;flex-shrink:0;" /></view></view>
-        <view wx:elif="{{list.length === 0}}" class="empty-state"><text class="empty-text">暂无专辑</text></view>
-        <view wx:else class="album-list career-albums">
-          <view wx:for="{{list}}" wx:key="id" id="{{item.yearAnchor}}" class="album-row" bindtap="onAlbumTap" data-id="{{item.id}}">
-            <view class="vinyl-cover-wrap"><view class="vinyl-disc-peek" /><image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" /><view wx:else class="cover-sq cover-sq-ph" /></view>
-            <view class="album-info"><text class="album-title">{{item.title}}</text><text class="album-meta">{{item.year}} · {{item.trackCount}}首</text></view>
-            <text class="album-score">{{item.score}}</text>
-          </view>
-        </view>
-
-        <scroll-view wx:if="{{years.length}}" class="career-timeline" scroll-y enhanced show-scrollbar="{{false}}">
-          <view class="career-timeline-inner">
-            <view class="career-timeline-line" />
-            <view wx:for="{{years}}" wx:key="*this" class="career-year {{activeYear === item ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item}}">
-              <view class="career-dot" />
-              <text>{{item}}</text>
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-
-      <view class="side-row side-b-row">
-        <view class="side-b-title-wrap">
-          <text class="side-text">SIDE B — TOP COLLABORATORS</text>
-          <text class="side-note">仅统计生涯专辑内 Tracks 的 Featuring 合作数据 · 同次数优先展示已收录 Rapper</text>
-        </view>
-        <view class="side-rule" />
-        <text wx:if="{{collaborators.length > 3}}" class="side-more" bindtap="onCollaboratorsMore">{{collaboratorsExpanded ? '收起 ↑' : '更多 →'}}</text>
-      </view>
-      <view wx:if="{{visibleCollaborators.length}}" class="collaborator-list">
-        <view wx:for="{{visibleCollaborators}}" wx:key="key" class="collaborator-row {{item.collected ? 'collected' : 'uncollected'}}" bindtap="onCollaboratorTap" data-artist-id="{{item.artistId}}" data-artist-name="{{item.name}}" data-collected="{{item.collected}}">
-          <text class="collaborator-rank">{{index + 1}}</text>
-          <view class="collaborator-info"><text class="collaborator-name">{{item.name}}</text><text class="collaborator-count">共同合作 {{item.count}} 首</text></view>
-          <text wx:if="{{item.collected}}" class="collaborator-arrow">›</text>
-        </view>
-      </view>
-      <view wx:else class="collaborator-empty"><text>暂无可识别的 Track Featuring 数据</text></view>
+      <view class="career-wrap"><view wx:if="{{loading}}" class="album-list career-albums"><view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="skel-row"><view class="sk" style="width:160rpx;height:120rpx;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:65%;height:28rpx;" /><view class="sk" style="width:40%;height:22rpx;margin-top:10rpx;" /></view><view class="sk" style="width:48rpx;height:40rpx;flex-shrink:0;" /></view></view><view wx:elif="{{list.length === 0}}" class="empty-state"><text class="empty-text">暂无专辑</text></view><view wx:else class="album-list career-albums"><view wx:for="{{list}}" wx:key="id" id="{{item.yearAnchor}}" class="album-row" bindtap="onAlbumTap" data-id="{{item.id}}"><view class="vinyl-cover-wrap"><view class="vinyl-disc-peek" /><image wx:if="{{item.coverUrl}}" class="cover-sq" src="{{item.coverUrl}}" mode="aspectFill" /><view wx:else class="cover-sq cover-sq-ph" /></view><view class="album-info"><text class="album-title">{{item.title}}</text><text class="album-meta">{{item.year}} · {{item.trackCount}}首</text></view><text class="album-score">{{item.score}}</text></view></view><scroll-view wx:if="{{years.length}}" class="career-timeline" scroll-y enhanced show-scrollbar="{{false}}"><view class="career-timeline-inner"><view class="career-timeline-line" /><view wx:for="{{years}}" wx:key="*this" class="career-year {{activeYear === item ? 'active' : ''}}" bindtap="onYearTap" data-year="{{item}}"><view class="career-dot" /><text>{{item}}</text></view></view></scroll-view></view>
+      <view class="side-row side-b-row"><view class="side-b-title-wrap"><text class="side-text">SIDE B — TOP COLLABORATORS</text><text class="side-note">仅统计生涯专辑内 Tracks 的 Featuring 合作数据 · 同次数优先展示已收录 Rapper</text></view><view class="side-rule" /><text wx:if="{{collaborators.length > 3}}" class="side-more" bindtap="onCollaboratorsMore">{{collaboratorsExpanded ? '收起 ↑' : '更多 →'}}</text></view>
+      <view wx:if="{{visibleCollaborators.length}}" class="collaborator-list"><view wx:for="{{visibleCollaborators}}" wx:key="key" class="collaborator-row {{item.collected ? 'collected' : 'uncollected'}}" bindtap="onCollaboratorTap" data-artist-id="{{item.artistId}}" data-artist-name="{{item.name}}" data-collected="{{item.collected}}"><text class="collaborator-rank">{{index + 1}}</text><view class="collaborator-info"><text class="collaborator-name">{{item.name}}</text><text class="collaborator-count">共同合作 {{item.count}} 首</text></view><text wx:if="{{item.collected}}" class="collaborator-arrow">›</text></view></view><view wx:else class="collaborator-empty"><text>暂无可识别的 Track Featuring 数据</text></view>
     </scroll-view>
   </block>
 </view>
