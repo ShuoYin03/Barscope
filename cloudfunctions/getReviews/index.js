@@ -242,6 +242,18 @@ async function getMonthlyTopCritics(limit = 8) {
     })
 
     const ranked = Array.from(stats.values()).sort((a, b) => b.count - a.count).slice(0, Math.max(1, Math.min(limit, 20)))
+
+    // reviews snapshot userAvatarUrl/userNickName at submit time, which goes stale once a user
+    // changes their profile — pull the live values from users so the leaderboard stays current.
+    try {
+      const usersRes = await db.collection('users').where({ openId: _.in(ranked.map(r => r.openId)) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
+      const userMap = new Map((usersRes.data || []).map(u => [String(u.openId), u]))
+      ranked.forEach(r => {
+        const u = userMap.get(r.openId)
+        if (u) { if (u.nickName) r.nickName = u.nickName; if (u.avatarUrl) r.avatarUrl = u.avatarUrl }
+      })
+    } catch (e) { console.warn('getMonthlyTopCritics live profile lookup failed:', e.message) }
+
     const avatarMap = await resolveCloudUrls(ranked.map(r => r.avatarUrl))
     ranked.forEach(r => { r.avatarUrl = applyResolvedUrl(r.avatarUrl, avatarMap) })
     return { success: true, monthKey, list: ranked }

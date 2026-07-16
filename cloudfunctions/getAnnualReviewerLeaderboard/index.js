@@ -63,6 +63,17 @@ exports.main = async (event = {}) => {
       .sort((a, b) => (b.reviewCount - a.reviewCount) || (b.albumCount - a.albumCount) || (b.likesReceived - a.likesReceived) || (b.latestReviewAt - a.latestReviewAt))
       .slice(0, limit)
 
+    // reviews snapshot userAvatarUrl/userNickName at submit time, which goes stale once a user
+    // changes their profile — pull the live values from users so the leaderboard stays current.
+    try {
+      const usersRes = await db.collection('users').where({ openId: _.in(list.map(x => x.openId)) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
+      const userMap = new Map((usersRes.data || []).map(u => [String(u.openId), u]))
+      list.forEach(x => {
+        const u = userMap.get(x.openId)
+        if (u) { if (u.nickName) x.nickName = u.nickName; if (u.avatarUrl) x.avatarUrl = u.avatarUrl }
+      })
+    } catch (e) { console.warn('getAnnualReviewerLeaderboard live profile lookup failed:', e.message) }
+
     const cloudUrls = Array.from(new Set(list.map(x => x.avatarUrl).filter(x => typeof x === 'string' && x.startsWith('cloud://'))))
     if (cloudUrls.length) {
       try {
