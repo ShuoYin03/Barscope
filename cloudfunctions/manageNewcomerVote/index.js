@@ -179,23 +179,26 @@ async function rebuildNominees() {
   const { OPENID } = cloud.getWXContext()
   if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
 
+  // Only LP/Mixtape releases count as a "project" here — an artist's earlier Beat Tape or Live
+  // release doesn't disqualify them; what matters is when their first LP/Mixtape landed.
   const albums = await fetchAllApprovedAlbumsForScan()
-  const earliestByArtist = new Map()
+  const earliestProjectByArtist = new Map()
   albums.forEach(a => {
+    if (!ELIGIBLE_TYPES.has(String(a.releaseType || ''))) return
     const year = Number(a.releaseYear) || 0
     if (!year) return
     const dateKey = String(a.releaseDate || `${year}-13-01`)
     resolveOwners(a).forEach(artistId => {
-      const cur = earliestByArtist.get(artistId)
+      const cur = earliestProjectByArtist.get(artistId)
       if (!cur || year < cur.year || (year === cur.year && dateKey < cur.dateKey)) {
-        earliestByArtist.set(artistId, { year, dateKey, album: a })
+        earliestProjectByArtist.set(artistId, { year, dateKey, album: a })
       }
     })
   })
 
   const debuts = []
-  earliestByArtist.forEach((v, artistId) => {
-    if (v.year === DEBUT_YEAR && ELIGIBLE_TYPES.has(String(v.album.releaseType || ''))) debuts.push({ artistId, album: v.album })
+  earliestProjectByArtist.forEach((v, artistId) => {
+    if (v.year === DEBUT_YEAR) debuts.push({ artistId, album: v.album })
   })
 
   const artistRes = await db.collection('artist_candidates').where({ status: 'approved' })
