@@ -509,7 +509,7 @@ async function batchSetReleaseType(ids, releaseType) {
   return { success: true, succeeded, failed: cleanIds.length - succeeded, releaseType: type }
 }
 
-// One-time bulk rule: multi-artist albums -> LP if trackCount>=6 else Mixtape;
+// One-time bulk rule: multi-artist albums -> LP if trackCount>=7 else Mixtape;
 // single-artist albums -> LP if trackCount>6 else Mixtape.
 // Idempotent — safe to re-run. Client pages through with `skip` until `done`.
 async function applyReleaseTypeRules(skip) {
@@ -520,7 +520,7 @@ async function applyReleaseTypeRules(skip) {
     if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
     let updated = 0
     const results = await Promise.allSettled(docs.map(d => {
-      const next = d.isMultiArtist ? (Number(d.trackCount) >= 6 ? 'LP' : 'Mixtape') : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
+      const next = d.isMultiArtist ? (Number(d.trackCount) >= 7 ? 'LP' : 'Mixtape') : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
       if (d.releaseType === next) return Promise.resolve()
       updated++
       return db.collection('albums').doc(d._id).update({ data: { releaseType: next } })
