@@ -1,12 +1,23 @@
 <view class="page {{themeClass}}">
   <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">ARTISTS / 厂牌</text></view>
-  <view class="search"><input placeholder="搜索 rapper" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
+  <view class="search"><input placeholder="搜索 rapper / producer / label" placeholder-class="ph" value="{{keyword}}" bindinput="onSearch" /></view>
   <scroll-view class="content" scroll-y>
     <view wx:if="{{loading}}" class="empty">加载中…</view>
-    <view wx:elif="{{list.length===0}}" class="empty">没有找到 rapper</view>
+    <view wx:elif="{{list.length===0}}" class="empty">没有找到创作者 / 厂牌</view>
     <view wx:for="{{list}}" wx:key="id" class="row" bindtap="onEdit" data-id="{{item.id}}">
       <view class="avatar"><image wx:if="{{item.picUrl}}" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
-      <view class="copy"><text class="name">{{item.artistName}}</text><text class="meta">{{item.albumSize || 0}} 张专辑</text><view class="tags"><text wx:if="{{!item.brands.length}}" class="empty-tag">未设置厂牌</text><text wx:for="{{item.brands}}" wx:key="*this" class="tag">{{item}}</text></view></view>
+      <view class="copy">
+        <text class="name">{{item.artistName}}</text>
+        <text class="meta">{{item.albumSize || 0}} 张专辑</text>
+        <view class="role-tags">
+          <text wx:if="{{!item.roles.length}}" class="role-tag empty-role-tag">未设置身份</text>
+          <text wx:for="{{item.roles}}" wx:key="*this" class="role-tag">{{item}}</text>
+        </view>
+        <view class="tags">
+          <text wx:if="{{!item.brands.length}}" class="empty-tag">未设置厂牌</text>
+          <text wx:for="{{item.brands}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+      </view>
       <text class="arrow">›</text>
     </view>
   </scroll-view>
@@ -14,7 +25,17 @@
   <view wx:if="{{brandSheetVisible}}" class="sheet-mask" bindtap="onCloseBrandSheet">
     <view class="brand-sheet" catchtap="noop">
       <view class="sheet-handle"></view>
-      <text class="sheet-title">设置 {{editingArtistName}} 的厂牌</text>
+      <text class="sheet-title">设置 {{editingArtistName}}</text>
+
+      <text class="section-label">身份</text>
+      <text class="sheet-subtitle">RAPPER / PRODUCER / LABEL，可多选</text>
+      <view class="role-grid">
+        <view wx:for="{{roleOptions}}" wx:key="key" class="role-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleRole" data-role="{{item.key}}">
+          <text>{{item.label}}</text><text wx:if="{{item.selected}}" class="brand-check">✓</text>
+        </view>
+      </view>
+
+      <text class="section-label brand-section-label">所属厂牌</text>
       <text class="sheet-subtitle">从已有厂牌中选择，可多选</text>
       <scroll-view class="brand-options" scroll-y>
         <view wx:if="{{brandOptions.length===0}}" class="brand-empty">暂无已有厂牌</view>
