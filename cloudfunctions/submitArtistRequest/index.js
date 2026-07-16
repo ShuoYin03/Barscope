@@ -35,6 +35,7 @@ exports.main = async event => {
       albumSize:Number(picked.albumSize || 0),
       musicSize:Number(picked.musicSize || 0),
       fansSize:0,
+      roles:['rapper'],
       foundFrom:'用户提交',
       fromAlbum:'',
       round:999,
