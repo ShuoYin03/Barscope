@@ -97,10 +97,13 @@ async function upsertAlbumsForArtist(artistId, artistName, approved = true) {
   })
   if (needsBackfill.length) {
     await Promise.allSettled(
-      needsBackfill.map(a => {
+      needsBackfill.map(async a => {
         const ex = existMap.get(a.sourceId)
-        // Backfill reveals this is a single/EP → delete it rather than update
+        // Backfill reveals this is a single/EP → delete it rather than update. Record a
+        // deleted candidate first so a later re-crawl of the same sourceId is blocked instead
+        // of silently resurrecting it (see fetchBlockedSourceIds in cloudCrawler).
         if (!ex.trackCount && a.trackCount && a.trackCount < 3) {
+          await recordDeletedAlbum({ ...a, _id: ex._id }, `回填曲目数发现为单曲/EP：${a.trackCount} 首`, '')
           return db.collection('albums').doc(ex._id).remove()
         }
         const patch = {}
