@@ -10,7 +10,17 @@ exports.main=async event=>{
   if(action==='list') return list(event)
   if(action==='approve') return approve(event,OPENID)
   if(action==='reject') return reject(event,OPENID)
+  if(action==='stats') return stats()
   return {success:false,error:'unknown action'}
+}
+
+async function stats(){
+  try {
+    const r=await db.collection('track_corrections').where({status:'pending'}).count()
+    return {success:true,pending:r.total||0}
+  } catch (e) {
+    return {success:false,error:e.message}
+  }
 }
 
 async function submit(event,openId){

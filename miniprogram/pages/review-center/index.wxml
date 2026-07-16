@@ -1,0 +1,64 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="topbar-back" bindtap="onBack"><text class="back-arrow">←</text></view>
+    <view class="topbar-titles">
+      <text class="topbar-title">REVIEW</text>
+      <text class="topbar-sub">CENTER</text>
+    </view>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="intro">
+      <text class="intro-kicker">MODERATION QUEUE</text>
+      <text class="intro-title">审核中心</text>
+      <text class="intro-copy">集中处理所有待审核的用户提交内容。</text>
+    </view>
+
+    <view class="admin-card" bindtap="onSectionTap" data-section="candidates">
+      <view class="card-icon">✦</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">艺人候选审核</text>
+          <view wx:if="{{candidateCount > 0}}" class="count-chip"><text>{{candidateCount}}</text></view>
+        </view>
+        <text class="card-desc">审核爬虫发现或用户提交的艺人收录申请。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
+    <view class="admin-card" bindtap="onSectionTap" data-section="reports">
+      <view class="card-icon">⚑</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">评论举报审核</text>
+          <view wx:if="{{reportCount > 0}}" class="count-chip"><text>{{reportCount}}</text></view>
+        </view>
+        <text class="card-desc">处理用户举报的不当评论。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
+    <view class="admin-card" bindtap="onSectionTap" data-section="tracks">
+      <view class="card-icon">≡</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">曲目纠错审核</text>
+          <view wx:if="{{trackCorrectionCount > 0}}" class="count-chip"><text>{{trackCorrectionCount}}</text></view>
+        </view>
+        <text class="card-desc">审核用户提交的曲目名称、顺序或 Featuring 修改。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
+    <view class="admin-card" bindtap="onSectionTap" data-section="critics">
+      <view class="card-icon">★</view>
+      <view class="card-body">
+        <text class="card-title">乐评人认证</text>
+        <text class="card-desc">搜索用户并授予或撤销乐评人身份。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-row"><text>同步待处理数量中…</text></view>
+  </scroll-view>
+</view>
