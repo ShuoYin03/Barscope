@@ -5,12 +5,12 @@ import { getThemeClass } from '../../utils/theme'
 // progress (current/target/earned) is merged in once getUserProfile responds, falling back to
 // an "in development" note per badge if that data isn't available yet.
 const BADGE_CATALOG = [
-  { id:'first_review', name:'首条乐评', icon:'✎', desc:'发布第一条乐评' },
-  { id:'ten_reviews', name:'十条乐评', icon:'✎✎', desc:'累计发布 10 条乐评' },
-  { id:'fifty_reviews', name:'资深乐评人', icon:'★', desc:'累计发布 50 条乐评' },
-  { id:'ten_likes', name:'获赞新星', icon:'♥', desc:'乐评累计获得 10 个赞' },
-  { id:'fifty_likes', name:'获赞达人', icon:'♥♥', desc:'乐评累计获得 50 个赞' },
-  { id:'ten_followers', name:'人气乐评人', icon:'⌁', desc:'吸引 10 位关注者' },
+  { id:'first_review', name:'落笔成章', icon:'✎', desc:'留下你的第一段声音' },
+  { id:'ten_reviews', name:'十评俱全', icon:'✎✎', desc:'累计发布 10 条乐评，开始形成自己的判断' },
+  { id:'fifty_reviews', name:'字字珠玑', icon:'★', desc:'累计发布 50 条乐评，让观点成为风格' },
+  { id:'ten_likes', name:'初有回声', icon:'♥', desc:'乐评累计获得 10 个赞，开始有人听见你的声音' },
+  { id:'fifty_likes', name:'回声扩大', icon:'♥♥', desc:'乐评累计获得 50 个赞，你的观点正在扩散' },
+  { id:'ten_followers', name:'圈内熟脸', icon:'⌁', desc:'吸引 10 位关注者，开始有人等你开口' },
 ]
 function withoutProgress() {
   return BADGE_CATALOG.map(b => ({ ...b, hasProgress:false, current:0, target:0, pct:0, earned:false }))
