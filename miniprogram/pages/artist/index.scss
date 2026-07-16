@@ -34,7 +34,9 @@
 
 .artist-block { padding: 128rpx 32rpx 0; text-align: center; flex-shrink: 0; }
 .artist-en { font-family: var(--font-bebas); color: var(--white); line-height: 1; display: block; }
-.artist-role { display:block; margin-top:12rpx; font-family:var(--font-bebas); font-size:20rpx; letter-spacing:3rpx; color:var(--accent); }
+.artist-role-wrap{display:inline-flex;align-items:center;justify-content:center;gap:8rpx;margin-top:12rpx;min-height:36rpx}
+.artist-role { display:block; font-family:var(--font-bebas); font-size:20rpx; letter-spacing:3rpx; color:var(--accent); }
+.artist-role-edit{font-size:16rpx;color:var(--gray-mid)}
 .artist-brand { display: block; margin-top: 8rpx; font-size: 20rpx; letter-spacing: 2rpx; color: var(--gray-mid); }
 .artist-stats-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 14rpx; padding-bottom: 4rpx; }
 .stat-num { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); line-height: 1; }
@@ -88,3 +90,14 @@
 .skel-info { flex: 1; }
 .empty-state { display: flex; justify-content: center; padding: 120rpx 32rpx; }
 .empty-text { font-size: 26rpx; color: var(--gray-mid); }
+
+.role-sheet-mask{position:fixed;z-index:80;inset:0;display:flex;align-items:flex-end;background:rgba(0,0,0,.7)}
+.role-sheet{width:100%;padding:18rpx 32rpx calc(30rpx + env(safe-area-inset-bottom));border-radius:34rpx 34rpx 0 0;background:#171318;box-sizing:border-box}
+.role-sheet-handle{width:72rpx;height:8rpx;margin:0 auto 24rpx;border-radius:999rpx;background:#514951}
+.role-sheet-title{display:block;font-size:30rpx;font-weight:700;color:var(--white)}
+.role-sheet-sub{display:block;margin-top:8rpx;font-size:21rpx;line-height:1.5;color:var(--gray-mid)}
+.role-sheet-grid{display:flex;gap:14rpx;flex-wrap:wrap;margin-top:24rpx}
+.role-sheet-option{display:flex;align-items:center;gap:10rpx;padding:16rpx 22rpx;border:2rpx solid var(--gray-light);font-family:var(--font-bebas);font-size:24rpx;letter-spacing:2rpx;color:var(--white)}
+.role-sheet-option.selected{border-color:var(--accent);background:rgba(201,78,37,.14);color:var(--accent)}
+.role-sheet-submit{height:88rpx;margin-top:28rpx;display:flex;align-items:center;justify-content:center;background:var(--accent);font-size:26rpx;font-weight:700;color:var(--black)}
+.role-sheet-submit.disabled{opacity:.55}
