@@ -23,6 +23,10 @@
       <text class="section-tab-label">隐藏专辑</text>
       <view wx:if="{{hiddenCount > 0}}" class="tab-badge"><text>{{hiddenCount}}</text></view>
     </view>
+    <view class="section-tab" bindtap="onSectionTap" data-section="type">
+      <text class="section-tab-label">类型纠错</text>
+      <view wx:if="{{typeCount > 0}}" class="tab-badge"><text>{{typeCount}}</text></view>
+    </view>
   </view>
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
@@ -73,6 +77,18 @@
           <view wx:if="{{hiddenCount > 0}}" class="count-chip"><text>{{hiddenCount}}</text></view>
         </view>
         <text class="card-desc">管理员手动隐藏或历史未显示的专辑，可恢复或删除。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
+    <view class="admin-card" bindtap="onSectionTap" data-section="type">
+      <view class="card-icon">▤</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">类型纠错</text>
+          <view wx:if="{{typeCount > 0}}" class="count-chip"><text>{{typeCount}}</text></view>
+        </view>
+        <text class="card-desc">处理用户提交的专辑类型（LP/Mixtape/Live/Beat Tape）修改申请。</text>
       </view>
       <text class="card-arrow">→</text>
     </view>
