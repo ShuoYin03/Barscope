@@ -36,18 +36,15 @@
     </block>
     <block wx:else>
       <view class="side-row"><text class="side-text">SIDE A — LABEL 厂牌</text><view class="side-rule" /></view>
-      <view class="brand-stamp brand-stamp-all {{activeBrand === '全部' ? 'active' : ''}}" bindtap="onBrandTap" data-brand="全部"><text class="brand-name">全部</text><text class="brand-count">{{artistList.length}}</text></view>
-      <view class="brand-panel-wrap">
-        <scroll-view class="brand-panel" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{brandScrollIntoView}}" scroll-with-animation="{{true}}">
-          <view wx:for="{{brandLetterGroups}}" wx:key="letter" id="brand-letter-{{item.letter === '#' ? 'num' : item.letter}}">
-            <view class="artist-letter-row"><text class="artist-letter-title">{{item.letter}}</text><view class="artist-letter-rule" /></view>
-            <view class="brand-chip-grid">
-              <view wx:for="{{item.list}}" wx:for-item="brand" wx:key="name" class="brand-stamp {{activeBrand === brand.name ? 'active' : ''}}" bindtap="onBrandTap" data-brand="{{brand.name}}"><text class="brand-name">{{brand.name}}</text><text class="brand-count">{{brand.count}}</text></view>
-            </view>
-          </view>
-        </scroll-view>
-        <scroll-view wx:if="{{brandLetters.length > 1}}" class="brand-rail" scroll-y enhanced show-scrollbar="{{false}}"><view wx:for="{{brandLetters}}" wx:key="*this" class="brand-rail-item" bindtap="onBrandLetterTap" data-letter="{{item}}"><text>{{item}}</text></view></scroll-view>
-      </view>
+      <scroll-view scroll-x show-scrollbar="{{false}}" class="brand-scroll">
+        <view class="brand-stamps-horizontal">
+          <view class="brand-stamp {{activeBrand === '全部' ? 'active' : ''}}" bindtap="onBrandTap" data-brand="全部"><text class="brand-name">全部</text><text class="brand-count">{{artistList.length}}</text></view>
+          <block wx:for="{{brandLetterGroups}}" wx:key="letter">
+            <text class="brand-letter-tag">{{item.letter}}</text>
+            <view wx:for="{{item.list}}" wx:for-item="brand" wx:key="name" class="brand-stamp {{activeBrand === brand.name ? 'active' : ''}}" bindtap="onBrandTap" data-brand="{{brand.name}}"><text class="brand-name">{{brand.name}}</text><text class="brand-count">{{brand.count}}</text></view>
+          </block>
+        </view>
+      </scroll-view>
       <view class="side-row"><text class="side-text">SIDE B — SUBMIT</text><view class="side-rule" /></view>
       <view class="artist-submit-row" bindtap="onSubmitArtistRequest"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">提交 rapper</text><text class="artist-submit-desc">未收录？提交审核</text></view><text class="artist-all-arrow">›</text></view>
       <view class="side-row artist-result-title"><text class="side-text">SIDE C — {{activeBrand}} · {{artistLoading ? '加载中' : artistTotal + ' 位'}}</text><view class="side-rule" /></view>
