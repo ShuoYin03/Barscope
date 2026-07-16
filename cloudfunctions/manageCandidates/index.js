@@ -157,6 +157,8 @@ exports.main = async (event, context) => {
   if (action === 'list_multi_artist_albums') return await listMultiArtistAlbums(event.page || 1, event.pageSize || 60)
   if (action === 'rebuild_multi_artist_index') return await rebuildMultiArtistIndex(event.skip || 0)
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
+  if (action === 'find_resurrected')     return await findResurrectedAlbums()
+  if (action === 'remove_resurrected')   return await removeResurrectedAlbums(event.ids || [])
 
   return { success: false, error: 'unknown action' }
 }
@@ -590,6 +592,55 @@ async function cleanupSingles() {
   } catch (e) {
     return { success: false, error: e.message }
   }
+}
+
+// ── 找回被误重新收录的专辑 ─────────────────────────────────────────────────────
+// 管理员在候选区把一张专辑判定为"删除"时，albums 文档会被真的 remove() 掉，但 album_candidates
+// 那条记录会保留并打上 status:'deleted'（含 sourceId）——这是唯一留存"这张专辑曾被明确拒收"的地方。
+// 一次全量重新爬取如果又扫到同一个艺人，会把这个 sourceId 当全新专辑重新插回 albums（cloudCrawler
+// 已经加了拦截，但爬虫上次跑的时候还没有这道检查，已经误加回来的需要手动找出来复核）。
+async function findResurrectedAlbums() {
+  try {
+    const deletedSourceIds = new Set()
+    let skip = 0
+    while (true) {
+      const res = await db.collection('album_candidates').where({ status: 'deleted' }).field({ sourceId: true }).skip(skip).limit(1000).get()
+      const rows = res.data || []
+      rows.forEach(x => { if (x.sourceId) deletedSourceIds.add(String(x.sourceId)) })
+      if (rows.length < 1000) break
+      skip += 1000
+    }
+    const ids = Array.from(deletedSourceIds)
+    const matches = []
+    for (let i = 0; i < ids.length; i += 100) {
+      const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) })
+        .field({ _id: true, title: true, artist: true, sourceId: true, approved: true }).get()
+      matches.push(...(res.data || []))
+    }
+    return { success: true, total: matches.length, list: matches }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function removeResurrectedAlbums(ids) {
+  const list = Array.isArray(ids) ? ids.filter(Boolean) : []
+  if (!list.length) return { success: false, error: '缺少专辑ID列表' }
+  let removed = 0
+  const errors = []
+  for (const id of list) {
+    try {
+      await Promise.all([
+        db.collection('reviews').where({ albumId: id }).remove().catch(() => {}),
+        db.collection('favorites').where({ albumId: id }).remove().catch(() => {}),
+      ])
+      await db.collection('albums').doc(id).remove()
+      removed += 1
+    } catch (e) {
+      errors.push({ id, error: e.message })
+    }
+  }
+  return { success: true, removed, errors }
 }
 
 // ── stats ─────────────────────────────────────────────────────────────────────
