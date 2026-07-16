@@ -23,10 +23,10 @@ const BIO_PREVIEW_LENGTH = 150
 // otherwise overflows the page's 32rpx side padding at the default 100rpx size.
 function computeNameFit(name: string) {
   const len = String(name || '').length
-  if (len > 16) return { nameFontSize: 42, nameLetterSpacing: 2 }
-  if (len > 13) return { nameFontSize: 52, nameLetterSpacing: 4 }
-  if (len > 10) return { nameFontSize: 64, nameLetterSpacing: 6 }
-  if (len > 7) return { nameFontSize: 80, nameLetterSpacing: 8 }
+  if (len > 17) return { nameFontSize: 54, nameLetterSpacing: 2 }
+  if (len > 13) return { nameFontSize: 66, nameLetterSpacing: 4 }
+  if (len > 10) return { nameFontSize: 76, nameLetterSpacing: 6 }
+  if (len > 7) return { nameFontSize: 86, nameLetterSpacing: 8 }
   return { nameFontSize: 100, nameLetterSpacing: 10 }
 }
 
@@ -96,7 +96,7 @@ Page({
         const bannerUrl = artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || artist.picUrl || artist.avatarUrl || ''
         const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
-        const brandLabel = Array.isArray(artist.brands) ? artist.brands.filter(Boolean).join(' / ') : (artist.brand || '')
+        const brandLabel = Array.isArray(artist.brands) ? artist.brands.filter(Boolean).join(' | ') : (artist.brand || '')
         this.setData({ notCollected: false, bannerUrl, avatarUrl, brandLabel, bioExpanded: false, ...bioState })
       },
     } as any)
