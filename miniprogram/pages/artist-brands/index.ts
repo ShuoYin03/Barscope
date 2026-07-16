@@ -14,7 +14,8 @@ const ROLE_OPTIONS:{key:ArtistRole;label:string}[] = [
 
 Page({
   data:{
-    statusBarHeight:20, themeClass:'', keyword:'', list:[] as ArtistRow[], loading:true,
+    statusBarHeight:20, themeClass:'', keyword:'', list:[] as ArtistRow[], rawList:[] as ArtistRow[], loading:true,
+    unassignedOnly:false, unassignedCount:0,
     brandSheetVisible:false, editingArtistId:'', editingArtistName:'', brandNames:[] as string[], brandOptions:[] as BrandOption[], selectedBrands:[] as string[],
     roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[], selectedRoles:[] as ArtistRole[], saving:false,
     batchMode:false, batchSelectedCount:0, batchRoleSheetVisible:false, batchRoles:[] as ArtistRole[], batchRoleOptions:ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[], batchSaving:false,
@@ -24,27 +25,37 @@ Page({
   onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight}); this.loadArtists(); this.loadRoleSuggestions() },
   onShow(){ this.setData({themeClass:getThemeClass()}) },
 
+  applyListFilter(rawList:ArtistRow[], unassignedOnly=this.data.unassignedOnly){
+    return unassignedOnly ? rawList.filter(x=>!Array.isArray(x.roles)||x.roles.length===0) : rawList
+  },
+
   loadArtists(){
     this.setData({loading:true})
     const keyword=this.data.keyword.trim()
     const listCall=wx.cloud.callFunction({name:'getArtists',data:{keyword,limit:1000}}).catch(()=>({result:{success:false,list:[]}}))
-    const brandCall=keyword?wx.cloud.callFunction({name:'getArtists',data:{keyword:'',limit:1000}}).catch(()=>({result:{success:false,list:[]}})):listCall
-    Promise.all([listCall,brandCall]).then(async(results:any[])=>{
-      const listResult=results[0]?.result||{}, brandResult=results[1]?.result||{}
-      let list:ArtistRow[]=(listResult.success?(listResult.list||[]):[]).map((x:any)=>({...x,roles:Array.isArray(x.roles)?x.roles:[],selected:false}))
-      const allArtists:ArtistRow[]=brandResult.success?(brandResult.list||[]):[]
+    const allCall=keyword?wx.cloud.callFunction({name:'getArtists',data:{keyword:'',limit:1000}}).catch(()=>({result:{success:false,list:[]}})):listCall
+    Promise.all([listCall,allCall]).then(async(results:any[])=>{
+      const listResult=results[0]?.result||{}, allResult=results[1]?.result||{}
+      let rawList:ArtistRow[]=(listResult.success?(listResult.list||[]):[]).map((x:any)=>({...x,roles:Array.isArray(x.roles)?x.roles:[],selected:false}))
+      let allArtists:ArtistRow[]=(allResult.success?(allResult.list||[]):[]).map((x:any)=>({...x,roles:Array.isArray(x.roles)?x.roles:[]}))
       const brandNames=Array.from(new Set(allArtists.flatMap(x=>x.brands||[]).map(x=>String(x||'').trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'zh-CN'))
 
-      // Role data is read back from the same cloud function that writes it. This avoids a stale
-      // getArtists deployment making the admin list look unsaved while the artist page is correct.
       try {
-        const roleRes:any=await wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'get_roles_map',artistDocIds:list.map(x=>x.id)}})
+        const ids=Array.from(new Set([...rawList.map(x=>x.id),...allArtists.map(x=>x.id)]))
+        const roleRes:any=await wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'get_roles_map',artistDocIds:ids}})
         const rolesMap=roleRes.result?.rolesMap||{}
-        list=list.map(x=>({...x,roles:Array.isArray(rolesMap[x.id])?rolesMap[x.id]:x.roles}))
+        rawList=rawList.map(x=>({...x,roles:Array.isArray(rolesMap[x.id])?rolesMap[x.id]:x.roles}))
+        allArtists=allArtists.map(x=>({...x,roles:Array.isArray(rolesMap[x.id])?rolesMap[x.id]:x.roles}))
       } catch(e) {}
 
-      this.setData({list,brandNames,loading:false,batchSelectedCount:0})
+      const unassignedCount=allArtists.filter(x=>!Array.isArray(x.roles)||x.roles.length===0).length
+      this.setData({rawList,list:this.applyListFilter(rawList),brandNames,unassignedCount,loading:false,batchSelectedCount:0})
     }).catch(()=>{ this.setData({loading:false}); wx.showToast({title:'加载失败',icon:'none'}) })
+  },
+
+  onToggleUnassigned(){
+    const unassignedOnly=!this.data.unassignedOnly
+    this.setData({unassignedOnly,list:this.applyListFilter(this.data.rawList,unassignedOnly),batchMode:false,batchSelectedCount:0})
   },
 
   loadRoleSuggestions(){
@@ -73,19 +84,21 @@ Page({
   onSearch(e:WechatMiniprogram.Input){ this.setData({keyword:e.detail.value}); this.loadArtists() },
   onToggleBatchMode(){
     const batchMode=!this.data.batchMode
-    this.setData({batchMode,batchSelectedCount:0,list:this.data.list.map(x=>({...x,selected:false}))})
+    const rawList=this.data.rawList.map(x=>({...x,selected:false}))
+    this.setData({batchMode,batchSelectedCount:0,rawList,list:this.applyListFilter(rawList)})
   },
   onRowTap(e:WechatMiniprogram.TouchEvent){
     const id=String((e.currentTarget.dataset as any).id||'')
     if(this.data.batchMode){
-      const list=this.data.list.map(x=>x.id===id?{...x,selected:!x.selected}:x)
-      this.setData({list,batchSelectedCount:list.filter(x=>x.selected).length})
+      const rawList=this.data.rawList.map(x=>x.id===id?{...x,selected:!x.selected}:x)
+      const list=this.applyListFilter(rawList)
+      this.setData({rawList,list,batchSelectedCount:rawList.filter(x=>x.selected).length})
       return
     }
     this.openEditor(id)
   },
   openEditor(id:string){
-    const artist=this.data.list.find(x=>x.id===id); if(!artist)return
+    const artist=this.data.rawList.find(x=>x.id===id); if(!artist)return
     const selectedBrands=[...(artist.brands||[])], selectedRoles=[...(artist.roles||[])] as ArtistRole[]
     const brandNames=Array.from(new Set([...this.data.brandNames,...selectedBrands])).sort((a,b)=>a.localeCompare(b,'zh-CN'))
     this.setData({brandSheetVisible:true,editingArtistId:id,editingArtistName:artist.artistName,selectedBrands,selectedRoles,brandNames,brandOptions:brandNames.map(name=>({name,selected:selectedBrands.includes(name)})),roleOptions:ROLE_OPTIONS.map(role=>({...role,selected:selectedRoles.includes(role.key)}))})
@@ -111,7 +124,9 @@ Page({
       const savedBrands=Array.isArray(r.brands)?r.brands:brands
       const savedRoles=Array.isArray(r.roles)?r.roles:roles
       const brandNames=Array.from(new Set([...this.data.brandNames,...savedBrands])).sort((a,b)=>a.localeCompare(b,'zh-CN'))
-      this.setData({list:this.data.list.map(x=>x.id===id?{...x,brands:savedBrands,roles:savedRoles}:x),brandNames,brandOptions:brandNames.map(name=>({name,selected:savedBrands.includes(name)})),roleOptions:ROLE_OPTIONS.map(role=>({...role,selected:savedRoles.includes(role.key)})),brandSheetVisible:false})
+      const rawList=this.data.rawList.map(x=>x.id===id?{...x,brands:savedBrands,roles:savedRoles}:x)
+      const unassignedCount=Math.max(0,this.data.unassignedCount+((this.data.rawList.find(x=>x.id===id)?.roles||[]).length===0&&savedRoles.length>0?-1:0)+((this.data.rawList.find(x=>x.id===id)?.roles||[]).length>0&&savedRoles.length===0?1:0))
+      this.setData({rawList,list:this.applyListFilter(rawList),unassignedCount,brandNames,brandOptions:brandNames.map(name=>({name,selected:savedBrands.includes(name)})),roleOptions:ROLE_OPTIONS.map(role=>({...role,selected:savedRoles.includes(role.key)})),brandSheetVisible:false})
       wx.showToast({title:'已更新',icon:'success'})
     },fail:()=>wx.showToast({title:'保存失败',icon:'none'}),complete:()=>this.setData({saving:false})} as any)
   },
@@ -125,13 +140,15 @@ Page({
   onCloseBatchRoleSheet(){ if(!this.data.batchSaving)this.setData({batchRoleSheetVisible:false}) },
   onSaveBatchRoles(){
     if(this.data.batchSaving)return
-    const ids=this.data.list.filter(x=>x.selected).map(x=>x.id); if(!ids.length)return
+    const ids=this.data.rawList.filter(x=>x.selected).map(x=>x.id); if(!ids.length)return
     const roles=[...this.data.batchRoles]
     this.setData({batchSaving:true})
     wx.cloud.callFunction({name:'manageArtistBrands',data:{action:'bulk_update_roles',artistDocIds:ids,roles},success:(res:any)=>{
       const r=res.result||{}; if(!r.success){wx.showToast({title:r.error||'批量保存失败',icon:'none'});return}
       const savedRoles=Array.isArray(r.roles)?r.roles:roles
-      this.setData({list:this.data.list.map(x=>ids.includes(x.id)?{...x,roles:savedRoles,selected:false}:x),batchMode:false,batchSelectedCount:0,batchRoleSheetVisible:false})
+      const rawList=this.data.rawList.map(x=>ids.includes(x.id)?{...x,roles:savedRoles,selected:false}:x)
+      this.setData({rawList,list:this.applyListFilter(rawList),batchMode:false,batchSelectedCount:0,batchRoleSheetVisible:false})
+      this.loadArtists()
       wx.showToast({title:`已更新 ${ids.length} 位`,icon:'success'})
     },fail:()=>wx.showToast({title:'批量保存失败',icon:'none'}),complete:()=>this.setData({batchSaving:false})} as any)
   },
