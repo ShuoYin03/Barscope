@@ -16,6 +16,14 @@ interface Collaborator {
   collected: boolean
 }
 
+type ArtistRole = 'rapper' | 'producer' | 'label'
+interface RoleOption { key: ArtistRole; label: string; selected: boolean }
+const ROLE_OPTIONS:{key:ArtistRole;label:string}[] = [
+  { key:'rapper', label:'RAPPER' },
+  { key:'producer', label:'PRODUCER' },
+  { key:'label', label:'LABEL' },
+]
+
 const BIO_PREVIEW_LENGTH = 150
 
 function computeNameFit(name: string) {
@@ -50,6 +58,7 @@ Page({
     bannerUrl: '',
     avatarUrl: '',
     roleLabel: '',
+    roles: [] as ArtistRole[],
     brandLabel: '',
     briefDesc: '',
     briefDescPreview: '',
@@ -68,6 +77,10 @@ Page({
     loading: true,
     notCollected: false,
     submitStatus: 'idle' as 'idle' | 'submitting' | 'submitted' | 'pending',
+    roleSheetVisible: false,
+    suggestedRoles: [] as ArtistRole[],
+    roleOptions: ROLE_OPTIONS.map(x=>({...x,selected:false})) as RoleOption[],
+    roleSuggestionSubmitting: false,
   },
 
   _artistId: '',
@@ -95,9 +108,42 @@ Page({
         const avatarUrl = artist.avatarUrl || artist.picUrl || artist.heroImageUrl || artist.backgroundUrl || artist.coverUrl || ''
         const bioState = buildBioState(artist.briefDesc || artist.description || artist.trans || '')
         const brandLabel = Array.isArray(artist.brands) ? artist.brands.filter(Boolean).join(' | ') : (artist.brand || '')
-        const roleLabel = Array.isArray(artist.roles) ? artist.roles.filter(Boolean).map((x:string)=>String(x).toUpperCase()).join(' / ') : ''
-        this.setData({ notCollected: false, bannerUrl, avatarUrl, roleLabel, brandLabel, bioExpanded: false, ...bioState })
+        const roles = Array.isArray(artist.roles) ? artist.roles.filter((x:string)=>ROLE_OPTIONS.some(r=>r.key===x)) : []
+        const roleLabel = roles.map((x:string)=>String(x).toUpperCase()).join(' / ')
+        this.setData({ notCollected: false, bannerUrl, avatarUrl, roles, roleLabel, brandLabel, bioExpanded: false, ...bioState })
       },
+    } as any)
+  },
+
+  onOpenRoleSuggest() {
+    const suggestedRoles=[...this.data.roles]
+    this.setData({
+      roleSheetVisible:true,
+      suggestedRoles,
+      roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:suggestedRoles.includes(x.key)})),
+    })
+  },
+  onToggleSuggestedRole(e:WechatMiniprogram.TouchEvent) {
+    const role=String((e.currentTarget.dataset as any).role||'') as ArtistRole
+    if(!ROLE_OPTIONS.some(x=>x.key===role))return
+    const suggestedRoles=this.data.suggestedRoles.includes(role)?this.data.suggestedRoles.filter(x=>x!==role):[...this.data.suggestedRoles,role]
+    this.setData({suggestedRoles,roleOptions:ROLE_OPTIONS.map(x=>({...x,selected:suggestedRoles.includes(x.key)}))})
+  },
+  onCloseRoleSuggest(){ if(!this.data.roleSuggestionSubmitting)this.setData({roleSheetVisible:false}) },
+  onSubmitRoleSuggestion(){
+    if(this.data.roleSuggestionSubmitting)return
+    this.setData({roleSuggestionSubmitting:true})
+    wx.cloud.callFunction({
+      name:'manageArtistBrands',
+      data:{action:'submit_role_suggestion',artistId:this._artistId,artistName:this.data.artistName,roles:this.data.suggestedRoles},
+      success:(res:any)=>{
+        const r=res.result||{}
+        if(!r.success){wx.showToast({title:r.error||'提交失败',icon:'none'});return}
+        this.setData({roleSheetVisible:false})
+        wx.showToast({title:'已提交管理员审核',icon:'success'})
+      },
+      fail:()=>wx.showToast({title:'提交失败',icon:'none'}),
+      complete:()=>this.setData({roleSuggestionSubmitting:false}),
     } as any)
   },
 
@@ -187,4 +233,5 @@ Page({
     const id = (e.currentTarget.dataset as { id: string }).id
     wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
   },
+  noop(){},
 })
