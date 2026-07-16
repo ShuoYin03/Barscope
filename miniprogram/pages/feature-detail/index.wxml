@@ -128,6 +128,7 @@
             <view class="picker-row-info">
               <text class="picker-row-title">{{item.title}}</text>
               <text class="picker-row-artist">{{item.artist}}</text>
+              <text class="picker-row-date">{{item.releaseDisplay}}</text>
             </view>
           </view>
         </block>
@@ -145,6 +146,7 @@
                 <view class="picker-row-info">
                   <text class="picker-row-title">{{item.title}}</text>
                   <text class="picker-row-artist">{{item.artist}}</text>
+              <text class="picker-row-date">{{item.releaseDisplay}}</text>
                 </view>
               </view>
             </view>

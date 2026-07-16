@@ -34,6 +34,17 @@ function formatBallotDate(value: any): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 
+function formatReleaseDate(value: any, year: number): string {
+  if (!value) return year ? String(year) : ''
+  const raw = typeof value === 'string' ? value : String(value)
+  const m = raw.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (year ? String(year) : '')
+}
+
+function withReleaseDisplay(a: any) {
+  return { ...a, releaseDisplay: formatReleaseDate(a.releaseDate, a.releaseYear) }
+}
+
 let _pickerTimer: any = null
 const PICKER_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 const titleCollator = new Intl.Collator('zh-Hans-CN-u-co-pinyin', { sensitivity: 'base', numeric: true })
@@ -239,7 +250,7 @@ Page({
       .then((results: any[]) => {
         const groups = PICKER_MONTHS.map((month, i) => {
           const r = (results[i] && results[i].result) || {}
-          const list = (r.success ? (r.list || []) : []).slice().sort((a: any, b: any) => titleCollator.compare(a.title || '', b.title || ''))
+          const list = (r.success ? (r.list || []) : []).map(withReleaseDisplay).sort((a: any, b: any) => titleCollator.compare(a.title || '', b.title || ''))
           return { month, list }
         }).filter(g => g.list.length > 0)
         this.setData({ pickerAllGroups: groups, pickerAllLoading: false, pickerAllLoaded: true })
@@ -269,7 +280,7 @@ Page({
       success: (res: any) => {
         const r = res.result || {}
         const pickedIds = new Set(this.data.myEntries.map((x: Top10Entry) => x.albumId))
-        const list = (r.success ? (r.list || []) : []).filter((a: any) => !pickedIds.has(a._id))
+        const list = (r.success ? (r.list || []) : []).filter((a: any) => !pickedIds.has(a._id)).map(withReleaseDisplay)
         this.setData({ pickerResults: list, pickerLoading: false })
       },
       fail: () => this.setData({ pickerLoading: false }),
