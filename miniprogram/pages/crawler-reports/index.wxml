@@ -1,17 +1,89 @@
 <view class="page {{themeClass}}">
-  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">RUN REPORTS</text></view>
-  <view class="head"><view><text class="head-title">运行报告</text><text class="head-desc">记录 cloudCrawlerDailyTrigger / cloudCrawler 每日更新结果</text></view><text class="count">{{list.length}} 条</text></view>
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="title">每日爬虫</text>
+    <text class="title-sub">DAILY CRAWLER</text>
+  </view>
+
   <scroll-view class="content" scroll-y>
+
+    <!-- 今日进度卡 -->
+    <view class="head">
+      <view>
+        <text class="head-title">自动收录</text>
+        <text class="head-desc">每天把所有已批准 rapper 顺跑一遍，失败的下次优先补，跑完当天即停。</text>
+      </view>
+    </view>
+
+    <view class="card today">
+      <text class="sec-label">今日进度</text>
+
+      <view class="status-row">
+        <view class="dot {{statusClass}}"></view>
+        <text class="status-text">{{statusLabel}}</text>
+        <text wx:if="{{control.runDate}}" class="pill">{{control.runDate}}</text>
+      </view>
+
+      <view class="prog-num">
+        <text class="big">{{cursor}}</text>
+        <text class="slash">/</text>
+        <text class="total-num">{{total}}</text>
+        <text class="unit">位 rapper</text>
+        <text class="pct">{{pct}}%</text>
+      </view>
+      <view class="track"><view class="fill" style="width:{{pct}}%"></view></view>
+
+      <view class="chips">
+        <view class="chip"><text class="n">{{control.albumsFound || 0}}</text><text class="l">今日新增专辑</text></view>
+        <view class="chip"><text class="n">{{control.candidatesFound || 0}}</text><text class="l">今日候选</text></view>
+        <view class="chip {{failedCount > 0 ? 'tappable' : ''}}" bindtap="onToggleFailed">
+          <text class="n {{failedCount > 0 ? 'warn' : ''}}">{{failedCount}}</text>
+          <text class="l">失败待补{{failedCount > 0 ? (showFailed ? ' ▲' : ' ▼') : ''}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{showFailed && failedNames.length > 0}}" class="failed-list">
+        <text wx:for="{{failedNames}}" wx:key="*this" class="failed-item">{{item}}</text>
+      </view>
+
+      <view wx:if="{{control.lastError}}" class="diag"><text class="diag-text">⚠ {{control.lastError}}</text></view>
+      <view wx:if="{{control.lastLog}}" class="lastlog"><text class="lastlog-text">{{control.lastLog}}</text></view>
+
+      <view class="meta">
+        <text>上次运行 {{lastRunText}}</text>
+        <view class="mdot"></view>
+        <text>处理 {{control.processedToday || 0}} 位</text>
+      </view>
+
+      <view class="reset {{resetting ? 'disabled' : ''}}" bindtap="onReset">
+        <text class="reset-ico">↻</text>
+        <text class="reset-text">全部重置 · 从头重新爬取</text>
+      </view>
+    </view>
+
+    <!-- 历史记录 -->
+    <view class="divider"><text class="divider-tx">历史记录</text><view class="divider-ln"></view></view>
+
     <view wx:if="{{loading}}" class="empty">加载中…</view>
     <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text><view class="retry" bindtap="loadReports">重新加载</view></view>
-    <view wx:elif="{{list.length === 0}}" class="empty">暂无运行报告</view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无历史记录</view>
     <block wx:else>
-      <view wx:for="{{list}}" wx:key="_id" class="card">
-        <text class="report-date">{{item.reportDate || item.createdAt || '未知日期'}} · {{item.triggerType || 'run'}}</text>
-        <view class="metrics"><text>处理 {{item.processedArtists || 0}} / {{item.totalArtists || 0}}</text><text>新增 {{item.newAlbums || 0}}</text><text>候选 {{item.newCandidates || 0}}</text><text>{{item.status}}</text></view>
-        <view wx:if="{{item.logs.length > 0}}" class="album-list"><text wx:for="{{item.logs}}" wx:key="*this" class="album-item">{{item}}</text></view>
-        <text wx:else class="muted">本次暂无日志明细</text>
+      <view wx:for="{{list}}" wx:key="_id" class="rep">
+        <view class="rep-top">
+          <text class="rep-date">{{item.reportDate || '未知日期'}}</text>
+          <text class="rep-tag {{item.status === 'done' ? 'ok' : ''}}">{{item.triggerType || 'run'}} · {{item.status || ''}}</text>
+        </view>
+        <view class="rep-metrics">
+          <text>处理 {{item.processedArtists || 0}} / {{item.totalArtists || 0}}</text>
+          <text>新增 {{item.newAlbums || 0}}</text>
+          <text>候选 {{item.newCandidates || 0}}</text>
+          <text wx:if="{{item.failedCount}}" class="st">失败 {{item.failedCount}}</text>
+        </view>
+        <view wx:if="{{item.logs.length > 0}}" class="rep-logs">
+          <text wx:for="{{item.logs}}" wx:for-item="lg" wx:key="*this" class="rep-lg">{{lg}}</text>
+        </view>
       </view>
     </block>
+
   </scroll-view>
 </view>

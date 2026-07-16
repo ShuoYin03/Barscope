@@ -26,6 +26,7 @@ exports.main = async event => {
     if (action === 'album') return await runAlbum(String(event.albumId || event.param || ''))
     if (action === 'artist') return await runArtist(String(event.artistId || event.param || ''))
     if (action === 'allApproved') return await runAllApproved(Number(event.cursor || 0))
+    if (action === 'autoBatch') return await runAutoBatch(Array.isArray(event.ids) ? event.ids : [])
     return { success: false, error: '未知 action' }
   } catch (e) {
     try { await appendLog(`出错: ${e.message}`); await patchStatus({ status: 'error', completedAt: db.serverDate(), lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [e.message] } }) } catch (x) {}
@@ -101,6 +102,27 @@ async function runAllApproved(cursor) {
   await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: [] } })
   await appendLog(`云端全量完成：新增 ${Number(p.albumsFound || 0)} 张，候选 ${Number(p.candidatesFound || 0)} 张，日期写入 ${dated} 张`)
   return { success: true, status: 'done', total, newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), dated }
+}
+
+// 由 cloudCrawlerDailyTrigger 的定时状态机调用（await，可靠，不是老那种 fire-and-forget 链）。
+// 触发器每 tick 会分很多小撮来调，每撮就几位艺人；这里只管「给几个就老实抓几个、拿全、返回每个 id 的成/败」，
+// 不做时间预算、不给单艺人设限——快慢由触发器那边用「每小撮跑完就 checkpoint 落库」来兜底（被杀也不丢进度）。
+async function runAutoBatch(ids) {
+  const succeeded = [], failed = []
+  let albumsFound = 0, candidatesFound = 0, dated = 0, lastLog = ''
+  const results = await mapWithConcurrency(ids, ARTIST_CONCURRENCY, async a => {
+    const aid = String(a.artistId)
+    try {
+      const { albums } = await fetchArtistAlbums(aid) // 拿全部专辑，不封顶
+      const r = await upsertAlbums(albums, a.artistName, { requiredArtistId: aid })
+      return { aid, ok: true, name: a.artistName || aid, added: r.inserted, cand: r.candidates || 0, dated: r.dated }
+    } catch (e) { return { aid, ok: false, name: a.artistName || aid } }
+  })
+  for (const r of results) {
+    if (r.ok) { succeeded.push(r.aid); albumsFound += r.added; candidatesFound += r.cand; dated += r.dated; lastLog = `${r.name}: 新增${r.added}张，候选${r.cand}张，日期${r.dated}张` }
+    else { failed.push(r.aid) }
+  }
+  return { success: true, succeeded, failed, albumsFound, candidatesFound, dated, lastLog }
 }
 
 // 触发下一批 cloudCrawler。刻意不 await 其完整执行（见上方调用处注释）：
