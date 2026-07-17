@@ -18,9 +18,9 @@
 
         <view class="form-section">
           <text class="section-kicker">01 · ARTICLE INFO</text>
-          <view class="field"><text class="field-label">TITLE</text><input class="input title-input" data-field="title" value="{{title}}" bindinput="onFieldInput" placeholder="输入文章标题" /></view>
-          <view class="field"><text class="field-label">DECK</text><textarea class="textarea deck-input" data-field="deck" value="{{deck}}" bindinput="onFieldInput" placeholder="一句话导语 / 核心观点" maxlength="200" auto-height /></view>
-          <view class="field two-col"><view><text class="field-label">AUTHOR</text><input class="input" data-field="author" value="{{author}}" bindinput="onFieldInput" placeholder="作者" /></view><view wx:if="{{template==='review'}}"><text class="field-label">SCORE</text><input class="input score-input" type="digit" data-field="score" value="{{score}}" bindinput="onFieldInput" placeholder="8.8" /></view></view>
+          <view class="field"><text class="field-label">TITLE</text><textarea class="textarea title-input" data-field="title" value="{{title}}" bindinput="onFieldInput" placeholder="输入文章标题" maxlength="120" auto-height /></view>
+          <view class="field"><text class="field-label">DECK</text><textarea class="textarea deck-input" data-field="deck" value="{{deck}}" bindinput="onFieldInput" placeholder="一句话导语 / 核心观点" maxlength="300" auto-height /></view>
+          <view class="field author-score-row"><view class="author-col"><text class="field-label">AUTHOR</text><textarea class="textarea author-input" data-field="author" value="{{author}}" bindinput="onFieldInput" placeholder="作者" auto-height /></view><view wx:if="{{template==='review'}}" class="score-col"><text class="field-label">SCORE</text><input class="input score-input" type="digit" data-field="score" value="{{score}}" bindinput="onFieldInput" placeholder="8.8" /></view></view>
         </view>
 
         <view class="form-section">
@@ -30,11 +30,11 @@
             <view class="block-top"><text class="block-type">{{item.type}}</text><view class="block-actions"><text data-index="{{index}}" data-direction="up" bindtap="onMoveBlock">↑</text><text data-index="{{index}}" data-direction="down" bindtap="onMoveBlock">↓</text><text class="danger" data-index="{{index}}" bindtap="onDeleteBlock">×</text></view></view>
 
             <block wx:if="{{item.type==='paragraph'}}"><textarea class="textarea block-input" data-index="{{index}}" data-field="content" value="{{item.content}}" bindinput="onBlockInput" placeholder="输入正文。正文固定使用阅读字号与 1.8 行高。" auto-height /></block>
-            <block wx:elif="{{item.type==='heading'}}"><input class="input heading-input" data-index="{{index}}" data-field="content" value="{{item.content}}" bindinput="onBlockInput" placeholder="章节标题" /></block>
+            <block wx:elif="{{item.type==='heading'}}"><textarea class="textarea heading-input" data-index="{{index}}" data-field="content" value="{{item.content}}" bindinput="onBlockInput" placeholder="章节标题" auto-height /></block>
             <block wx:elif="{{item.type==='quote' || item.type==='pullquote'}}"><textarea class="textarea quote-input" data-index="{{index}}" data-field="content" value="{{item.content}}" bindinput="onBlockInput" placeholder="输入引用内容" auto-height /></block>
-            <block wx:elif="{{item.type==='divider'}}"><view class="two-col"><input class="input" data-index="{{index}}" data-field="label" value="{{item.label}}" bindinput="onBlockInput" placeholder="SIDE A" /><input class="input" data-index="{{index}}" data-field="content" value="{{item.content}}" bindinput="onBlockInput" placeholder="章节名称" /></view></block>
+            <block wx:elif="{{item.type==='divider'}}"><view class="two-col"><input class="input" data-index="{{index}}" data-field="label" value="{{item.label}}" bindinput="onBlockInput" placeholder="SIDE A" /><textarea class="textarea" data-index="{{index}}" data-field="content" value="{{item.content}}" bindinput="onBlockInput" placeholder="章节名称" auto-height /></view></block>
             <block wx:elif="{{item.type==='qa'}}"><text class="field-label">QUESTION</text><textarea class="textarea" data-index="{{index}}" data-field="question" value="{{item.question}}" bindinput="onBlockInput" placeholder="输入问题" auto-height /><text class="field-label qa-answer-label">ANSWER</text><textarea class="textarea" data-index="{{index}}" data-field="answer" value="{{item.answer}}" bindinput="onBlockInput" placeholder="输入回答" auto-height /></block>
-            <block wx:elif="{{item.type==='image'}}"><view class="image-editor"><view class="image-drop" data-index="{{index}}" bindtap="onChooseImage"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" /><text wx:else>＋ 上传图片</text></view><view class="image-meta"><view class="layout-btn" data-index="{{index}}" bindtap="onImageLayout"><text>LAYOUT · {{item.layout}}</text></view><input class="input" data-index="{{index}}" data-field="label" value="{{item.label}}" bindinput="onBlockInput" placeholder="Caption / Photo Credit" /></view></view></block>
+            <block wx:elif="{{item.type==='image'}}"><view class="image-editor"><view class="image-drop" data-index="{{index}}" bindtap="onChooseImage"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" /><text wx:else>＋ 上传图片</text></view><view class="image-meta"><view class="layout-btn" data-index="{{index}}" bindtap="onImageLayout"><text>LAYOUT · {{item.layout}}</text></view><textarea class="textarea" data-index="{{index}}" data-field="label" value="{{item.label}}" bindinput="onBlockInput" placeholder="Caption / Photo Credit" auto-height /></view></view></block>
           </view>
 
           <view class="add-block" bindtap="onAddBlock"><text>＋ ADD BLOCK</text><text class="add-sub">Paragraph / Heading / Image / Quote / Divider / Q&A</text></view>
@@ -50,6 +50,7 @@
         </view>
 
         <view class="bottom-actions"><view class="secondary-btn" bindtap="onSave"><text>{{saving?'保存中':'SAVE DRAFT'}}</text></view><view class="primary-btn" bindtap="onSubmit"><text>SUBMIT FOR REVIEW</text></view></view>
+        <view class="safe-bottom-space"></view>
       </view>
     </block>
 
@@ -67,7 +68,20 @@
             <view wx:elif="{{item.type==='qa'}}" class="p-qa"><text class="speaker barscope">BARSCOPE</text><text class="question">{{item.question}}</text><text class="speaker">ARTIST</text><text class="answer">{{item.answer}}</text></view>
           </block>
         </view>
+        <view class="safe-bottom-space"></view>
       </view>
     </block>
   </scroll-view>
+
+  <view wx:if="{{blockPickerVisible}}" class="block-picker-mask" bindtap="onCloseBlockPicker">
+    <view class="block-picker-sheet" catchtap="noop">
+      <view class="picker-handle"></view>
+      <text class="block-picker-title">ADD BLOCK</text>
+      <text class="block-picker-sub">选择要插入的内容模块</text>
+      <view class="block-option-grid">
+        <view wx:for="{{blockOptions}}" wx:key="type" class="block-option" data-type="{{item.type}}" bindtap="onPickBlock"><text class="block-option-en">{{item.label}}</text><text class="block-option-zh">{{item.zh}}</text></view>
+      </view>
+      <view class="block-picker-cancel" bindtap="onCloseBlockPicker"><text>取消</text></view>
+    </view>
+  </view>
 </view>
