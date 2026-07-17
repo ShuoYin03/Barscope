@@ -6,7 +6,7 @@
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{article}}" bindscrolltolower="onCommunityReachBottom">
     <view class="article-head">
-      <text class="category">{{article.category}} · {{(isTop10 || isNewcomer) ? 'COMMUNITY VOTE' : 'OPEN CALL'}}</text>
+      <text class="category">{{article.category}} · {{(isTop10 || isNewcomer || isMixtape) ? 'COMMUNITY VOTE' : 'OPEN CALL'}}</text>
       <text class="title">{{article.title}}</text>
       <text class="intro">{{article.intro}}</text>
     </view>
@@ -136,6 +136,68 @@
       </block>
     </block>
 
+    <block wx:elif="{{isMixtape}}">
+      <view class="top10-tabs">
+        <view class="top10-tab {{mixtapeTab === 'mine' ? 'active' : ''}}" bindtap="onMixtapeTabTap" data-tab="mine"><text>我的榜单</text></view>
+        <view class="top10-tab {{mixtapeTab === 'community' ? 'active' : ''}}" bindtap="onMixtapeTabTap" data-tab="community"><text>社区榜单</text></view>
+      </view>
+      <view class="top10-status">
+        <text class="top10-status-text">{{mixtapeVotingOpen ? '投票进行中 · 截止 2026-12-31' : '投票已截止'}}</text>
+        <text class="top10-status-count">{{mixtapeVoterTotal}} 人已投票</text>
+      </view>
+
+      <block wx:if="{{mixtapeTab === 'mine'}}">
+        <view wx:if="{{myMixtapeLoading}}" class="top10-empty"><text>加载中…</text></view>
+        <block wx:else>
+          <view wx:if="{{myMixtapeEntries.length === 0}}" class="top10-empty"><text>还没有选择 Mixtape，点击下方添加</text></view>
+          <view wx:for="{{myMixtapeEntries}}" wx:key="albumId" class="top10-entry-row">
+            <text class="top10-rank">{{index + 1}}</text>
+            <image class="top10-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view class="top10-entry-body">
+              <text class="top10-entry-title">{{item.title}}</text>
+              <text class="top10-entry-artist">{{item.artist}}</text>
+              <textarea class="top10-note-input" value="{{item.note}}" data-index="{{index}}" bindinput="onMixtapeEntryNoteInput" maxlength="200" placeholder="写下你选择这张 Mixtape 的理由（选填）" placeholder-style="color:#6f6762" auto-height />
+            </view>
+            <view class="top10-entry-actions">
+              <view class="top10-move {{index === 0 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="up" bindtap="onMoveMixtapeEntry"><text>↑</text></view>
+              <view class="top10-move {{index === myMixtapeEntries.length - 1 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="down" bindtap="onMoveMixtapeEntry"><text>↓</text></view>
+              <view class="top10-remove" data-index="{{index}}" bindtap="onRemoveMixtapeEntry"><text>×</text></view>
+            </view>
+          </view>
+
+          <view wx:if="{{myMixtapeEntries.length < 5 && mixtapeVotingOpen}}" class="top10-add-btn" bindtap="onOpenMixtapePicker">
+            <text>+ 添加 Mixtape（{{myMixtapeEntries.length}}/5）</text>
+          </view>
+          <view class="top10-save {{myMixtapeSaving ? 'disabled' : ''}}" bindtap="onSaveMixtapeBallot">
+            <text>{{myMixtapeSaving ? '保存中…' : '保存我的榜单'}}</text>
+          </view>
+        </block>
+      </block>
+
+      <block wx:else>
+        <view wx:if="{{mixtapeCommunityLoading && mixtapeCommunityList.length === 0}}" class="top10-empty"><text>加载中…</text></view>
+        <view wx:elif="{{mixtapeCommunityList.length === 0}}" class="top10-empty"><text>还没有人公开榜单，来做第一个吧</text></view>
+        <block wx:else>
+          <view wx:for="{{mixtapeCommunityList}}" wx:for-item="ballot" wx:key="_id" class="top10-card">
+            <view class="top10-card-head">
+              <view class="top10-card-avatar"><image wx:if="{{ballot.userAvatarUrl}}" class="top10-card-avatar-img" src="{{ballot.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{ballot.userNickName[0]}}</text></view>
+              <text class="top10-card-name">{{ballot.userNickName}}</text>
+              <text class="top10-card-date">{{ballot.updatedAtDisplay}}</text>
+            </view>
+            <view wx:for="{{ballot.entries}}" wx:key="albumId" class="top10-card-entry">
+              <text class="top10-card-rank">{{index + 1}}</text>
+              <view class="top10-card-entry-body">
+                <text class="top10-card-entry-title">{{item.title}} <text class="top10-card-entry-artist">{{item.artist}}</text></text>
+                <text wx:if="{{item.note}}" class="top10-card-note">{{item.note}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{mixtapeCommunityLoading}}" class="top10-empty"><text>加载中…</text></view>
+          <view wx:elif="{{!mixtapeCommunityHasMore}}" class="top10-empty"><text>── 共 {{mixtapeCommunityTotal}} 人 ──</text></view>
+        </block>
+      </block>
+    </block>
+
     <view wx:else class="form">
       <view class="field">
         <view class="field-head"><text class="field-label">项目标题 *</text><text class="field-count">{{proposalTitle.length}} / 80</text></view>
@@ -171,7 +233,7 @@
       </view>
     </view>
 
-    <view class="end-mark"><text>{{(isTop10 || isNewcomer) ? '— COMMUNITY VOTE —' : '— OPEN CALL —'}}</text></view>
+    <view class="end-mark"><text>{{(isTop10 || isNewcomer || isMixtape) ? '— COMMUNITY VOTE —' : '— OPEN CALL —'}}</text></view>
   </scroll-view>
 
   <view wx:if="{{pickerVisible}}" class="picker-mask" bindtap="onClosePicker">
@@ -243,6 +305,56 @@
         </block>
       </scroll-view>
       <view class="picker-cancel" bindtap="onCloseNewcomerPicker"><text>取消</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{mixtapePickerVisible}}" class="picker-mask" bindtap="onCloseMixtapePicker">
+    <view class="picker-sheet" catchtap="noop">
+      <view class="picker-handle" />
+      <text class="picker-title">添加 2026 年 Mixtape</text>
+      <input class="picker-input" value="{{mixtapePickerKeyword}}" bindinput="onMixtapePickerInput" placeholder="搜索 Mixtape 名 / 歌手，或在下方按月浏览" placeholder-style="color:#6f6762" focus />
+
+      <scroll-view wx:if="{{mixtapePickerSearching}}" class="picker-results" scroll-y>
+        <view wx:if="{{mixtapePickerLoading}}" class="picker-empty"><text>搜索中…</text></view>
+        <view wx:elif="{{mixtapePickerResults.length === 0}}" class="picker-empty"><text>没有匹配的 2026 年 Mixtape</text></view>
+        <block wx:else>
+          <view wx:for="{{mixtapePickerResults}}" wx:key="_id" class="picker-row" bindtap="onMixtapePickerSelect" data-id="{{item._id}}">
+            <image class="picker-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view class="picker-row-info">
+              <text class="picker-row-title">{{item.title}}</text>
+              <text class="picker-row-artist">{{item.artist}}</text>
+              <text class="picker-row-date">{{item.releaseDisplay}}</text>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+
+      <view wx:else class="picker-browse-wrap">
+        <scroll-view class="picker-results with-month-index" scroll-y scroll-into-view="{{mixtapePickerScrollIntoView}}" scroll-with-animation="{{true}}">
+          <view wx:if="{{mixtapePickerAllLoading}}" class="picker-empty"><text>加载中…</text></view>
+          <view wx:elif="{{mixtapePickerAllGroups.length === 0}}" class="picker-empty"><text>暂无已收录的 2026 年 Mixtape</text></view>
+          <block wx:else>
+            <view wx:for="{{mixtapePickerAllGroups}}" wx:for-item="group" wx:key="month" id="mixtape-picker-month-{{group.month}}">
+              <view class="picker-month-label"><text>2026 · {{group.month}}月</text></view>
+              <view wx:for="{{group.list}}" wx:key="_id" class="picker-row" bindtap="onMixtapePickerSelect" data-id="{{item._id}}">
+                <image class="picker-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+                <view class="picker-row-info">
+                  <text class="picker-row-title">{{item.title}}</text>
+                  <text class="picker-row-artist">{{item.artist}}</text>
+              <text class="picker-row-date">{{item.releaseDisplay}}</text>
+                </view>
+              </view>
+            </view>
+          </block>
+        </scroll-view>
+        <view wx:if="{{mixtapePickerAllGroups.length > 1}}" class="picker-month-index">
+          <view wx:for="{{mixtapePickerAllGroups}}" wx:for-item="group" wx:key="month" class="picker-month-index-item {{mixtapePickerActiveMonth === group.month ? 'active' : ''}}" bindtap="onMixtapePickerMonthTap" data-month="{{group.month}}">
+            <text>{{group.month}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="picker-cancel" bindtap="onCloseMixtapePicker"><text>取消</text></view>
     </view>
   </view>
 </view>

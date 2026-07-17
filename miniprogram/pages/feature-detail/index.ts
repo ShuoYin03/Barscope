@@ -11,6 +11,11 @@ const ARTICLES: any = {
     title: '2026 年度最佳新人',
     intro: '从 2026 年发行自己首张 LP / Mixtape 的新人中选出你心中的三位，按喜爱程度排出 1-3 名，写下理由，所有人的榜单都会公开展示。你可以随时调整，直到 2026-12-31 截止。',
   },
+  '2026-top-5-mixtapes': {
+    category: '年度企划',
+    title: '2026 五大 Mixtape',
+    intro: '从 2026 年发行、类型已标记为 Mixtape 的项目里选出你心中的五张，按喜爱程度排出 1-5 名，写下理由，所有人的榜单都会公开展示。你可以随时调整，直到 2026-12-31 截止。',
+  },
   'long-review-template': {
     category: '深度长评',
     title: '深度乐评征稿中',
@@ -59,6 +64,7 @@ Page({
     article: null as any,
     isTop10: false,
     isNewcomer: false,
+    isMixtape: false,
     isLoggedIn: false,
 
     // ── proposal form (long-review-template / rapper-interview) ──
@@ -109,6 +115,29 @@ Page({
     newcomerCommunityPage: 1,
     newcomerCommunityHasMore: false,
     newcomerCommunityTotal: 0,
+
+    // ── top 5 mixtapes vote ──
+    mixtapeTab: 'mine' as 'mine' | 'community',
+    mixtapeVotingOpen: true,
+    mixtapeVoterTotal: 0,
+    myMixtapeEntries: [] as Top10Entry[],
+    myMixtapeLoading: false,
+    myMixtapeSaving: false,
+    mixtapePickerVisible: false,
+    mixtapePickerKeyword: '',
+    mixtapePickerSearching: false,
+    mixtapePickerResults: [] as any[],
+    mixtapePickerLoading: false,
+    mixtapePickerAllLoading: false,
+    mixtapePickerAllLoaded: false,
+    mixtapePickerAllGroups: [] as { month: string; list: any[] }[],
+    mixtapePickerActiveMonth: '',
+    mixtapePickerScrollIntoView: '',
+    mixtapeCommunityList: [] as Top10Ballot[],
+    mixtapeCommunityLoading: false,
+    mixtapeCommunityPage: 1,
+    mixtapeCommunityHasMore: false,
+    mixtapeCommunityTotal: 0,
   },
 
   onLoad(options: any) {
@@ -116,6 +145,7 @@ Page({
     const featureId = String(options.id || '2026-top-10')
     const isTop10 = featureId === '2026-top-10'
     const isNewcomer = featureId === '2026-best-newcomer'
+    const isMixtape = featureId === '2026-top-5-mixtapes'
     this.setData({
       statusBarHeight: app.globalData.statusBarHeight,
       topbarHeight: app.globalData.topbarHeight,
@@ -123,6 +153,7 @@ Page({
       featureId,
       isTop10,
       isNewcomer,
+      isMixtape,
       article: ARTICLES[featureId] || ARTICLES['2026-top-10'],
     })
     if (isTop10) {
@@ -132,6 +163,10 @@ Page({
     if (isNewcomer) {
       this._loadMyNewcomerBallot()
       this._loadNewcomerStats()
+    }
+    if (isMixtape) {
+      this._loadMyMixtapeBallot()
+      this._loadMixtapeStats()
     }
   },
 
@@ -250,7 +285,8 @@ Page({
       if (this.data.top10Tab === 'community' && this.data.communityHasMore && !this.data.communityLoading) this._loadCommunity(this.data.communityPage + 1)
       return
     }
-    if (this.data.isNewcomer) this.onNewcomerCommunityReachBottom()
+    if (this.data.isNewcomer) { this.onNewcomerCommunityReachBottom(); return }
+    if (this.data.isMixtape) this.onMixtapeCommunityReachBottom()
   },
 
   _requireLogin(): boolean {
@@ -515,6 +551,177 @@ Page({
         wx.showToast({ title: '已保存', icon: 'success' })
       },
       fail: () => { wx.hideLoading(); this.setData({ myNewcomerSaving: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    } as any)
+  },
+
+  // ── top 5 mixtapes vote：我的榜单 ──────────────────────────────────────
+  _loadMyMixtapeBallot() {
+    this.setData({ myMixtapeLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageMixtapeVote',
+      data: { action: 'get_mine' },
+      success: (res: any) => {
+        const r = res.result || {}
+        this.setData({ myMixtapeLoading: false })
+        if (!r.success) { if (r.error && r.error !== '请先登录') wx.showToast({ title: r.error, icon: 'none' }); return }
+        this.setData({ myMixtapeEntries: r.entries || [], mixtapeVotingOpen: r.votingOpen !== false })
+      },
+      fail: () => this.setData({ myMixtapeLoading: false }),
+    } as any)
+  },
+
+  _loadMixtapeStats() {
+    wx.cloud.callFunction({
+      name: 'manageMixtapeVote',
+      data: { action: 'stats' },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (r.success) this.setData({ mixtapeVoterTotal: r.total || 0, mixtapeVotingOpen: r.votingOpen !== false })
+      },
+    } as any)
+  },
+
+  onMixtapeTabTap(e: WechatMiniprogram.TouchEvent) {
+    const tab = (e.currentTarget.dataset as any).tab as 'mine' | 'community'
+    if (tab === this.data.mixtapeTab) return
+    this.setData({ mixtapeTab: tab })
+    if (tab === 'community' && !this.data.mixtapeCommunityList.length) this._loadMixtapeCommunity(1)
+  },
+
+  _loadMixtapeCommunity(page: number) {
+    this.setData({ mixtapeCommunityLoading: true })
+    wx.cloud.callFunction({
+      name: 'manageMixtapeVote',
+      data: { action: 'list_public', page, pageSize: 20 },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ mixtapeCommunityLoading: false }); return }
+        const incoming = (r.list || []).map((d: any) => ({ ...d, updatedAtDisplay: formatBallotDate(d.updatedAt) }))
+        const mixtapeCommunityList = page === 1 ? incoming : [...this.data.mixtapeCommunityList, ...incoming]
+        this.setData({
+          mixtapeCommunityList,
+          mixtapeCommunityTotal: r.total || 0,
+          mixtapeCommunityPage: page,
+          mixtapeCommunityHasMore: mixtapeCommunityList.length < (r.total || 0),
+          mixtapeCommunityLoading: false,
+        })
+      },
+      fail: () => this.setData({ mixtapeCommunityLoading: false }),
+    } as any)
+  },
+
+  onMixtapeCommunityReachBottom() {
+    if (this.data.mixtapeTab !== 'community' || !this.data.mixtapeCommunityHasMore || this.data.mixtapeCommunityLoading) return
+    this._loadMixtapeCommunity(this.data.mixtapeCommunityPage + 1)
+  },
+
+  onOpenMixtapePicker() {
+    if (!this._requireLogin()) return
+    if (!this.data.mixtapeVotingOpen) { wx.showToast({ title: '投票已截止', icon: 'none' }); return }
+    if (this.data.myMixtapeEntries.length >= 5) { wx.showToast({ title: '最多选择 5 张 Mixtape', icon: 'none' }); return }
+    this.setData({ mixtapePickerVisible: true, mixtapePickerKeyword: '', mixtapePickerSearching: false, mixtapePickerResults: [] })
+    if (!this.data.mixtapePickerAllLoaded) this._loadMixtapePickerAll()
+  },
+
+  onCloseMixtapePicker() { this.setData({ mixtapePickerVisible: false }) },
+
+  _loadMixtapePickerAll() {
+    this.setData({ mixtapePickerAllLoading: true })
+    Promise.all(PICKER_MONTHS.map(month => wx.cloud.callFunction({
+      name: 'getAlbums',
+      data: { year: '2026', month, releaseType: 'Mixtape', page: 1, pageSize: 100, sortBy: 'releaseYear' },
+    }).catch(() => ({ result: { success: false, list: [] } }))))
+      .then((results: any[]) => {
+        const groups = PICKER_MONTHS.map((month, i) => {
+          const r = (results[i] && results[i].result) || {}
+          const list = (r.success ? (r.list || []) : []).map(withReleaseDisplay).sort((a: any, b: any) => titleCollator.compare(a.title || '', b.title || ''))
+          return { month, list }
+        }).filter(g => g.list.length > 0)
+        this.setData({ mixtapePickerAllGroups: groups, mixtapePickerAllLoading: false, mixtapePickerAllLoaded: true })
+      })
+  },
+
+  onMixtapePickerMonthTap(e: WechatMiniprogram.TouchEvent) {
+    const month = String((e.currentTarget.dataset as any).month || '')
+    if (!month) return
+    this.setData({ mixtapePickerActiveMonth: month, mixtapePickerScrollIntoView: 'mixtape-picker-month-' + month })
+  },
+
+  onMixtapePickerInput(e: WechatMiniprogram.Input) {
+    const keyword = e.detail.value || ''
+    const trimmed = keyword.trim()
+    this.setData({ mixtapePickerKeyword: keyword, mixtapePickerSearching: !!trimmed })
+    clearTimeout(_pickerTimer)
+    if (!trimmed) { this.setData({ mixtapePickerResults: [] }); return }
+    _pickerTimer = setTimeout(() => this._searchMixtapePicker(trimmed), 350)
+  },
+
+  _searchMixtapePicker(keyword: string) {
+    this.setData({ mixtapePickerLoading: true })
+    wx.cloud.callFunction({
+      name: 'getAlbums',
+      data: { year: '2026', keyword, releaseType: 'Mixtape', page: 1, pageSize: 30, sortBy: 'relevance' },
+      success: (res: any) => {
+        const r = res.result || {}
+        const pickedIds = new Set(this.data.myMixtapeEntries.map((x: Top10Entry) => x.albumId))
+        const list = (r.success ? (r.list || []) : []).filter((a: any) => !pickedIds.has(a._id)).map(withReleaseDisplay)
+        this.setData({ mixtapePickerResults: list, mixtapePickerLoading: false })
+      },
+      fail: () => this.setData({ mixtapePickerLoading: false }),
+    } as any)
+  },
+
+  onMixtapePickerSelect(e: WechatMiniprogram.TouchEvent) {
+    const id = String((e.currentTarget.dataset as any).id || '')
+    const source = this.data.mixtapePickerSearching ? this.data.mixtapePickerResults : this.data.mixtapePickerAllGroups.flatMap((g: any) => g.list)
+    const album = source.find((a: any) => a._id === id)
+    if (!album) return
+    if (this.data.myMixtapeEntries.some((x: Top10Entry) => x.albumId === id)) { wx.showToast({ title: '已经选过这张了', icon: 'none' }); return }
+    if (this.data.myMixtapeEntries.length >= 5) { wx.showToast({ title: '最多选择 5 张 Mixtape', icon: 'none' }); return }
+    const entry: Top10Entry = { albumId: album._id, title: album.title || '', artist: album.artist || album.primaryArtist || '', coverUrl: album.coverUrl || '', note: '' }
+    this.setData({ myMixtapeEntries: [...this.data.myMixtapeEntries, entry], mixtapePickerVisible: false })
+  },
+
+  onRemoveMixtapeEntry(e: WechatMiniprogram.TouchEvent) {
+    const index = Number((e.currentTarget.dataset as any).index)
+    this.setData({ myMixtapeEntries: this.data.myMixtapeEntries.filter((_x, i) => i !== index) })
+  },
+
+  onMoveMixtapeEntry(e: WechatMiniprogram.TouchEvent) {
+    const index = Number((e.currentTarget.dataset as any).index)
+    const dir = String((e.currentTarget.dataset as any).dir || '')
+    const target = dir === 'up' ? index - 1 : index + 1
+    if (target < 0 || target >= this.data.myMixtapeEntries.length) return
+    const myMixtapeEntries = [...this.data.myMixtapeEntries]
+    const tmp = myMixtapeEntries[index]; myMixtapeEntries[index] = myMixtapeEntries[target]; myMixtapeEntries[target] = tmp
+    this.setData({ myMixtapeEntries })
+  },
+
+  onMixtapeEntryNoteInput(e: WechatMiniprogram.TextareaInput) {
+    const index = Number((e.currentTarget.dataset as any).index)
+    const value = e.detail.value || ''
+    this.setData({ myMixtapeEntries: this.data.myMixtapeEntries.map((x: Top10Entry, i: number) => i === index ? { ...x, note: value } : x) })
+  },
+
+  onSaveMixtapeBallot() {
+    if (!this._requireLogin()) return
+    if (this.data.myMixtapeSaving) return
+    if (!this.data.mixtapeVotingOpen) { wx.showToast({ title: '投票已截止', icon: 'none' }); return }
+    this.setData({ myMixtapeSaving: true })
+    wx.showLoading({ title: '保存中…', mask: true })
+    const entries = this.data.myMixtapeEntries.map((x: Top10Entry) => ({ albumId: x.albumId, note: x.note }))
+    wx.cloud.callFunction({
+      name: 'manageMixtapeVote',
+      data: { action: 'submit', entries },
+      success: (res: any) => {
+        wx.hideLoading()
+        this.setData({ myMixtapeSaving: false })
+        const r = res.result || {}
+        if (!r.success) { wx.showToast({ title: r.error || '保存失败', icon: 'none' }); return }
+        this._loadMixtapeStats()
+        wx.showToast({ title: '已保存', icon: 'success' })
+      },
+      fail: () => { wx.hideLoading(); this.setData({ myMixtapeSaving: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     } as any)
   },
 

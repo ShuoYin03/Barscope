@@ -3,9 +3,10 @@ import { getThemeClass } from '../../utils/theme'
 const FEATURES = [
   { id:'2026-top-10', category:'年度企划', title:'2026 中文说唱十大专辑', subtitle:'开放投票中', status:'选出你的十张，写下理由，公开你的榜单', accent:'01', hero:true, cta:'投票' },
   { id:'2026-best-newcomer', category:'年度企划', title:'2026 年度最佳新人', subtitle:'开放投票中', status:'从 2026 年发行首张 LP/Mixtape 的新人中选出你心中的三位', accent:'02', cta:'投票' },
-  { id:'2026-top-reviewers', category:'年度企划', title:'2026 年度最常评分用户', subtitle:'实时统计中', status:'统计 2026 全年评论数据，看看谁在这一年留下了最多评分与乐评', accent:'03', cta:'查看' },
-  { id:'long-review-template', category:'深度长评', title:'深度乐评征稿中', subtitle:'广告位等待投稿中…', status:'等待你的长篇乐评', accent:'04', cta:'投稿' },
-  { id:'rapper-interview', category:'人物访谈', title:'Rapper 心里话', subtitle:'征集访谈投稿', status:'推荐或发起一次对话，写下完整访谈内容，审核通过后公开发布', accent:'05', cta:'查看' },
+  { id:'2026-top-5-mixtapes', category:'年度企划', title:'2026 五大 Mixtape', subtitle:'开放投票中', status:'从 2026 年发行、类型已标记为 Mixtape 的项目中选出你心中的五张', accent:'03', cta:'投票' },
+  { id:'2026-top-reviewers', category:'年度企划', title:'2026 年度最常评分用户', subtitle:'实时统计中', status:'统计 2026 全年评论数据，看看谁在这一年留下了最多评分与乐评', accent:'04', cta:'查看' },
+  { id:'long-review-template', category:'深度长评', title:'深度乐评征稿中', subtitle:'广告位等待投稿中…', status:'等待你的长篇乐评', accent:'05', cta:'投稿' },
+  { id:'rapper-interview', category:'人物访谈', title:'Rapper 心里话', subtitle:'征集访谈投稿', status:'推荐或发起一次对话，写下完整访谈内容，审核通过后公开发布', accent:'06', cta:'查看' },
 ]
 
 Page({
