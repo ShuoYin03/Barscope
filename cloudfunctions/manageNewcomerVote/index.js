@@ -128,7 +128,14 @@ async function applyLiveProfiles(list) {
   if (!openIds.length) return
   try {
     const usersRes = await db.collection('users').where({ openId: _.in(openIds) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
-    const userMap = new Map((usersRes.data || []).map(u => [String(u.openId), u]))
+    // some accounts have duplicate users docs sharing one openId (legacy duplicate writes) —
+    // merge rather than let whichever doc comes last blindly win, preferring set values.
+    const userMap = new Map()
+    ;(usersRes.data || []).forEach(u => {
+      const key = String(u.openId)
+      const prev = userMap.get(key)
+      userMap.set(key, prev ? { nickName: u.nickName || prev.nickName, avatarUrl: u.avatarUrl || prev.avatarUrl } : u)
+    })
     list.forEach(d => {
       const u = userMap.get(d.openId)
       if (u) { if (u.nickName) d.userNickName = u.nickName; if (u.avatarUrl) d.userAvatarUrl = u.avatarUrl }

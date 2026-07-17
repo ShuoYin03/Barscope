@@ -52,9 +52,19 @@ exports.main = async (event) => {
   if (!targetOpenId) return { success: false, error: '缺少用户 ID' }
 
   try {
-    const userRes = await db.collection('users').where({ openId: targetOpenId }).limit(1).get()
+    const userRes = await db.collection('users').where({ openId: targetOpenId }).limit(10).get()
     if (!userRes.data.length) return { success: false, error: '用户不存在' }
-    const user = userRes.data[0]
+    // Some accounts have more than one users doc sharing the same openId (legacy duplicate
+    // writes) — a bare .limit(1) can land on an old, incomplete copy. Merge fields across all
+    // matches, preferring whichever doc actually has a value set.
+    const user = userRes.data.reduce((best, doc) => ({
+      ...doc,
+      nickName: doc.nickName || best.nickName,
+      avatarUrl: doc.avatarUrl || best.avatarUrl,
+      coverUrl: doc.coverUrl || best.coverUrl,
+      bio: doc.bio || best.bio,
+      type: (doc.type && doc.type !== 'normal') ? doc.type : best.type,
+    }))
 
     const [{ reviewCount, likesReceived }, latestReviews, followerCount, followingCount, isFollowing, urlMap] = await Promise.all([
       getReviewAggregate(targetOpenId),

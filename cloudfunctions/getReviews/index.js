@@ -101,7 +101,13 @@ async function enrichReviews(records, OPENID) {
   if (authorOpenIds.length) {
     try {
       const usersRes = await db.collection('users').where({ openId: _.in(authorOpenIds) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
-      ;(usersRes.data || []).forEach(u => liveUserMap.set(String(u.openId), u))
+      // some accounts have duplicate users docs sharing one openId (legacy duplicate writes) —
+      // merge rather than let whichever doc comes last blindly win, preferring set values.
+      ;(usersRes.data || []).forEach(u => {
+        const key = String(u.openId)
+        const prev = liveUserMap.get(key)
+        liveUserMap.set(key, prev ? { nickName: u.nickName || prev.nickName, avatarUrl: u.avatarUrl || prev.avatarUrl } : u)
+      })
     } catch (e) { console.warn('enrichReviews live profile lookup failed:', e.message) }
   }
 
@@ -269,7 +275,14 @@ async function getMonthlyTopCritics(limit = 8) {
     // changes their profile — pull the live values from users so the leaderboard stays current.
     try {
       const usersRes = await db.collection('users').where({ openId: _.in(ranked.map(r => r.openId)) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
-      const userMap = new Map((usersRes.data || []).map(u => [String(u.openId), u]))
+      // some accounts have duplicate users docs sharing one openId (legacy duplicate writes) —
+      // merge rather than let whichever doc comes last blindly win, preferring set values.
+      const userMap = new Map()
+      ;(usersRes.data || []).forEach(u => {
+        const key = String(u.openId)
+        const prev = userMap.get(key)
+        userMap.set(key, prev ? { nickName: u.nickName || prev.nickName, avatarUrl: u.avatarUrl || prev.avatarUrl } : u)
+      })
       ranked.forEach(r => {
         const u = userMap.get(r.openId)
         if (u) { if (u.nickName) r.nickName = u.nickName; if (u.avatarUrl) r.avatarUrl = u.avatarUrl }
