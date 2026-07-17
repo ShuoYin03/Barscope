@@ -19,14 +19,6 @@ const ARTICLES: any = {
     ideaPlaceholder: '写下你的核心观点、切入角度，以及为什么这张专辑值得被认真讨论。',
     outlinePlaceholder: '可以列出文章大纲、重点曲目或已有样稿。',
   },
-  'rapper-interview': {
-    category: '人物访谈',
-    title: 'Rapper 心里话',
-    intro: '可以推荐采访对象，也可以由 Rapper、Producer、DJ 或厂牌成员本人发起。写下想聊的话题，并留下微信号详谈。',
-    proposalPlaceholder: '例如：和 XXX 聊聊作品之外的生活',
-    ideaPlaceholder: '介绍采访对象、想聊的主题，以及为什么这次对话值得被记录。',
-    outlinePlaceholder: '可以列出问题方向、采访形式或已确认的嘉宾信息。',
-  },
 }
 
 interface Top10Entry { albumId: string; title: string; artist: string; coverUrl: string; note: string }

@@ -1,0 +1,95 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="brand">人物访谈</text>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab === 'browse' ? 'active' : ''}}" bindtap="onTabTap" data-tab="browse"><text>浏览</text></view>
+    <view class="tab {{tab === 'submit' ? 'active' : ''}}" bindtap="onTabTap" data-tab="submit"><text>投稿</text></view>
+  </view>
+
+  <scroll-view wx:if="{{tab === 'browse'}}" class="content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="onReachBottom">
+    <view wx:if="{{loading && list.length === 0}}" class="empty"><text>加载中…</text></view>
+    <view wx:elif="{{list.length === 0}}" class="empty"><text>还没有发布的访谈，来投第一篇吧</text></view>
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="_id" class="interview-card" bindtap="onCardTap" data-id="{{item._id}}">
+        <image wx:if="{{item.coverUrl}}" class="interview-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+        <view class="interview-body">
+          <text class="interview-title">{{item.title}}</text>
+          <text class="interview-interviewee">{{item.intervieweeName}}</text>
+          <text wx:if="{{item.intro}}" class="interview-intro">{{item.intro}}</text>
+          <view class="interview-meta-row">
+            <text class="interview-author">{{item.submitterName}}</text>
+            <text class="interview-date">{{item.publishedAtDisplay}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{loading}}" class="empty"><text>加载中…</text></view>
+      <view wx:elif="{{!hasMore}}" class="empty"><text>── 共 {{total}} 篇 ──</text></view>
+    </block>
+  </scroll-view>
+
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="form">
+      <view class="field">
+        <text class="field-label">封面图（选填）</text>
+        <view class="cover-picker" bindtap="onChooseCover">
+          <image wx:if="{{coverLocalPath}}" class="cover-preview" src="{{coverLocalPath}}" mode="aspectFill" />
+          <view wx:else class="cover-placeholder"><text>{{coverUploading ? '上传中…' : '+ 上传封面'}}</text></view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field-head"><text class="field-label">标题 *</text><text class="field-count">{{title.length}} / 80</text></view>
+        <input class="input" data-field="title" value="{{title}}" bindinput="onFieldInput" maxlength="80" placeholder="例如：和 XXX 聊聊作品之外的生活" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <view class="field-head"><text class="field-label">受访对象 *</text><text class="field-count">{{intervieweeName.length}} / 40</text></view>
+        <input class="input" data-field="intervieweeName" value="{{intervieweeName}}" bindinput="onFieldInput" maxlength="40" placeholder="Rapper / Producer / DJ / 厂牌成员姓名" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <view class="field-head"><text class="field-label">简介（选填）</text><text class="field-count">{{intro.length}} / 200</text></view>
+        <textarea class="textarea" data-field="intro" value="{{intro}}" bindinput="onFieldInput" maxlength="200" placeholder="一两句话概括这次对话，会显示在列表卡片上" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <view class="field-head"><text class="field-label">正文内容 *</text><text class="field-count">{{content.length}} / 20000</text></view>
+        <textarea class="textarea content" data-field="content" value="{{content}}" bindinput="onFieldInput" maxlength="20000" placeholder="完整的访谈正文，至少 200 字" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="field">
+        <text class="field-label">微信号（选填）</text>
+        <input class="input" data-field="wechat" value="{{wechat}}" bindinput="onFieldInput" maxlength="80" placeholder="如内容需要沟通，编辑部会通过这个联系你" placeholder-style="color:#6f6762" />
+      </view>
+
+      <view class="privacy-note">
+        <text>正文审核通过后会公开展示；微信号不会公开，仅供编辑部审核时联系你。</text>
+      </view>
+
+      <view class="submit {{(submitting || coverUploading) ? 'disabled' : ''}}" bindtap="onSubmit">
+        <text>{{submitting ? '提交中…' : '提交访谈'}}</text>
+      </view>
+    </view>
+
+    <block wx:if="{{isLoggedIn}}">
+      <view class="side-row"><text class="side-text">我的投稿</text></view>
+      <view wx:if="{{myLoading}}" class="empty small"><text>加载中…</text></view>
+      <view wx:elif="{{myList.length === 0}}" class="empty small"><text>还没有投稿记录</text></view>
+      <view wx:else class="my-list">
+        <view wx:for="{{myList}}" wx:key="_id" class="my-row">
+          <view class="my-row-body">
+            <text class="my-row-title">{{item.title}}</text>
+            <text class="my-row-date">{{item.createdAtDisplay}}</text>
+            <text wx:if="{{item.status === 'rejected' && item.reviewNote}}" class="my-row-note">驳回原因：{{item.reviewNote}}</text>
+          </view>
+          <text class="my-row-status status-{{item.status}}">{{item.statusLabel}}</text>
+        </view>
+      </view>
+    </block>
+
+    <view class="end-mark"><text>— OPEN CALL —</text></view>
+  </scroll-view>
+</view>

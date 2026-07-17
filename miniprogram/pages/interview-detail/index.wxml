@@ -1,0 +1,33 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="brand">人物访谈</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty"><text>加载中…</text></view>
+  <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text></view>
+
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <image wx:if="{{interview.coverUrl}}" class="cover" src="{{interview.coverUrl}}" mode="aspectFill" />
+    <view class="article-head">
+      <text class="category">人物访谈</text>
+      <text class="title">{{interview.title}}</text>
+      <view class="meta-row">
+        <text class="interviewee">{{interview.intervieweeName}}</text>
+        <text class="sep">·</text>
+        <text class="author">{{interview.submitterName}}</text>
+        <text class="sep">·</text>
+        <text class="date">{{publishedAtDisplay}}</text>
+      </view>
+      <text wx:if="{{interview.intro}}" class="intro">{{interview.intro}}</text>
+    </view>
+
+    <view class="rule" />
+
+    <view class="body">
+      <text class="body-text">{{interview.content}}</text>
+    </view>
+
+    <view class="end-mark"><text>— END —</text></view>
+  </scroll-view>
+</view>

@@ -59,6 +59,18 @@
       <text class="card-arrow">→</text>
     </view>
 
+    <view class="admin-card" bindtap="onSectionTap" data-section="interviews">
+      <view class="card-icon">✎</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">人物访谈审核</text>
+          <view wx:if="{{interviewCount > 0}}" class="count-chip"><text>{{interviewCount}}</text></view>
+        </view>
+        <text class="card-desc">审核用户投稿的完整访谈内容，通过后自动公开发布。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
     <view wx:if="{{loading}}" class="loading-row"><text>同步待处理数量中…</text></view>
   </scroll-view>
 </view>
