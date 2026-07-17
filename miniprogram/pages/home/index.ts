@@ -114,6 +114,7 @@ Page({
             score: fmtScore(a.avgScore),
             coverUrl: a.coverUrl || '',
             kicker: `历史上的今天 · ${a.yearsAgo}年前`,
+            isTodayHot: false,
           }))
         : []
 
@@ -124,7 +125,10 @@ Page({
         year: a.year || '',
         score: fmtScore(Number(a.score || 0)),
         coverUrl: a.coverUrl || '',
-        kicker: '今日热评专辑',
+        kicker: '今日热议',
+        isTodayHot: true,
+        todayReviewCount: Number(a.todayReviewCount || 0),
+        currentScore: fmtScore(Number(a.score || 0)),
       }))
 
       const heroSwiperList = [...onThisDaySwiperItems, ...todayHotSwiperItems]
