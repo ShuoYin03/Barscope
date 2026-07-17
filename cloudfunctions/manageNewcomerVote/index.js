@@ -113,11 +113,27 @@ async function listPublic(page, pageSize) {
     const start = (page - 1) * pageSize
     const result = await query.orderBy('updatedAt', 'desc').skip(start).limit(pageSize).get()
     const list = (result.data || []).filter(d => Array.isArray(d.entries) && d.entries.length > 0)
+    await applyLiveProfiles(list)
     return { success: true, list, total, page, pageSize }
   } catch (e) {
     if (isCollectionMissing(e)) return { success: true, list: [], total: 0, page, pageSize }
     return { success: false, error: e.message }
   }
+}
+
+// ballots snapshot userAvatarUrl/userNickName at submit time, which goes stale once a user
+// changes their profile — pull the live values from users so the community feed stays current.
+async function applyLiveProfiles(list) {
+  const openIds = Array.from(new Set(list.map(d => d.openId).filter(Boolean)))
+  if (!openIds.length) return
+  try {
+    const usersRes = await db.collection('users').where({ openId: _.in(openIds) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
+    const userMap = new Map((usersRes.data || []).map(u => [String(u.openId), u]))
+    list.forEach(d => {
+      const u = userMap.get(d.openId)
+      if (u) { if (u.nickName) d.userNickName = u.nickName; if (u.avatarUrl) d.userAvatarUrl = u.avatarUrl }
+    })
+  } catch (e) { console.warn('applyLiveProfiles failed:', e.message) }
 }
 
 async function stats() {
