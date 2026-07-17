@@ -1,0 +1,6 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "article-blocks": "/components/article-blocks/index"
+  }
+}
