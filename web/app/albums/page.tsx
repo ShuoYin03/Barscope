@@ -1,5 +1,18 @@
 import { SiteHeader } from '@/components/site-header'
+import { AlbumGrid } from '@/components/album-grid'
 
 export default function AlbumsPage() {
-  return <main><SiteHeader /><section className="shell section-block"><div className="eyebrow">SIDE A · DATABASE</div><h1>ALBUMS</h1><p className="hero-copy">专辑库骨架已就位。下一步接入 CloudBase 专辑数据、筛选、搜索与详情页。</p></section></main>
+  return (
+    <main>
+      <SiteHeader />
+      <section className="shell">
+        <div className="page-header">
+          <span className="eyebrow">SIDE A · DATABASE</span>
+          <h1>ALBUMS</h1>
+          <p>中文说唱专辑库，按年份浏览，评分最高的排在最前面。</p>
+        </div>
+        <AlbumGrid />
+      </section>
+    </main>
+  )
 }
