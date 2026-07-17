@@ -8,7 +8,7 @@
     <block wx:else>
       <view wx:for="{{feedList}}" wx:for-item="item" wx:key="_id" class="feed-card">
         <view class="feed-head" catchtap="onUserTap" data-open-id="{{item.authorOpenId}}">
-          <view class="feed-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view>
+          <view class="feed-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.userAvatarUrl}}" class="feed-avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view>
           <view class="feed-meta"><text class="feed-user">{{item.userName}}</text><text class="feed-time">{{item.timeAgo}}</text></view>
         </view>
         <view class="feed-body" bindtap="onItemTap" data-album-id="{{item.albumId}}">

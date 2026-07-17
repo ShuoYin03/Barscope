@@ -10,6 +10,7 @@
 .review-header { display: flex; align-items: flex-start; gap: 18rpx; margin-bottom: 16rpx; }
 .avatar { width: 76rpx; height: 76rpx; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 50%, var(--accent) 0, var(--accent) 17%, var(--groove-a) 18%, var(--groove-b) 100%); }
 .avatar text { font-family: var(--font-bebas); color: var(--black); font-size: 22rpx; }
+.avatar-img { width: 100%; height: 100%; border-radius: 50%; }
 .avatar.is-critic { background: var(--accent); }
 .meta { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 8rpx; min-width: 0; }

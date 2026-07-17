@@ -90,7 +90,7 @@
       </view>
       <view wx:else class="reviews-list">
         <view wx:for="{{reviews}}" wx:key="id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}">
-          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.score}}</text></view>
+          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.userAvatarUrl}}" class="review-avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.score}}</text></view>
           <text class="review-text">{{item.content}}</text><view class="review-footer"><text>♡ {{item.likes}}</text><text class="sep"> | </text><text>↩ {{item.replyCount}}条回复</text></view>
         </view>
       </view>
@@ -116,7 +116,7 @@
       <view wx:elif="{{followingFeedList.length === 0}}" class="feed-gate"><text class="feed-gate-text">关注喜欢的乐评人，就能在这里看到他们的最新点评</text></view>
       <view wx:else class="reviews-list">
         <view wx:for="{{followingFeedList}}" wx:key="_id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}">
-          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}" catchtap="onCriticTap" data-open-id="{{item.authorOpenId}}"><text>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.ratingText}}</text></view>
+          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}" catchtap="onCriticTap" data-open-id="{{item.authorOpenId}}"><image wx:if="{{item.userAvatarUrl}}" class="review-avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.ratingText}}</text></view>
           <text class="review-text">{{item.content}}</text>
         </view>
       </view>
