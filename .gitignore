@@ -13,3 +13,4 @@ project.private.config.json
 crawler/backups/
 
 CLAUDE.md
+*.xcuserstate
