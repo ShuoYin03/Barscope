@@ -10,6 +10,7 @@ Page({
     pageSize: 20,
     loading: false,
     hasMore: true,
+    hasLoadedOnce: false,
   },
 
   onLoad() {
@@ -23,10 +24,47 @@ Page({
 
   onShow() {
     this.setData({ themeClass: getThemeClass() })
+
+    // Returning from an album/review detail page must re-fetch the first page so
+    // live interaction metadata (likes / replies) is not left at the snapshot
+    // that was rendered before navigation.
+    if (this.data.hasLoadedOnce && !this.data.loading) {
+      this.refreshReviews()
+    }
   },
 
   onBack() {
     wx.navigateBack()
+  },
+
+  refreshReviews(done?: () => void) {
+    if (this.data.loading) {
+      if (done) done()
+      return
+    }
+    this.setData({ loading: true, page: 1, hasMore: true })
+    wx.cloud.callFunction({
+      name: 'getReviews',
+      data: { recent: true, page: 1, pageSize: this.data.pageSize },
+      success: (res: any) => {
+        const result = res.result || {}
+        const incoming = result.success ? (result.list || []) : []
+        this.setData({
+          reviews: incoming,
+          page: 1,
+          hasMore: incoming.length === this.data.pageSize,
+          loading: false,
+          hasLoadedOnce: true,
+        })
+      },
+      fail: () => {
+        this.setData({ loading: false })
+        wx.showToast({ title: '评论刷新失败', icon: 'none' })
+      },
+      complete: () => {
+        if (done) done()
+      },
+    })
   },
 
   loadReviews(page: number) {
@@ -44,6 +82,7 @@ Page({
           page,
           hasMore: incoming.length === this.data.pageSize,
           loading: false,
+          hasLoadedOnce: true,
         })
       },
       fail: () => {
@@ -63,8 +102,6 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.setData({ page: 1, hasMore: true })
-    this.loadReviews(1)
-    wx.stopPullDownRefresh()
+    this.refreshReviews(() => wx.stopPullDownRefresh())
   },
 })
