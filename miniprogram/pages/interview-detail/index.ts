@@ -7,6 +7,16 @@ function formatDate(value: any): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Submissions are one continuous text field, not structured Q&A blocks — split on blank lines
+// (falling back to single newlines) so the article body can render as normal magazine paragraphs,
+// with the opening paragraph getting the drop-cap treatment.
+function splitParagraphs(content: string): string[] {
+  const raw = String(content || '').trim()
+  if (!raw) return []
+  const blocks = raw.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+  return blocks.length > 1 ? blocks : raw.split(/\n/).map(p => p.trim()).filter(Boolean)
+}
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -16,6 +26,9 @@ Page({
     loadError: '',
     interview: null as any,
     publishedAtDisplay: '',
+    dropcapChar: '',
+    firstParagraphRest: '',
+    restParagraphs: [] as string[],
   },
 
   onLoad(options: any) {
@@ -38,7 +51,16 @@ Page({
       success: (res: any) => {
         const r = res.result || {}
         if (!r.success) { this.setData({ loading: false, loadError: r.error || '加载失败' }); return }
-        this.setData({ loading: false, interview: r.interview, publishedAtDisplay: formatDate(r.interview.publishedAt) })
+        const paragraphs = splitParagraphs(r.interview.content)
+        const first = paragraphs[0] || ''
+        this.setData({
+          loading: false,
+          interview: r.interview,
+          publishedAtDisplay: formatDate(r.interview.publishedAt),
+          dropcapChar: first.slice(0, 1),
+          firstParagraphRest: first.slice(1),
+          restParagraphs: paragraphs.slice(1),
+        })
       },
       fail: () => this.setData({ loading: false, loadError: '网络错误，请重试' }),
     } as any)

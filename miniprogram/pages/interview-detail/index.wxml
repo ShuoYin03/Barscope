@@ -1,31 +1,27 @@
 <view class="page {{themeClass}}">
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <text class="back" bindtap="onBack">←</text>
-    <text class="brand">人物访谈</text>
   </view>
 
   <view wx:if="{{loading}}" class="empty"><text>加载中…</text></view>
   <view wx:elif="{{loadError}}" class="empty"><text>{{loadError}}</text></view>
 
   <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <image wx:if="{{interview.coverUrl}}" class="cover" src="{{interview.coverUrl}}" mode="aspectFill" />
-    <view class="article-head">
-      <text class="category">人物访谈</text>
-      <text class="title">{{interview.title}}</text>
-      <view class="meta-row">
-        <text class="interviewee">{{interview.intervieweeName}}</text>
-        <text class="sep">·</text>
-        <text class="author">{{interview.submitterName}}</text>
-        <text class="sep">·</text>
-        <text class="date">{{publishedAtDisplay}}</text>
-      </view>
-      <text wx:if="{{interview.intro}}" class="intro">{{interview.intro}}</text>
+    <view class="interview-hero">
+      <text class="eyebrow">IN CONVERSATION WITH · {{interview.intervieweeName}}</text>
+      <text class="interview-name">{{interview.title}}</text>
+      <text wx:if="{{interview.intro}}" class="interview-quote">{{interview.intro}}</text>
+      <view class="review-meta"><text>{{interview.submitterName}}</text><text>{{publishedAtDisplay}}</text></view>
     </view>
 
-    <view class="rule" />
+    <image wx:if="{{interview.coverUrl}}" class="portrait-img" src="{{interview.coverUrl}}" mode="aspectFill" />
+    <view wx:else class="portrait"><text>PORTRAIT / HERO IMAGE</text></view>
 
-    <view class="body">
-      <text class="body-text">{{interview.content}}</text>
+    <view class="article-body">
+      <block wx:if="{{dropcapChar}}">
+        <text class="dropcap">{{dropcapChar}}</text><text class="body-text">{{firstParagraphRest}}</text>
+      </block>
+      <text wx:for="{{restParagraphs}}" wx:key="*this" class="body-paragraph">{{item}}</text>
     </view>
 
     <view class="end-mark"><text>— END —</text></view>
