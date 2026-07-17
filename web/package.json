@@ -9,10 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@cloudbase/js-sdk": "latest",
+    "@cloudbase/node-sdk": "^3.18.3",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/node": "latest",

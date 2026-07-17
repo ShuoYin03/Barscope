@@ -16,3 +16,4 @@ CLAUDE.md
 
 web/.next/
 web/tsconfig.tsbuildinfo
+web/.env*.local
