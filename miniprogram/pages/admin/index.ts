@@ -39,6 +39,7 @@ Page({
   onReachBottom() { if (!this.data.hasMore || this.data.loading) return; this._loadList(this.data.activeTab, this.data.page + 1) },
   onPullDownRefresh() { this._loadStats(); this.setData({ list: [], page: 1 }); this._loadList(this.data.activeTab, 1); wx.stopPullDownRefresh() },
   onBack() { wx.navigateBack() },
+  onOpenEditorialTemplates() { wx.navigateTo({ url: '/pages/editorial-templates/index' }) },
   onCopyApprovedList() {
     if (this.data.exporting) return
     this.setData({ exporting: true })
