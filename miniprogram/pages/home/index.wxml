@@ -24,7 +24,7 @@
       <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
     </view>
 
-    <!-- ── EDITORIAL COLUMN — ON THIS DAY ─────────────────────── -->
+    <!-- ── EDITORIAL COLUMN ─────────────────────────────────────── -->
     <view wx:if="{{!loading && heroSwiperList.length}}" class="otd-section">
       <section-header prefix="专栏" side="" title="" />
       <swiper class="hero-swiper" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
@@ -49,6 +49,16 @@
             <view class="hero-info">
               <text class="hero-title">{{item.title}}</text>
               <text class="hero-meta">{{item.artist}} · {{item.year}}</text>
+              <view wx:if="{{item.isTodayHot}}" style="display:flex;align-items:stretch;justify-content:center;margin-top:24rpx;border-top:2rpx solid #2b2421;border-bottom:2rpx solid #2b2421;width:100%;">
+                <view style="flex:1;padding:16rpx 8rpx;text-align:center;border-right:2rpx solid #2b2421;">
+                  <text style="display:block;font-size:16rpx;letter-spacing:3rpx;color:#766f68;">评分更新</text>
+                  <text style="display:block;margin-top:6rpx;font-family:var(--font-bebas);font-size:34rpx;color:#d45124;">{{item.currentScore}}</text>
+                </view>
+                <view style="flex:1;padding:16rpx 8rpx;text-align:center;">
+                  <text style="display:block;font-size:16rpx;letter-spacing:3rpx;color:#766f68;">今日新评论</text>
+                  <text style="display:block;margin-top:6rpx;font-family:var(--font-bebas);font-size:34rpx;color:#f4eee8;">+{{item.todayReviewCount}}</text>
+                </view>
+              </view>
             </view>
           </view>
         </swiper-item>
