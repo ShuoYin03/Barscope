@@ -26,4 +26,7 @@ Page({
     const key = String((e.currentTarget.dataset as any).key || '') as TemplateKey
     if (TEMPLATES.some(x => x.key === key)) this.setData({ active: key })
   },
+  onOpenEditor() {
+    wx.navigateTo({ url: `/pages/editorial-editor/index?template=${this.data.active}` })
+  },
 })
