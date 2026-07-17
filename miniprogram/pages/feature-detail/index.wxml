@@ -4,16 +4,139 @@
     <text class="brand">FEATURES</text>
   </view>
 
-  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{article}}">
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{article}}" bindscrolltolower="onCommunityReachBottom">
     <view class="article-head">
-      <text class="category">{{article.category}} · OPEN CALL</text>
+      <text class="category">{{article.category}} · {{(isTop10 || isNewcomer) ? 'COMMUNITY VOTE' : 'OPEN CALL'}}</text>
       <text class="title">{{article.title}}</text>
       <text class="intro">{{article.intro}}</text>
     </view>
 
     <view class="rule" />
 
-    <view class="form">
+    <block wx:if="{{isTop10}}">
+      <view class="top10-tabs">
+        <view class="top10-tab {{top10Tab === 'mine' ? 'active' : ''}}" bindtap="onTop10TabTap" data-tab="mine"><text>我的榜单</text></view>
+        <view class="top10-tab {{top10Tab === 'community' ? 'active' : ''}}" bindtap="onTop10TabTap" data-tab="community"><text>社区榜单</text></view>
+      </view>
+      <view class="top10-status">
+        <text class="top10-status-text">{{votingOpen ? '投票进行中 · 截止 2026-12-31' : '投票已截止'}}</text>
+        <text class="top10-status-count">{{voterTotal}} 人已投票</text>
+      </view>
+
+      <block wx:if="{{top10Tab === 'mine'}}">
+        <view wx:if="{{myLoading}}" class="top10-empty"><text>加载中…</text></view>
+        <block wx:else>
+          <view wx:if="{{myEntries.length === 0}}" class="top10-empty"><text>还没有选择专辑，点击下方添加</text></view>
+          <view wx:for="{{myEntries}}" wx:key="albumId" class="top10-entry-row">
+            <text class="top10-rank">{{index + 1}}</text>
+            <image class="top10-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view class="top10-entry-body">
+              <text class="top10-entry-title">{{item.title}}</text>
+              <text class="top10-entry-artist">{{item.artist}}</text>
+              <textarea class="top10-note-input" value="{{item.note}}" data-index="{{index}}" bindinput="onEntryNoteInput" maxlength="200" placeholder="写下你选择这张专辑的理由（选填）" placeholder-style="color:#6f6762" auto-height />
+            </view>
+            <view class="top10-entry-actions">
+              <view class="top10-move {{index === 0 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="up" bindtap="onMoveEntry"><text>↑</text></view>
+              <view class="top10-move {{index === myEntries.length - 1 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="down" bindtap="onMoveEntry"><text>↓</text></view>
+              <view class="top10-remove" data-index="{{index}}" bindtap="onRemoveEntry"><text>×</text></view>
+            </view>
+          </view>
+
+          <view wx:if="{{myEntries.length < 10 && votingOpen}}" class="top10-add-btn" bindtap="onOpenPicker">
+            <text>+ 添加专辑（{{myEntries.length}}/10）</text>
+          </view>
+          <view class="top10-save {{mySaving ? 'disabled' : ''}}" bindtap="onSaveBallot">
+            <text>{{mySaving ? '保存中…' : '保存我的榜单'}}</text>
+          </view>
+        </block>
+      </block>
+
+      <block wx:else>
+        <view wx:if="{{communityLoading && communityList.length === 0}}" class="top10-empty"><text>加载中…</text></view>
+        <view wx:elif="{{communityList.length === 0}}" class="top10-empty"><text>还没有人公开榜单，来做第一个吧</text></view>
+        <block wx:else>
+          <view wx:for="{{communityList}}" wx:for-item="ballot" wx:key="_id" class="top10-card">
+            <view class="top10-card-head">
+              <view class="top10-card-avatar"><image wx:if="{{ballot.userAvatarUrl}}" class="top10-card-avatar-img" src="{{ballot.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{ballot.userNickName[0]}}</text></view>
+              <text class="top10-card-name">{{ballot.userNickName}}</text>
+              <text class="top10-card-date">{{ballot.updatedAtDisplay}}</text>
+            </view>
+            <view wx:for="{{ballot.entries}}" wx:key="albumId" class="top10-card-entry">
+              <text class="top10-card-rank">{{index + 1}}</text>
+              <view class="top10-card-entry-body">
+                <text class="top10-card-entry-title">{{item.title}} <text class="top10-card-entry-artist">{{item.artist}}</text></text>
+                <text wx:if="{{item.note}}" class="top10-card-note">{{item.note}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{communityLoading}}" class="top10-empty"><text>加载中…</text></view>
+          <view wx:elif="{{!communityHasMore}}" class="top10-empty"><text>── 共 {{communityTotal}} 人 ──</text></view>
+        </block>
+      </block>
+    </block>
+
+    <block wx:elif="{{isNewcomer}}">
+      <view class="top10-tabs">
+        <view class="top10-tab {{newcomerTab === 'mine' ? 'active' : ''}}" bindtap="onNewcomerTabTap" data-tab="mine"><text>我的榜单</text></view>
+        <view class="top10-tab {{newcomerTab === 'community' ? 'active' : ''}}" bindtap="onNewcomerTabTap" data-tab="community"><text>社区榜单</text></view>
+      </view>
+      <view class="top10-status">
+        <text class="top10-status-text">{{newcomerVotingOpen ? '投票进行中 · 截止 2026-12-31' : '投票已截止'}}</text>
+        <text class="top10-status-count">{{newcomerVoterTotal}} 人已投票</text>
+      </view>
+
+      <block wx:if="{{newcomerTab === 'mine'}}">
+        <view wx:if="{{myNewcomerLoading}}" class="top10-empty"><text>加载中…</text></view>
+        <block wx:else>
+          <view wx:if="{{myNewcomerEntries.length === 0}}" class="top10-empty"><text>还没有选择新人，点击下方添加</text></view>
+          <view wx:for="{{myNewcomerEntries}}" wx:key="artistId" class="top10-entry-row">
+            <text class="top10-rank">{{index + 1}}</text>
+            <view class="newcomer-avatar"><image wx:if="{{item.avatarUrl}}" class="newcomer-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+            <view class="top10-entry-body">
+              <text class="top10-entry-title">{{item.artistName}}</text>
+              <textarea class="top10-note-input" value="{{item.note}}" data-index="{{index}}" bindinput="onNewcomerEntryNoteInput" maxlength="200" placeholder="写下你选择这位新人的理由（选填）" placeholder-style="color:#6f6762" auto-height />
+            </view>
+            <view class="top10-entry-actions">
+              <view class="top10-move {{index === 0 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="up" bindtap="onMoveNewcomerEntry"><text>↑</text></view>
+              <view class="top10-move {{index === myNewcomerEntries.length - 1 ? 'disabled' : ''}}" data-index="{{index}}" data-dir="down" bindtap="onMoveNewcomerEntry"><text>↓</text></view>
+              <view class="top10-remove" data-index="{{index}}" bindtap="onRemoveNewcomerEntry"><text>×</text></view>
+            </view>
+          </view>
+
+          <view wx:if="{{myNewcomerEntries.length < 3 && newcomerVotingOpen}}" class="top10-add-btn" bindtap="onOpenNewcomerPicker">
+            <text>+ 添加新人（{{myNewcomerEntries.length}}/3）</text>
+          </view>
+          <view class="top10-save {{myNewcomerSaving ? 'disabled' : ''}}" bindtap="onSaveNewcomerBallot">
+            <text>{{myNewcomerSaving ? '保存中…' : '保存我的榜单'}}</text>
+          </view>
+        </block>
+      </block>
+
+      <block wx:else>
+        <view wx:if="{{newcomerCommunityLoading && newcomerCommunityList.length === 0}}" class="top10-empty"><text>加载中…</text></view>
+        <view wx:elif="{{newcomerCommunityList.length === 0}}" class="top10-empty"><text>还没有人公开榜单，来做第一个吧</text></view>
+        <block wx:else>
+          <view wx:for="{{newcomerCommunityList}}" wx:for-item="ballot" wx:key="_id" class="top10-card">
+            <view class="top10-card-head">
+              <view class="top10-card-avatar"><image wx:if="{{ballot.userAvatarUrl}}" class="top10-card-avatar-img" src="{{ballot.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{ballot.userNickName[0]}}</text></view>
+              <text class="top10-card-name">{{ballot.userNickName}}</text>
+              <text class="top10-card-date">{{ballot.updatedAtDisplay}}</text>
+            </view>
+            <view wx:for="{{ballot.entries}}" wx:key="artistId" class="top10-card-entry">
+              <text class="top10-card-rank">{{index + 1}}</text>
+              <view class="top10-card-entry-body">
+                <text class="top10-card-entry-title">{{item.artistName}}</text>
+                <text wx:if="{{item.note}}" class="top10-card-note">{{item.note}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{newcomerCommunityLoading}}" class="top10-empty"><text>加载中…</text></view>
+          <view wx:elif="{{!newcomerCommunityHasMore}}" class="top10-empty"><text>── 共 {{newcomerCommunityTotal}} 人 ──</text></view>
+        </block>
+      </block>
+    </block>
+
+    <view wx:else class="form">
       <view class="field">
         <view class="field-head"><text class="field-label">项目标题 *</text><text class="field-count">{{proposalTitle.length}} / 80</text></view>
         <input class="input" data-field="proposalTitle" value="{{proposalTitle}}" bindinput="onFieldInput" maxlength="80" placeholder="{{article.proposalPlaceholder}}" placeholder-style="color:#6f6762" />
@@ -48,6 +171,78 @@
       </view>
     </view>
 
-    <view class="end-mark"><text>— OPEN CALL —</text></view>
+    <view class="end-mark"><text>{{(isTop10 || isNewcomer) ? '— COMMUNITY VOTE —' : '— OPEN CALL —'}}</text></view>
   </scroll-view>
+
+  <view wx:if="{{pickerVisible}}" class="picker-mask" bindtap="onClosePicker">
+    <view class="picker-sheet" catchtap="noop">
+      <view class="picker-handle" />
+      <text class="picker-title">添加 2026 年专辑</text>
+      <input class="picker-input" value="{{pickerKeyword}}" bindinput="onPickerInput" placeholder="搜索专辑名 / 歌手，或在下方按月浏览" placeholder-style="color:#6f6762" focus />
+
+      <scroll-view wx:if="{{pickerSearching}}" class="picker-results" scroll-y>
+        <view wx:if="{{pickerLoading}}" class="picker-empty"><text>搜索中…</text></view>
+        <view wx:elif="{{pickerResults.length === 0}}" class="picker-empty"><text>没有匹配的 2026 年专辑</text></view>
+        <block wx:else>
+          <view wx:for="{{pickerResults}}" wx:key="_id" class="picker-row" bindtap="onPickerSelect" data-id="{{item._id}}">
+            <image class="picker-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+            <view class="picker-row-info">
+              <text class="picker-row-title">{{item.title}}</text>
+              <text class="picker-row-artist">{{item.artist}}</text>
+              <text class="picker-row-date">{{item.releaseDisplay}}</text>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+
+      <view wx:else class="picker-browse-wrap">
+        <scroll-view class="picker-results with-month-index" scroll-y scroll-into-view="{{pickerScrollIntoView}}" scroll-with-animation="{{true}}">
+          <view wx:if="{{pickerAllLoading}}" class="picker-empty"><text>加载中…</text></view>
+          <view wx:elif="{{pickerAllGroups.length === 0}}" class="picker-empty"><text>暂无已收录的 2026 年专辑</text></view>
+          <block wx:else>
+            <view wx:for="{{pickerAllGroups}}" wx:for-item="group" wx:key="month" id="picker-month-{{group.month}}">
+              <view class="picker-month-label"><text>2026 · {{group.month}}月</text></view>
+              <view wx:for="{{group.list}}" wx:key="_id" class="picker-row" bindtap="onPickerSelect" data-id="{{item._id}}">
+                <image class="picker-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+                <view class="picker-row-info">
+                  <text class="picker-row-title">{{item.title}}</text>
+                  <text class="picker-row-artist">{{item.artist}}</text>
+              <text class="picker-row-date">{{item.releaseDisplay}}</text>
+                </view>
+              </view>
+            </view>
+          </block>
+        </scroll-view>
+        <view wx:if="{{pickerAllGroups.length > 1}}" class="picker-month-index">
+          <view wx:for="{{pickerAllGroups}}" wx:for-item="group" wx:key="month" class="picker-month-index-item {{pickerActiveMonth === group.month ? 'active' : ''}}" bindtap="onPickerMonthTap" data-month="{{group.month}}">
+            <text>{{group.month}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="picker-cancel" bindtap="onClosePicker"><text>取消</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{newcomerPickerVisible}}" class="picker-mask" bindtap="onCloseNewcomerPicker">
+    <view class="picker-sheet" catchtap="noop">
+      <view class="picker-handle" />
+      <text class="picker-title">添加 2026 年度新人</text>
+      <input class="picker-input" value="{{newcomerPickerKeyword}}" bindinput="onNewcomerPickerInput" placeholder="搜索艺人名" placeholder-style="color:#6f6762" focus />
+      <scroll-view class="picker-results" scroll-y>
+        <view wx:if="{{!newcomerNomineesLoaded}}" class="picker-empty"><text>加载中…</text></view>
+        <view wx:elif="{{newcomerPickerFiltered.length === 0}}" class="picker-empty"><text>{{newcomerPickerKeyword ? '没有匹配的新人' : '暂无符合条件的新人'}}</text></view>
+        <block wx:else>
+          <view wx:for="{{newcomerPickerFiltered}}" wx:key="artistId" class="picker-row" bindtap="onNewcomerPickerSelect" data-id="{{item.artistId}}">
+            <view class="newcomer-avatar"><image wx:if="{{item.avatarUrl}}" class="newcomer-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+            <view class="picker-row-info">
+              <text class="picker-row-title">{{item.artistName}}</text>
+              <text class="picker-row-artist">首张{{item.debutReleaseType}}：{{item.debutTitle}}</text>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+      <view class="picker-cancel" bindtap="onCloseNewcomerPicker"><text>取消</text></view>
+    </view>
+  </view>
 </view>

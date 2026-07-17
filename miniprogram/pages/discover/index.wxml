@@ -45,11 +45,13 @@
           <view wx:for="{{currentLetterBrands}}" wx:key="name" class="brand-stamp {{activeBrand === item.name ? 'active' : ''}}" bindtap="onBrandTap" data-brand="{{item.name}}"><text class="brand-name">{{item.name}}</text><text class="brand-count">{{item.count}}</text></view>
         </view>
       </scroll-view>
-      <view class="side-row"><text class="side-text">SIDE B — ROLE 身份</text><view class="side-rule" /></view>
-      <view class="role-filter-row"><view wx:for="{{roleFilters}}" wx:key="key" class="role-chip {{activeRole === item.key ? 'active' : ''}}" bindtap="onRoleTap" data-role="{{item.key}}"><text>{{item.label}}</text></view></view>
-      <view class="side-row"><text class="side-text">SIDE C — SUBMIT</text><view class="side-rule" /></view>
+      <view class="side-row"><text class="side-text">SIDE B — SUBMIT</text><view class="side-rule" /></view>
       <view class="artist-submit-row" bindtap="onSubmitArtistRequest"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">提交 rapper</text><text class="artist-submit-desc">未收录？提交审核</text></view><text class="artist-all-arrow">›</text></view>
+      <view class="artist-submit-row" bindtap="onOpenBrandSubmit"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">提交厂牌</text><text class="artist-submit-desc">输入厂牌名称，选择所属 rapper，提交审核</text></view><text class="artist-all-arrow">›</text></view>
+      <view class="side-row"><text class="side-text">SIDE C — ROLE 身份</text><view class="side-rule" /></view>
+      <view class="role-filter-row"><view wx:for="{{roleFilters}}" wx:key="key" class="role-chip {{activeRole === item.key ? 'active' : ''}}" bindtap="onRoleTap" data-role="{{item.key}}"><text>{{item.label}}</text></view></view>
       <view class="side-row artist-result-title"><text class="side-text">SIDE D — {{activeBrand}} · {{artistLoading ? '加载中' : artistTotal + ' 位'}}</text><view class="side-rule" /></view>
+      <view wx:if="{{activeBrand !== '全部'}}" class="artist-submit-row" bindtap="onOpenAddToBrand"><text class="artist-submit-icon">＋</text><view class="artist-submit-copy"><text class="artist-submit-title">添加 rapper 到 {{activeBrand}}</text><text class="artist-submit-desc">选择要加入这个厂牌的 rapper，提交审核</text></view><text class="artist-all-arrow">›</text></view>
       <view wx:if="{{artistLoading}}" class="empty-state"><text class="empty-text">加载中…</text></view><view wx:elif="{{artistVisibleList.length === 0}}" class="empty-state"><text class="empty-text">这个分类暂无艺人</text></view>
       <view wx:elif="{{activeBrand === '全部'}}" class="artist-all-list with-alpha-index"><view wx:for="{{artistLetterGroups}}" wx:key="letter" id="artist-letter-{{item.letter === '#' ? 'num' : item.letter}}"><view class="artist-letter-row"><text class="artist-letter-title">{{item.letter}}</text><view class="artist-letter-rule" /></view><view wx:for="{{item.list}}" wx:for-item="artist" wx:key="artistId" class="artist-all-row" bindtap="onArtistTap" data-artist-id="{{artist.artistId}}" data-artist="{{artist.artistName}}"><view class="artist-all-avatar"><image wx:if="{{artist.picUrl}}" class="artist-all-img" src="{{artist.picUrl}}" mode="aspectFill" /><text wx:else class="artist-all-initial">{{artist.letter}}</text></view><view class="artist-all-info"><text class="artist-all-name">{{artist.artistName}}</text><text class="artist-all-meta">{{artist.albumSize || 0}} 张专辑</text></view><text class="artist-all-arrow">›</text></view></view></view>
       <view wx:else class="artist-grid"><view wx:for="{{artistVisibleList}}" wx:key="artistId" class="artist-tile" bindtap="onArtistTap" data-artist-id="{{item.artistId}}" data-artist="{{item.artistName}}"><view class="artist-tile-avatar"><image wx:if="{{item.picUrl}}" class="artist-tile-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else class="artist-tile-initial">{{item.letter}}</text></view><text class="artist-tile-name">{{item.artistName}}</text><text class="artist-tile-meta">{{item.albumSize || 0}} 张专辑</text></view></view>
@@ -59,5 +61,36 @@
   <view wx:if="{{viewMode === 'albums' && activeYear === 'ALL' && allAlbumLetters.length > 1}}" class="alphabet-index" data-kind="album" catchtouchstart="onIndexTouchStart" catchtouchmove="onIndexTouchMove" catchtouchend="onIndexTouchEnd" catchtouchcancel="onIndexTouchEnd"><view wx:for="{{allAlbumLetters}}" wx:key="*this" class="alphabet-index-item {{(activeAlbumLetter === item || indexHover === item) ? 'active' : ''}}"><text>{{item}}</text></view></view>
   <view wx:if="{{viewMode === 'artists' && activeBrand === '全部' && artistLetters.length > 1}}" class="alphabet-index" data-kind="artist" catchtouchstart="onIndexTouchStart" catchtouchmove="onIndexTouchMove" catchtouchend="onIndexTouchEnd" catchtouchcancel="onIndexTouchEnd"><view wx:for="{{artistLetters}}" wx:key="*this" class="alphabet-index-item {{(activeLetter === item || indexHover === item) ? 'active' : ''}}"><text>{{item}}</text></view></view>
   <view wx:if="{{indexBubble}}" class="index-bubble"><text>{{indexBubble}}</text></view>
+  <view wx:if="{{brandSubmitVisible}}" class="brand-submit-mask" bindtap="onCloseBrandSubmit">
+    <view class="brand-submit-sheet" catchtap="noop">
+      <view class="brand-submit-handle" />
+      <text class="brand-submit-title">{{brandSubmitLocked ? '添加 rapper 到 ' + brandSubmitName : '提交厂牌'}}</text>
+      <text class="brand-submit-sub">所有用户都可以提交，管理员审核通过后才会正式生效</text>
+      <input class="brand-submit-input {{brandSubmitLocked ? 'locked' : ''}}" value="{{brandSubmitName}}" disabled="{{brandSubmitLocked}}" bindinput="onBrandSubmitNameInput" maxlength="40" placeholder="输入厂牌名称，例如：1SHOT" placeholder-style="color:#6f6762" />
+
+      <view wx:if="{{brandSubmitSelected.length}}" class="brand-submit-chips">
+        <view wx:for="{{brandSubmitSelected}}" wx:key="artistId" class="brand-submit-chip" bindtap="onRemoveBrandSubmitArtist" data-id="{{item.artistId}}">
+          <text>{{item.artistName}}</text><text class="brand-submit-chip-x">×</text>
+        </view>
+      </view>
+      <text wx:else class="brand-submit-hint">请选择一位或多位所属 rapper</text>
+
+      <input class="brand-submit-input" value="{{brandSubmitKeyword}}" bindinput="onBrandSubmitSearch" placeholder="搜索 rapper…" placeholder-style="color:#6f6762" />
+
+      <scroll-view class="brand-submit-results" scroll-y>
+        <view wx:for="{{brandSubmitResults}}" wx:key="artistId" class="brand-submit-row {{item.selected ? 'selected' : ''}}" bindtap="onToggleBrandSubmitArtist" data-id="{{item.artistId}}">
+          <view class="brand-submit-avatar"><image wx:if="{{item.picUrl}}" class="brand-submit-avatar-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+          <text class="brand-submit-name">{{item.artistName}}</text>
+          <text class="brand-submit-check">{{item.selected ? '已选' : '选择'}}</text>
+        </view>
+      </scroll-view>
+
+      <view class="brand-submit-actions">
+        <view class="brand-submit-cancel" bindtap="onCloseBrandSubmit"><text>取消</text></view>
+        <view class="brand-submit-confirm {{brandSubmitting ? 'btn-disabled' : ''}}" bindtap="onSubmitBrand"><text>{{brandSubmitting ? '提交中…' : '提交审核'}}</text></view>
+      </view>
+    </view>
+  </view>
+
   <bottom-nav selected="{{2}}" />
 </view>

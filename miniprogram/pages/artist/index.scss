@@ -34,10 +34,7 @@
 
 .artist-block { padding: 128rpx 32rpx 0; text-align: center; flex-shrink: 0; }
 .artist-en { font-family: var(--font-bebas); color: var(--white); line-height: 1; display: block; }
-.artist-role-wrap{display:inline-flex;align-items:center;justify-content:center;gap:8rpx;margin-top:12rpx;min-height:36rpx}
-.artist-role { display:block; font-family:var(--font-bebas); font-size:20rpx; letter-spacing:3rpx; color:var(--accent); }
-.artist-role-edit{font-size:16rpx;color:var(--gray-mid)}
-.artist-brand { display: block; margin-top: 8rpx; font-size: 20rpx; letter-spacing: 2rpx; color: var(--gray-mid); }
+.artist-tag { display:block; margin-top:12rpx; font-family:var(--font-bebas); font-size:20rpx; letter-spacing:3rpx; color:var(--accent); }
 .artist-stats-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 14rpx; padding-bottom: 4rpx; }
 .stat-num { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); line-height: 1; }
 .stat-unit { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 2rpx; margin: 0 16rpx 0 6rpx; }
@@ -54,6 +51,7 @@
 .side-rule { flex: 1; height: 1px; background: var(--gray-light); }
 .side-more { flex-shrink: 0; color: var(--accent); font-size: 18rpx; font-weight: 700; letter-spacing: 2rpx; white-space: nowrap; }
 .side-b-row { margin-top: 0; border-top: 2rpx solid var(--off-white); padding-top: 24rpx; align-items: flex-start; }
+.side-c-row { margin-top: 48rpx; }
 .side-b-title-wrap { flex-shrink: 0; display: flex; flex-direction: column; gap: 6rpx; }
 .side-note { display: block; max-width: 360rpx; font-size: 16rpx; line-height: 1.4; letter-spacing: 1rpx; color: var(--gray-mid); opacity: .72; }
 
@@ -86,6 +84,12 @@
 .collaborator-arrow { flex-shrink: 0; font-size: 32rpx; color: var(--accent); line-height: 1; }
 .collaborator-empty { padding: 36rpx 32rpx 72rpx; text-align: center; color: var(--gray-mid); font-size: 21rpx; }
 
+.role-edit-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 0 32rpx 48rpx; padding: 24rpx; border: 2rpx solid rgba(201,78,37,.52); background: var(--off-white); }
+.role-edit-copy { display: flex; flex-direction: column; gap: 8rpx; min-width: 0; }
+.role-edit-title { font-size: 25rpx; font-weight: 700; color: var(--white); }
+.role-edit-desc { font-size: 20rpx; color: var(--gray-mid); }
+.role-edit-arrow { flex-shrink: 0; font-size: 40rpx; color: var(--accent); }
+
 .skel-row { display: flex; align-items: center; gap: 32rpx; padding: 24rpx 32rpx; }
 .skel-info { flex: 1; }
 .empty-state { display: flex; justify-content: center; padding: 120rpx 32rpx; }
@@ -99,5 +103,5 @@
 .role-sheet-grid{display:flex;gap:14rpx;flex-wrap:wrap;margin-top:24rpx}
 .role-sheet-option{display:flex;align-items:center;gap:10rpx;padding:16rpx 22rpx;border:2rpx solid var(--gray-light);font-family:var(--font-bebas);font-size:24rpx;letter-spacing:2rpx;color:var(--white)}
 .role-sheet-option.selected{border-color:var(--accent);background:rgba(201,78,37,.14);color:var(--accent)}
-.role-sheet-submit{height:88rpx;margin-top:28rpx;display:flex;align-items:center;justify-content:center;background:var(--accent);font-size:26rpx;font-weight:700;color:var(--black)}
+.role-sheet-submit{height:88rpx;margin-top:28rpx;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--black);font-size:26rpx;font-weight:700}
 .role-sheet-submit.disabled{opacity:.55}
