@@ -93,7 +93,10 @@ async function enrichReviews(records, OPENID) {
 
   // reviews snapshot userAvatarUrl/userNickName at submit time, which goes stale once a user
   // changes their profile — pull the live values from users so every review card stays current.
-  const authorOpenIds = Array.from(new Set(records.map(r => r.authorOpenId).filter(Boolean)))
+  // Older review docs only carry the legacy userId field (no authorOpenId), same fallback used
+  // for the userId-scoped lookup above, so match on either.
+  const authorId = r => r.authorOpenId || r.userId
+  const authorOpenIds = Array.from(new Set(records.map(authorId).filter(Boolean)))
   const liveUserMap = new Map()
   if (authorOpenIds.length) {
     try {
@@ -103,12 +106,12 @@ async function enrichReviews(records, OPENID) {
   }
 
   const avatarMap = await resolveCloudUrls(records.map(r => {
-    const live = liveUserMap.get(r.authorOpenId)
+    const live = liveUserMap.get(authorId(r))
     return (live && live.avatarUrl) || r.userAvatarUrl
   }))
 
   return records.map(r => {
-    const live = liveUserMap.get(r.authorOpenId)
+    const live = liveUserMap.get(authorId(r))
     const nickName = (live && live.nickName) || r.userNickName
     const avatarUrl = (live && live.avatarUrl) || r.userAvatarUrl
     return {
