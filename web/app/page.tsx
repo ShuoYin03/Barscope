@@ -1,18 +1,7 @@
 import Link from 'next/link'
 import { SiteHeader } from '@/components/site-header'
-
-const releases = [
-  { index: '01', title: '王国之泪', artist: 'BOBBYNOPEACE', meta: '2026 · LP', tone: 'burnt' },
-  { index: '02', title: '答应我会幸福', artist: 'SELFISH', meta: '2026 · MIXTAPE', tone: 'violet' },
-  { index: '03', title: 'Lost City', artist: 'ARTIST', meta: '2026 · ALBUM', tone: 'steel' },
-  { index: '04', title: 'No Signal', artist: 'ARTIST', meta: '2026 · EP', tone: 'olive' },
-]
-
-const reviews = [
-  { user: '金鱼', album: '王国之泪', score: '9.0', body: '鲍比最好的一张，短小精悍，每首都很喜欢。' },
-  { user: 'selfish', album: '答应我会幸福', score: '9.0', body: '那些冰冷的、没有被认可和理解的噪郁，都可以成为对抗世界的勇气。' },
-  { user: 'BARSCOPE', album: '编辑选择', score: '8.6', body: '真正有力量的作品，不是把答案告诉你，而是让你重新听见问题。' },
-]
+import { RecentReleases } from '@/components/recent-releases'
+import { LatestReviews } from '@/components/latest-reviews'
 
 export default function HomePage() {
   return (
@@ -50,21 +39,7 @@ export default function HomePage() {
           <div><span className="section-index">SIDE B</span><h2>RECENT RELEASES</h2></div>
           <Link className="text-link" href="/albums">VIEW ALL <span>↗</span></Link>
         </div>
-        <div className="release-wall">
-          {releases.map((item) => (
-            <article className="release-item" key={item.index}>
-              <div className={`release-art ${item.tone}`}>
-                <span className="release-no">{item.index}</span>
-                <span className="release-mark">B</span>
-              </div>
-              <div className="release-copy">
-                <p>{item.meta}</p>
-                <h3>{item.title}</h3>
-                <span>{item.artist}</span>
-              </div>
-            </article>
-          ))}
-        </div>
+        <RecentReleases />
       </section>
 
       <section className="shell editorial-grid">
@@ -98,27 +73,7 @@ export default function HomePage() {
             <div><span className="section-index">SIDE D</span><h2>LATEST REVIEWS</h2></div>
             <Link className="text-link" href="/reviews">ALL REVIEWS <span>↗</span></Link>
           </div>
-          <div className="review-editorial-grid">
-            <article className="review-lead">
-              <span className="review-kicker">COMMUNITY PICK</span>
-              <div className="review-lead-score">9.0</div>
-              <h3>{reviews[0].album}</h3>
-              <p>“{reviews[0].body}”</p>
-              <div className="review-byline">BY {reviews[0].user} · 4 DAYS AGO</div>
-            </article>
-            <div className="review-feed">
-              {reviews.slice(1).map((review, index) => (
-                <article className="review-feed-row" key={`${review.user}-${review.album}`}>
-                  <span className="feed-index">0{index + 2}</span>
-                  <div>
-                    <div className="feed-top"><strong>{review.album}</strong><b>{review.score}</b></div>
-                    <p>{review.body}</p>
-                    <small>BY {review.user} · ♡ 0 · ↩ 0</small>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
+          <LatestReviews />
         </div>
       </section>
 

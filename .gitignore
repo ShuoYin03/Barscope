@@ -13,3 +13,6 @@ project.private.config.json
 crawler/backups/
 
 CLAUDE.md
+
+web/.next/
+web/tsconfig.tsbuildinfo
