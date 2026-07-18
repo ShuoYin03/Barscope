@@ -4,7 +4,6 @@ const FALLBACK_TICKER_SONGS = [
   'BEATWEEN · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
-function scoreFill(score: number) { return Math.round(score / 10 * 100) + '%' }
 function fmtScore(n: number): string { if (!n) return '—'; const r = Math.round(n * 10) / 10; return r === 10 ? '10' : r.toFixed(1) }
 function fmtReleaseDate(value: any, fallbackYear?: any): string {
   const raw = String(value || '').trim()
@@ -13,8 +12,7 @@ function fmtReleaseDate(value: any, fallbackYear?: any): string {
     const [, year, month, day] = match
     return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
   }
-  const year = String(fallbackYear || '').trim()
-  return year || ''
+  return String(fallbackYear || '').trim()
 }
 function safeCallFunction(name: string, data: Record<string, any>) {
   return wx.cloud.callFunction({ name, data }).then((res: any) => res.result || { success: false }).catch((err: any) => { console.warn(`${name} failed`, err); return { success: false } })
@@ -51,28 +49,22 @@ Page({
   },
   _loadData() {
     this.setData({ loading: true })
-    const p1 = safeCallFunction('getCharts', { limit: 5 })
-    const p2 = safeCallFunction('getReviews', { recent: true, pageSize: 4 })
-    const p3 = safeCallFunction('getCatalogStats', {})
-    const p4 = safeCallFunction('getLatestAlbums', { limit: 12 })
-    const p5 = safeCallFunction('getReviews', { dailyHotAlbums: true, limit: 6 })
-    const p6 = safeCallFunction('getArtists', { limit: 1 })
-    const p7 = safeCallFunction('getReviews', { totalCount: true })
-    const p8 = safeCallFunction('getOnThisDay', { limit: 8 })
-    const p9 = safeCallFunction('getReviews', { monthlyTopCritics: true, limit: 8 })
-    const p10 = safeCallFunction('getReviews', { followingFeed: true, pageSize: 6 })
+    const requests = [
+      safeCallFunction('getCharts', { limit: 5 }),
+      safeCallFunction('getReviews', { recent: true, pageSize: 4 }),
+      safeCallFunction('getCatalogStats', {}),
+      safeCallFunction('getLatestAlbums', { limit: 12 }),
+      safeCallFunction('getReviews', { dailyHotAlbums: true, limit: 6 }),
+      safeCallFunction('getArtists', { limit: 1 }),
+      safeCallFunction('getReviews', { totalCount: true }),
+      safeCallFunction('getOnThisDay', { limit: 8 }),
+      safeCallFunction('getReviews', { monthlyTopCritics: true, limit: 8 }),
+      safeCallFunction('getReviews', { followingFeed: true, pageSize: 6 }),
+      safeCallFunction('getRecentHotAlbums', { limit: 5, days: 30 }),
+    ]
 
-    Promise.all([p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]).then((results: any[]) => {
-      const chartsRes = results[0]
-      const reviewsRes = results[1]
-      const totalRes = results[2]
-      const latestRes = results[3]
-      const dailyHotRes = results[4]
-      const artistsRes = results[5]
-      const reviewCountRes = results[6]
-      const onThisDayRes = results[7]
-      const topCriticsRes = results[8]
-      const followingFeedRes = results[9]
+    Promise.all(requests).then((results: any[]) => {
+      const [chartsRes, reviewsRes, totalRes, latestRes, dailyHotRes, artistsRes, reviewCountRes, onThisDayRes, topCriticsRes, followingFeedRes, recentHotRes] = results
 
       const chartItems = chartsRes.success
         ? (chartsRes.list || []).map((item: any) => ({ ...item, year: item.year || item.releaseYear, scoreDisplay: fmtScore(item.score) }))
@@ -82,17 +74,17 @@ Page({
         ? (dailyHotRes.albums || (dailyHotRes.album ? [dailyHotRes.album] : []))
         : []
 
-      const recentHotSource = dailyAlbums.length ? dailyAlbums : chartItems
+      const recentHotSource = recentHotRes?.success && recentHotRes.list?.length ? recentHotRes.list : chartItems
       const recentHotItems = recentHotSource.slice(0, 5).map((a: any, index: number) => ({
         albumId: a.albumId || a._id,
         title: a.title || a.albumTitle || '',
         artist: a.artist || '',
         rank: index + 1,
         scoreDisplay: fmtScore(Number(a.avgScore || a.score || 0)),
+        reviewCount: Number(a.reviewCount || 0),
       }))
 
       const latestList = latestRes?.success ? (latestRes.list || []) : []
-
       const newReleases = latestList.slice(0, 10).map((a: any) => ({
         albumId: a.albumId,
         title: a.title,
@@ -101,9 +93,20 @@ Page({
         dateDisplay: fmtReleaseDate(a.releaseDate, a.releaseYear),
       }))
 
-      const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length
-        ? latestRes.tickerSongs
-        : FALLBACK_TICKER_SONGS
+      const tickerSongs = latestRes?.success && latestRes.tickerSongs?.length ? latestRes.tickerSongs : FALLBACK_TICKER_SONGS
+
+      const todayHotSwiperItems = dailyAlbums.slice(0, 6).map((a: any) => ({
+        albumId: a.albumId,
+        title: a.title,
+        artist: a.artist || '',
+        year: a.year || '',
+        score: fmtScore(Number(a.score || 0)),
+        coverUrl: a.coverUrl || '',
+        kicker: '今日热议',
+        isTodayHot: true,
+        todayReviewCount: Number(a.todayReviewCount || 0),
+        currentScore: fmtScore(Number(a.score || 0)),
+      }))
 
       const onThisDaySwiperItems = onThisDayRes?.success
         ? (onThisDayRes.list || []).map((a: any) => ({
@@ -114,20 +117,11 @@ Page({
             score: fmtScore(a.avgScore),
             coverUrl: a.coverUrl || '',
             kicker: `历史上的今天 · ${a.yearsAgo}年前`,
+            isTodayHot: false,
           }))
         : []
 
-      const todayHotSwiperItems = dailyAlbums.slice(0, 6).map((a: any) => ({
-        albumId: a.albumId,
-        title: a.title,
-        artist: a.artist || '',
-        year: a.year || '',
-        score: fmtScore(Number(a.score || 0)),
-        coverUrl: a.coverUrl || '',
-        kicker: '今日热评专辑',
-      }))
-
-      const heroSwiperList = [...onThisDaySwiperItems, ...todayHotSwiperItems]
+      const heroSwiperList = [...todayHotSwiperItems, ...onThisDaySwiperItems]
 
       const topCritics = topCriticsRes?.success
         ? (topCriticsRes.list || []).map((c: any) => ({ ...c, initial: c.nickName ? c.nickName[0] : '?' }))

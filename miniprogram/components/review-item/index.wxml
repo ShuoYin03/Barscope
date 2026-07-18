@@ -2,7 +2,7 @@
   <view wx:if="{{!hidden}}" class="review-item {{review.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onTap">
     <view class="review-header">
       <view class="review-user-tap" catchtap="onAvatarTap">
-        <view class="review-avatar {{review.userType === 'critic' ? 'is-critic' : ''}}"><text>{{review.initial}}</text></view>
+        <view class="review-avatar {{review.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{review.userAvatarUrl}}" class="review-avatar-img" src="{{review.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{review.initial}}</text></view>
         <view class="review-meta"><view class="name-row"><text class="review-user">{{review.userName}}</text><text wx:if="{{review.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{review.timeAgo}}</text></view>
       </view>
       <text wx:if="{{showAlbum}}" class="album-badge">{{review.albumTitle}}</text><text class="review-score">{{review.score}}</text>

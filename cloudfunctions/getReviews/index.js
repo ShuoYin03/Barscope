@@ -93,22 +93,31 @@ async function enrichReviews(records, OPENID) {
 
   // reviews snapshot userAvatarUrl/userNickName at submit time, which goes stale once a user
   // changes their profile — pull the live values from users so every review card stays current.
-  const authorOpenIds = Array.from(new Set(records.map(r => r.authorOpenId).filter(Boolean)))
+  // Older review docs only carry the legacy userId field (no authorOpenId), same fallback used
+  // for the userId-scoped lookup above, so match on either.
+  const authorId = r => r.authorOpenId || r.userId
+  const authorOpenIds = Array.from(new Set(records.map(authorId).filter(Boolean)))
   const liveUserMap = new Map()
   if (authorOpenIds.length) {
     try {
       const usersRes = await db.collection('users').where({ openId: _.in(authorOpenIds) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
-      ;(usersRes.data || []).forEach(u => liveUserMap.set(String(u.openId), u))
+      // some accounts have duplicate users docs sharing one openId (legacy duplicate writes) —
+      // merge rather than let whichever doc comes last blindly win, preferring set values.
+      ;(usersRes.data || []).forEach(u => {
+        const key = String(u.openId)
+        const prev = liveUserMap.get(key)
+        liveUserMap.set(key, prev ? { nickName: u.nickName || prev.nickName, avatarUrl: u.avatarUrl || prev.avatarUrl } : u)
+      })
     } catch (e) { console.warn('enrichReviews live profile lookup failed:', e.message) }
   }
 
   const avatarMap = await resolveCloudUrls(records.map(r => {
-    const live = liveUserMap.get(r.authorOpenId)
+    const live = liveUserMap.get(authorId(r))
     return (live && live.avatarUrl) || r.userAvatarUrl
   }))
 
   return records.map(r => {
-    const live = liveUserMap.get(r.authorOpenId)
+    const live = liveUserMap.get(authorId(r))
     const nickName = (live && live.nickName) || r.userNickName
     const avatarUrl = (live && live.avatarUrl) || r.userAvatarUrl
     return {
@@ -266,7 +275,14 @@ async function getMonthlyTopCritics(limit = 8) {
     // changes their profile — pull the live values from users so the leaderboard stays current.
     try {
       const usersRes = await db.collection('users').where({ openId: _.in(ranked.map(r => r.openId)) }).field({ openId: true, nickName: true, avatarUrl: true }).get()
-      const userMap = new Map((usersRes.data || []).map(u => [String(u.openId), u]))
+      // some accounts have duplicate users docs sharing one openId (legacy duplicate writes) —
+      // merge rather than let whichever doc comes last blindly win, preferring set values.
+      const userMap = new Map()
+      ;(usersRes.data || []).forEach(u => {
+        const key = String(u.openId)
+        const prev = userMap.get(key)
+        userMap.set(key, prev ? { nickName: u.nickName || prev.nickName, avatarUrl: u.avatarUrl || prev.avatarUrl } : u)
+      })
       ranked.forEach(r => {
         const u = userMap.get(r.openId)
         if (u) { if (u.nickName) r.nickName = u.nickName; if (u.avatarUrl) r.avatarUrl = u.avatarUrl }

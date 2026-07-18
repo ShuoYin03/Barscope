@@ -1,44 +1,27 @@
 <view class="page-wrapper {{themeClass}}">
-
-  <!-- TOPBAR -->
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <view class="logo-col">
-      <text class="logo-main">BEATWEEN</text>
-      <text class="logo-sub">中文说唱</text>
-    </view>
+    <view class="logo-col"><text class="logo-main">BEATWEEN</text><text class="logo-sub">中文说唱</text></view>
     <text class="logo-search" bindtap="onSearchTap">⌕</text>
   </view>
 
-  <!-- SCROLLABLE CONTENT -->
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
-
-    <!-- TICKER -->
     <ticker songs="{{tickerSongs}}" />
 
-    <!-- ── SIDE A — LATEST RELEASES ─────────────────────────────── -->
     <view class="section-block">
       <section-header side="A" title="近期发行" more="{{true}}" bind:more="onReleasesMore" />
-      <view wx:if="{{loading}}" class="marquee-skel">
-        <view wx:for="{{[1,2,3]}}" wx:key="*this" class="sk" style="width:250rpx;height:250rpx;flex-shrink:0;" />
-      </view>
+      <view wx:if="{{loading}}" class="marquee-skel"><view wx:for="{{[1,2,3]}}" wx:key="*this" class="sk" style="width:250rpx;height:250rpx;flex-shrink:0;" /></view>
       <cover-marquee wx:else list="{{newReleases}}" itemSize="{{250}}" secondsPerItem="{{5}}" />
     </view>
 
-    <!-- ── EDITORIAL COLUMN — ON THIS DAY ─────────────────────── -->
     <view wx:if="{{!loading && heroSwiperList.length}}" class="otd-section">
       <section-header prefix="专栏" side="" title="" />
-      <swiper class="hero-swiper" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
+      <swiper class="hero-swiper" style="height:700rpx;" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
         <swiper-item wx:for="{{heroSwiperList}}" wx:key="albumId">
           <view class="hero-banner" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-            <view style="align-self:flex-start;margin-bottom:10rpx;">
-              <text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">{{item.kicker}}</text>
-            </view>
+            <view style="align-self:flex-start;margin-bottom:10rpx;"><text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">{{item.kicker}}</text></view>
             <view class="vinyl-hero-wrap" style="width:560rpx;height:355rpx;position:relative;display:flex;align-items:flex-start;justify-content:center;">
               <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">
-                <view class="vinyl-hero-label">
-                  <text class="vinyl-label-score-num">{{item.score}}</text>
-                  <text class="vinyl-label-score-sub">BEATWEEN</text>
-                </view>
+                <view class="vinyl-hero-label"><text class="vinyl-label-score-num">{{item.score}}</text><text class="vinyl-label-score-sub">BEATWEEN</text></view>
                 <view class="vinyl-hero-spindle" />
               </view>
               <view class="hero-cover-card" style="position:absolute;left:72rpx;top:8rpx;width:320rpx;height:320rpx;z-index:3;background:#050505;box-shadow:0 18rpx 36rpx rgba(0,0,0,.5);">
@@ -49,82 +32,55 @@
             <view class="hero-info">
               <text class="hero-title">{{item.title}}</text>
               <text class="hero-meta">{{item.artist}} · {{item.year}}</text>
+              <view wx:if="{{item.isTodayHot}}" style="display:flex;flex-direction:row;align-items:center;justify-content:center;width:420rpx;height:86rpx;margin:22rpx auto 34rpx;border-top:2rpx solid #2b2421;border-bottom:2rpx solid #2b2421;box-sizing:border-box;white-space:nowrap;">
+                <view style="width:210rpx;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:2rpx solid #2b2421;box-sizing:border-box;">
+                  <text style="font-size:16rpx;letter-spacing:2rpx;color:#766f68;white-space:nowrap;">当前评分</text>
+                  <text style="margin-top:3rpx;font-family:var(--font-bebas);font-size:32rpx;line-height:1;color:#d45124;white-space:nowrap;">{{item.currentScore}}</text>
+                </view>
+                <view style="width:210rpx;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">
+                  <text style="font-size:16rpx;letter-spacing:2rpx;color:#766f68;white-space:nowrap;">今日新评论</text>
+                  <text style="margin-top:3rpx;font-family:var(--font-bebas);font-size:32rpx;line-height:1;color:#f4eee8;white-space:nowrap;">+{{item.todayReviewCount}}</text>
+                </view>
+              </view>
             </view>
           </view>
         </swiper-item>
       </swiper>
     </view>
 
-    <!-- ── SIDE B — RECENTLY HOT REVIEWED ALBUMS ───────────────── -->
     <view class="section-block">
       <section-header side="B" title="近期热评专辑" more="{{true}}" bind:more="onReviewMore" />
-      <view wx:if="{{loading}}" class="ca-list">
-        <view class="ca-rows">
-          <view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row">
-            <view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" />
-            <view class="skel-info" style="flex:1;"><view class="sk" style="width:60%;height:24rpx;" /></view>
-            <view class="sk" style="width:56rpx;height:30rpx;flex-shrink:0;" />
-          </view>
-        </view>
-      </view>
-      <view wx:else class="ca-list">
-        <view class="ca-rows">
-          <view wx:for="{{recentHotItems}}" wx:key="albumId" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}">
-            <text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank}}</text>
-            <view class="ca-info"><text class="ca-title">{{item.title}}</text><text class="ca-artist">{{item.artist}}</text></view>
-            <text class="ca-score">{{item.scoreDisplay}}</text>
-          </view>
-        </view>
-      </view>
+      <view wx:if="{{loading}}" class="ca-list"><view class="ca-rows"><view wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="ca-row"><view class="sk" style="width:48rpx;height:28rpx;flex-shrink:0;" /><view class="skel-info" style="flex:1;"><view class="sk" style="width:60%;height:24rpx;" /></view><view class="sk" style="width:56rpx;height:30rpx;flex-shrink:0;" /></view></view></view>
+      <view wx:else class="ca-list"><view class="ca-rows"><view wx:for="{{recentHotItems}}" wx:key="albumId" class="ca-row" bindtap="onAlbumTap" data-id="{{item.albumId}}"><text class="ca-rank {{item.rank === 1 ? 'top' : ''}}">{{item.rank}}</text><view class="ca-info"><text class="ca-title">{{item.title}}</text><text class="ca-artist">{{item.artist}}</text></view><text class="ca-score">{{item.scoreDisplay}}</text></view></view></view>
     </view>
 
-    <!-- ── SIDE C — RECENT REVIEWS ─────────────────────────────── -->
     <view class="section-block">
       <section-header side="C" title="最新评论" more="{{true}}" bind:more="onReviewMore" />
       <view wx:if="{{loading}}" class="reviews-list">
-        <view wx:for="{{[1,2,3]}}" wx:key="*this" class="review-item">
-          <view class="review-header"><view class="sk" style="width:80rpx;height:80rpx;border-radius:50%;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:120rpx;height:24rpx;" /><view class="sk" style="width:80rpx;height:20rpx;" /></view><view class="sk" style="width:88rpx;height:26rpx;flex-shrink:0;align-self:center;" /><view class="sk" style="width:56rpx;height:36rpx;flex-shrink:0;align-self:center;" /></view>
-          <view class="sk" style="width:100%;height:22rpx;margin-bottom:8rpx;" /><view class="sk" style="width:80%;height:22rpx;margin-bottom:16rpx;" />
-          <view class="sk" style="width:160rpx;height:20rpx;" />
-        </view>
+        <view wx:for="{{[1,2,3]}}" wx:key="*this" class="review-item"><view class="review-header"><view class="sk" style="width:80rpx;height:80rpx;border-radius:50%;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:120rpx;height:24rpx;" /><view class="sk" style="width:80rpx;height:20rpx;" /></view><view class="sk" style="width:88rpx;height:26rpx;flex-shrink:0;align-self:center;" /><view class="sk" style="width:56rpx;height:36rpx;flex-shrink:0;align-self:center;" /></view><view class="sk" style="width:100%;height:22rpx;margin-bottom:8rpx;" /><view class="sk" style="width:80%;height:22rpx;margin-bottom:16rpx;" /><view class="sk" style="width:160rpx;height:20rpx;" /></view>
       </view>
       <view wx:else class="reviews-list">
         <view wx:for="{{reviews}}" wx:key="id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}">
-          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.score}}</text></view>
+          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.userAvatarUrl}}" class="review-avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.score}}</text></view>
           <text class="review-text">{{item.content}}</text><view class="review-footer"><text>♡ {{item.likes}}</text><text class="sep"> | </text><text>↩ {{item.replyCount}}条回复</text></view>
         </view>
       </view>
     </view>
 
-    <!-- ── SIDE D — 本月乐评人榜 ─────────────────────────────────── -->
     <view class="section-block" wx:if="{{!loading && topCritics.length}}">
       <section-header side="D" title="本月乐评人榜" />
-      <view class="critic-rows">
-        <view wx:for="{{topCritics}}" wx:key="openId" class="critic-row" bindtap="onCriticTap" data-open-id="{{item.openId}}">
-          <text class="critic-rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text>
-          <view class="critic-avatar-wrap"><text wx:if="{{index === 0}}" class="critic-crown">👑</text><view class="critic-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.avatarUrl}}" class="critic-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view></view>
-          <view class="critic-info"><text class="critic-name">{{item.nickName}}</text><text class="critic-count">本月 {{item.count}} 条乐评</text></view>
-        </view>
-      </view>
+      <view class="critic-rows"><view wx:for="{{topCritics}}" wx:key="openId" class="critic-row" bindtap="onCriticTap" data-open-id="{{item.openId}}"><text class="critic-rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text><view class="critic-avatar-wrap"><text wx:if="{{index === 0}}" class="critic-crown">👑</text><view class="critic-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.avatarUrl}}" class="critic-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view></view><view class="critic-info"><text class="critic-name">{{item.nickName}}</text><text class="critic-count">本月 {{item.count}} 条乐评</text></view></view></view>
     </view>
 
-    <!-- ── SIDE E — 关注动态 ─────────────────────────────────── -->
     <view class="section-block">
       <section-header side="E" title="关注动态" more="{{isLoggedIn && followingFeedList.length}}" bind:more="onFollowingFeedMore" />
       <view wx:if="{{!isLoggedIn}}" class="feed-gate"><text class="feed-gate-text">登录后可以看到你关注的乐评人的最新点评</text><view class="feed-gate-btn" bindtap="onGoLogin"><text>去登录</text></view></view>
       <view wx:elif="{{loading}}" class="reviews-list"><view wx:for="{{[1,2]}}" wx:key="*this" class="review-item"><view class="review-header"><view class="sk" style="width:80rpx;height:80rpx;border-radius:50%;flex-shrink:0;" /><view class="skel-info"><view class="sk" style="width:120rpx;height:24rpx;" /><view class="sk" style="width:80rpx;height:20rpx;" /></view></view><view class="sk" style="width:100%;height:22rpx;margin-bottom:8rpx;" /></view></view>
       <view wx:elif="{{followingFeedList.length === 0}}" class="feed-gate"><text class="feed-gate-text">关注喜欢的乐评人，就能在这里看到他们的最新点评</text></view>
-      <view wx:else class="reviews-list">
-        <view wx:for="{{followingFeedList}}" wx:key="_id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}">
-          <view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}" catchtap="onCriticTap" data-open-id="{{item.authorOpenId}}"><text>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.ratingText}}</text></view>
-          <text class="review-text">{{item.content}}</text>
-        </view>
-      </view>
+      <view wx:else class="reviews-list"><view wx:for="{{followingFeedList}}" wx:key="_id" class="review-item {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}"><view class="review-header"><view class="review-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}" catchtap="onCriticTap" data-open-id="{{item.authorOpenId}}"><image wx:if="{{item.userAvatarUrl}}" class="review-avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view><view class="review-meta"><view class="review-name-row"><text class="review-user">{{item.userName}}</text><text wx:if="{{item.userType === 'critic'}}" class="critic-badge">乐评人</text></view><text class="review-time">{{item.timeAgo}}</text></view><text class="review-album-badge">{{item.albumTitle}}</text><text class="review-score">{{item.ratingText}}</text></view><text class="review-text">{{item.content}}</text></view></view>
     </view>
 
-    <!-- STATS STRIP -->
     <view class="stat-strip"><view class="stat-cell"><view class="stat-num-row"><text class="stat-accent">{{totalArtists}}</text></view><text class="stat-label">收录歌手</text></view><view class="stat-cell stat-mid"><view class="stat-num-row"><text class="stat-accent">{{totalAlbums}}</text></view><text class="stat-label">收录专辑</text></view><view class="stat-cell"><view class="stat-num-row"><text class="stat-accent">{{totalReviews}}</text></view><text class="stat-label">评论总数</text></view></view>
-
   </scroll-view>
 
   <bottom-nav selected="{{0}}" />

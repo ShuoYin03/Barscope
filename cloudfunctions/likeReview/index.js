@@ -15,9 +15,16 @@ exports.main = async (event) => {
 
   const likeId = likeDocId(reviewId, OPENID)
   try {
-    // A fixed document id means one user can only own one like record per review.
     const existing = await db.collection('review_likes').doc(likeId).get().catch(() => ({ data: null }))
-    if (existing && existing.data) return { success: true, liked: true, alreadyLiked: true }
+
+    // Toggle off: remove the user's like row and decrement the cached counter safely.
+    if (existing && existing.data) {
+      await db.collection('review_likes').doc(likeId).remove()
+      const reviewRes = await db.collection('reviews').doc(reviewId).get().catch(() => null)
+      const currentLikes = Number(reviewRes && reviewRes.data && reviewRes.data.likes || 0)
+      if (currentLikes > 0) await db.collection('reviews').doc(reviewId).update({ data: { likes: _.inc(-1) } })
+      return { success: true, liked: false, alreadyLiked: true }
+    }
 
     await db.collection('review_likes').doc(likeId).set({
       data: { reviewId, openId: OPENID, createdAt: db.serverDate() },

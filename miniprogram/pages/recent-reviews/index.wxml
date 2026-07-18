@@ -12,7 +12,7 @@
 
     <view wx:for="{{reviews}}" wx:key="_id" class="review-card {{item.userType === 'critic' ? 'is-critic' : ''}}" bindtap="onReviewTap" data-id="{{item.albumId}}">
       <view class="review-header">
-        <view class="avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><text>{{item.initial}}</text></view>
+        <view class="avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.userAvatarUrl}}" class="avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view>
         <view class="meta">
           <view class="name-row">
             <text class="user">{{item.userName}}</text>

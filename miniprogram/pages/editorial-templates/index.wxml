@@ -1,0 +1,82 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <view><text class="brand">EDITORIAL</text><text class="sub">文章模板预览</text></view>
+  </view>
+
+  <scroll-view class="template-tabs" scroll-x show-scrollbar="{{false}}">
+    <view class="template-tab-row">
+      <view wx:for="{{templates}}" wx:key="key" class="template-tab {{active===item.key?'active':''}}" data-key="{{item.key}}" bindtap="onTemplateTap">
+        <text class="tab-en">{{item.label}}</text><text class="tab-zh">{{item.zh}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <block wx:if="{{active==='review'}}">
+      <view class="review-hero">
+        <text class="eyebrow">ALBUM REVIEW · 2026</text>
+        <text class="review-title">一张专辑，如何把夜晚写成一座城市</text>
+        <text class="review-deck">在更轻、更冷的声音里，一位创作者重新定义了属于自己的叙事尺度。</text>
+        <view class="review-meta"><text>BY BARSCOPE EDITORIAL</text><text>2026.07.16</text></view>
+      </view>
+      <view class="hero-art"><view class="hero-art-noise"></view><text>ALBUM ARTWORK</text></view>
+      <view class="score-band">
+        <view><text class="score-kicker">BARSCOPE SCORE</text><text class="score">8.4</text></view>
+        <view class="score-copy"><text class="score-badge">BEST NEW MUSIC</text><text>COMMUNITY 7.9 · 1,284 RATINGS</text></view>
+      </view>
+      <view class="article-body">
+        <text class="dropcap">当</text><text class="body-text">一张专辑真正成立的时候，它不会只留下几首好歌。它会建立一套自己的时间、空间与语言，让听者在几十分钟里进入一个完整世界。这里展示的是 REVIEW 模板的正文节奏：大首字母开篇、宽松行距、强观点先行。</text>
+        <view class="pullquote"><text>“真正有力量的作品，不是把答案告诉你，而是让你重新听见问题。”</text></view>
+        <text class="section-no">SIDE B</text><text class="section-title">THE SHIFT</text>
+        <text class="body-paragraph">正文可以继续穿插大图、引用、专辑卡片、曲目推荐与实时社区数据。前端保持统一视觉，编辑时只需要选择 Block 类型和内容。</text>
+      </view>
+      <view class="verdict">
+        <text class="verdict-label">VERDICT</text>
+        <text class="verdict-copy">克制，但不保守；锋利，却不急于证明自己。</text>
+        <view class="essential"><text>ESSENTIAL TRACKS</text><text>01 NIGHT SHIFT</text><text>02 NO SIGNAL</text><text>03 LAST TRAIN</text></view>
+      </view>
+    </block>
+
+    <block wx:elif="{{active==='feature'}}">
+      <view class="feature-hero">
+        <text class="eyebrow">LONGFORM FEATURE</text>
+        <text class="feature-big-title">中文 RAGE 的五年</text>
+        <text class="feature-deck">从地下审美到主流语法，一种声音如何快速扩张，又如何开始寻找下一次变化。</text>
+      </view>
+      <view class="feature-cover"><text>FULL BLEED VISUAL</text></view>
+      <view class="feature-intro"><text class="feature-number">01</text><view><text class="feature-chapter">THE BEGINNING</text><text class="body-paragraph">FEATURE 模板强调章节感。可以用超大编号、整屏图片、数据模块、时间线和数据库里的 Artist / Album 卡片组成一篇互动式专题。</text></view></view>
+      <view class="stat-strip"><view><text class="stat-num">47</text><text class="stat-label">RELATED RELEASES</text></view><view><text class="stat-num">19</text><text class="stat-label">ARTISTS</text></view><view><text class="stat-num">5</text><text class="stat-label">YEARS</text></view></view>
+      <view class="giant-quote"><text>RAGE 从来不只是一个 Beat，它是一整套关于速度、失真与身份的想象。</text></view>
+      <view class="feature-intro"><text class="feature-number">02</text><view><text class="feature-chapter">THE NEXT WAVE</text><text class="body-paragraph">后续章节可以继续嵌入地区地图、风格演化、代表作品和社区评分，让专题像数字杂志，而不是一篇普通长文。</text></view></view>
+    </block>
+
+    <block wx:else>
+      <view class="interview-hero">
+        <text class="eyebrow">IN CONVERSATION WITH</text>
+        <text class="interview-name">SASIOVERLXRD</text>
+        <text class="interview-quote">“我从来没想过要成为所谓主流的一部分。”</text>
+      </view>
+      <view class="portrait"><text>PORTRAIT / HERO IMAGE</text></view>
+      <view class="interview-body">
+        <view class="qa"><text class="speaker brand-speaker">BARSCOPE</text><text class="question">你什么时候意识到，自己真正想做的是一套属于自己的声音？</text></view>
+        <view class="qa answer"><text class="speaker">ARTIST</text><text class="answer-copy">不是某一个瞬间。更多时候是你做了很多东西之后，突然发现有些选择一直重复出现，那些重复的选择才慢慢变成你的风格。</text></view>
+        <view class="interview-pull"><text>“风格不是你选出来的，是你长期拒绝什么之后剩下来的。”</text></view>
+        <view class="qa"><text class="speaker brand-speaker">BARSCOPE</text><text class="question">那现在你最想推翻的又是什么？</text></view>
+        <view class="qa answer"><text class="speaker">ARTIST</text><text class="answer-copy">就是刚刚建立起来的那套东西。只要它开始变得太容易，我就会觉得应该换一种方式。</text></view>
+      </view>
+    </block>
+
+    <view style="margin:28rpx 32rpx 0;padding:24rpx;border:2rpx solid #C94E25;background:#120b09;" bindtap="onOpenEditor">
+      <text style="display:block;color:#C94E25;font-family:var(--font-bebas);font-size:24rpx;letter-spacing:4rpx;">OPEN EDITOR</text>
+      <text style="display:block;margin-top:8rpx;color:#F5EFE8;font-size:28rpx;font-weight:700;">用当前 {{active}} 模板开始编辑 →</text>
+      <text style="display:block;margin-top:8rpx;color:#756C64;font-size:20rpx;line-height:1.6;">添加 Paragraph / Heading / Image / Quote / Divider / Q&A，并实时预览统一排版。</text>
+    </view>
+
+    <view class="block-note">
+      <text class="block-note-kicker">BLOCK SYSTEM</text>
+      <text class="block-note-title">同一套编辑器，不同模板负责不同叙事节奏</text>
+      <text class="block-note-copy">后续后台只需要组合 Paragraph / Heading / Image / Quote / Pull Quote / Album / Artist / Score / Stat 等模块，模板负责自动排版。</text>
+    </view>
+  </scroll-view>
+</view>

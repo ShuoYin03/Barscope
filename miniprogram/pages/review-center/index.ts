@@ -1,6 +1,6 @@
 import { getThemeClass } from '../../utils/theme'
 
-type ReviewSection = 'candidates' | 'reports' | 'tracks' | 'critics'
+type ReviewSection = 'candidates' | 'reports' | 'tracks' | 'critics' | 'interviews'
 
 Page({
   data: {
@@ -10,6 +10,7 @@ Page({
     candidateCount: 0,
     reportCount: 0,
     trackCorrectionCount: 0,
+    interviewCount: 0,
     loading: false,
   },
 
@@ -36,14 +37,17 @@ Page({
       wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'stats' } }),
       wx.cloud.callFunction({ name: 'reviewModeration', data: { action: 'stats' } }),
       wx.cloud.callFunction({ name: 'manageTrackCorrections', data: { action: 'stats' } }),
+      wx.cloud.callFunction({ name: 'manageInterviews', data: { action: 'stats' } }),
     ]).then((results: any[]) => {
       const candidateResult = results[0]?.status === 'fulfilled' ? results[0].value?.result : null
       const reportResult = results[1]?.status === 'fulfilled' ? results[1].value?.result : null
       const trackResult = results[2]?.status === 'fulfilled' ? results[2].value?.result : null
+      const interviewResult = results[3]?.status === 'fulfilled' ? results[3].value?.result : null
       this.setData({
         candidateCount: candidateResult?.success ? (candidateResult.pending || 0) : 0,
         reportCount: reportResult?.success ? (reportResult.pending || 0) : 0,
         trackCorrectionCount: trackResult?.success ? (trackResult.pending || 0) : 0,
+        interviewCount: interviewResult?.success ? (interviewResult.pending || 0) : 0,
         loading: false,
       })
     })
@@ -56,6 +60,7 @@ Page({
       reports: '/pages/review-reports/index',
       tracks: '/pages/track-corrections/index',
       critics: '/pages/critics/index',
+      interviews: '/pages/interview-review/index',
     }
     wx.navigateTo({ url: routes[section] })
   },

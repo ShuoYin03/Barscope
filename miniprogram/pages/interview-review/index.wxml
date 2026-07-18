@@ -1,0 +1,24 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="title">INTERVIEW REVIEW</text>
+  </view>
+  <scroll-view class="content" scroll-y>
+    <view wx:if="{{loading}}" class="empty"><text>加载中…</text></view>
+    <view wx:elif="{{!list.length}}" class="empty"><text>暂无待审核的人物访谈</text></view>
+    <view wx:for="{{list}}" wx:key="_id" class="card">
+      <image wx:if="{{item.coverUrl}}" class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
+      <text class="title-text">{{item.title}}</text>
+      <text class="meta">受访：{{item.intervieweeName}} · 投稿人：{{item.submitterName}}{{item.wechat ? (' · 微信：' + item.wechat) : ''}}</text>
+      <text wx:if="{{item.intro}}" class="intro">{{item.intro}}</text>
+      <text class="content-text {{expanded[item._id] ? '' : 'clamped'}}" bindtap="onToggleExpand" data-id="{{item._id}}">{{item.content}}</text>
+      <view class="expand-toggle" bindtap="onToggleExpand" data-id="{{item._id}}">
+        <text>{{expanded[item._id] ? '收起全文' : '展开全文'}}</text>
+      </view>
+      <view class="actions">
+        <view class="reject" data-id="{{item._id}}" bindtap="onReject"><text>驳回</text></view>
+        <view class="approve" data-id="{{item._id}}" bindtap="onApprove"><text>通过并发布</text></view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

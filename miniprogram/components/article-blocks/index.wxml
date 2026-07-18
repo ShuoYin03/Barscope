@@ -1,0 +1,51 @@
+<view class="article-blocks">
+  <block wx:for="{{renderBlocks}}" wx:key="key">
+    <view wx:if="{{item.type === 'heading'}}" class="block-heading">
+      <text wx:if="{{item.kicker}}" class="block-heading-kicker">{{item.kicker}}</text>
+      <text class="block-heading-text">{{item.text}}</text>
+    </view>
+
+    <view wx:elif="{{item.type === 'paragraph' && item.lead}}" class="block-paragraph-wrap">
+      <text class="block-dropcap">{{item.dropcapChar}}</text><text class="block-body-text">{{item.rest}}</text>
+    </view>
+    <text wx:elif="{{item.type === 'paragraph'}}" class="block-paragraph">{{item.text}}</text>
+
+    <view wx:elif="{{item.type === 'image'}}" class="block-image-wrap">
+      <image class="block-image" src="{{item.url}}" mode="widthFix" />
+      <text wx:if="{{item.caption}}" class="block-image-caption">{{item.caption}}</text>
+    </view>
+
+    <view wx:elif="{{item.type === 'quote' && item.size === 'large'}}" class="block-quote-large">
+      <text>{{item.text}}</text>
+    </view>
+    <view wx:elif="{{item.type === 'quote'}}" class="block-quote">
+      <text>{{item.text}}</text>
+    </view>
+
+    <view wx:elif="{{item.type === 'stat'}}" class="block-stat-strip">
+      <view wx:for="{{item.items}}" wx:for-item="stat" wx:key="label" class="block-stat-cell">
+        <text class="block-stat-num">{{stat.num}}</text>
+        <text class="block-stat-label">{{stat.label}}</text>
+      </view>
+    </view>
+
+    <view wx:elif="{{item.type === 'album'}}" class="block-card" bindtap="onAlbumTap" data-id="{{item.albumId}}">
+      <image wx:if="{{item.coverUrl}}" class="block-card-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+      <view class="block-card-info">
+        <text class="block-card-title">{{item.title}}</text>
+        <text class="block-card-sub">{{item.artist}}</text>
+      </view>
+      <text wx:if="{{item.score}}" class="block-card-score">{{item.score}}</text>
+    </view>
+
+    <view wx:elif="{{item.type === 'artist'}}" class="block-card" bindtap="onArtistTap" data-artist-id="{{item.artistId}}" data-artist-name="{{item.artistName}}">
+      <view class="block-card-avatar"><image wx:if="{{item.avatarUrl}}" class="block-card-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+      <view class="block-card-info">
+        <text class="block-card-title">{{item.artistName}}</text>
+      </view>
+      <text class="block-card-arrow">›</text>
+    </view>
+
+    <view wx:elif="{{item.type === 'divider'}}" class="block-divider" />
+  </block>
+</view>
