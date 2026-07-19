@@ -1,5 +1,19 @@
 import { getThemeClass } from '../../utils/theme'
 
+interface PlaylistTrack {
+  position: number
+  neteaseSongId: string
+  songName: string
+  artistNames: string[]
+  albumId: string
+  albumName: string
+  coverUrl: string
+  barscopeAlbumId?: string
+  albumCatalogStatus?: 'linked' | 'pending'
+  missingArtistNames?: string[]
+  artistText?: string
+}
+
 interface PlaylistCard {
   _id: string
   creatorName: string
@@ -9,6 +23,14 @@ interface PlaylistCard {
   playlistCoverUrl: string
   trackCount: number
   isEditorial: boolean
+  expanded?: boolean
+  detailLoading?: boolean
+  tracks?: PlaylistTrack[]
+  catalogSync?: {
+    linkedAlbums: number
+    pendingAlbums: number
+    pendingArtists: number
+  }
 }
 
 Page({
@@ -54,7 +76,7 @@ Page({
       success: (res: any) => {
         const r = res.result || {}
         if (!r.success) return
-        const list = (r.list || []) as PlaylistCard[]
+        const list = ((r.list || []) as PlaylistCard[]).map(item => ({ ...item, expanded: false, detailLoading: false }))
         this.setData({
           editorialList: list.filter(item => item.isEditorial),
           communityList: list.filter(item => !item.isEditorial),
@@ -64,6 +86,78 @@ Page({
       },
       complete: () => this.setData({ loading: false }),
     } as any)
+  },
+
+  _findPlaylist(id: string) {
+    const editorial = this.data.editorialList.find(item => item._id === id)
+    if (editorial) return { listKey: 'editorialList', item: editorial }
+    const community = this.data.communityList.find(item => item._id === id)
+    if (community) return { listKey: 'communityList', item: community }
+    return null
+  },
+
+  _patchPlaylist(listKey: 'editorialList' | 'communityList', id: string, patch: Partial<PlaylistCard>) {
+    const list = this.data[listKey].map(item => item._id === id ? { ...item, ...patch } : item)
+    this.setData({ [listKey]: list } as any)
+  },
+
+  onPlaylistTap(e: WechatMiniprogram.TouchEvent) {
+    const id = String((e.currentTarget.dataset as any).id || '')
+    if (!id) return
+    const found = this._findPlaylist(id)
+    if (!found) return
+
+    if (found.item.expanded) {
+      this._patchPlaylist(found.listKey as any, id, { expanded: false })
+      return
+    }
+
+    if (found.item.tracks && found.item.tracks.length) {
+      this._patchPlaylist(found.listKey as any, id, { expanded: true })
+      return
+    }
+
+    this._patchPlaylist(found.listKey as any, id, { detailLoading: true, expanded: true })
+    wx.cloud.callFunction({
+      name: 'manageFeaturePlaylists',
+      data: { action: 'get_public_detail', id },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success || !r.playlist) {
+          wx.showToast({ title: '歌单加载失败', icon: 'none' })
+          this._patchPlaylist(found.listKey as any, id, { expanded: false })
+          return
+        }
+        const tracks = (r.playlist.tracks || []).map((track: PlaylistTrack) => ({
+          ...track,
+          artistText: (track.artistNames || []).join(' / '),
+        }))
+        this._patchPlaylist(found.listKey as any, id, {
+          tracks,
+          catalogSync: r.playlist.catalogSync,
+          detailLoading: false,
+          expanded: true,
+        })
+      },
+      fail: () => {
+        wx.showToast({ title: '歌单加载失败', icon: 'none' })
+        this._patchPlaylist(found.listKey as any, id, { detailLoading: false, expanded: false })
+      },
+      complete: () => this._patchPlaylist(found.listKey as any, id, { detailLoading: false }),
+    } as any)
+  },
+
+  onTrackTap(e: WechatMiniprogram.TouchEvent) {
+    const albumId = String((e.currentTarget.dataset as any).albumId || '')
+    const status = String((e.currentTarget.dataset as any).status || '')
+    if (albumId) {
+      wx.navigateTo({ url: `/pages/album-detail/index?id=${albumId}` })
+      return
+    }
+    wx.showToast({
+      title: status === 'pending' ? '该专辑已进入后台审核' : '该专辑暂未收录',
+      icon: 'none',
+    })
   },
 
   onSubmitPlaylist() {
