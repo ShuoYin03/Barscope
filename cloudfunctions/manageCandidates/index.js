@@ -166,6 +166,7 @@ exports.main = async (event, context) => {
   if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
   if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
   if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
+  if (action === 'apply_owner_artist_fix')   return await applyOwnerArtistFix(event.skip || 0)
   if (action === 'purge_declined')        return await purgeDeclinedCandidates()
 
   return { success: false, error: 'unknown action' }
@@ -539,6 +540,54 @@ async function applyReleaseTypeRules(skip) {
       const next = d.isMultiArtist ? (Number(d.trackCount) >= 7 ? 'LP' : 'Mixtape') : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
       updated++
       return db.collection('albums').doc(d._id).update({ data: { releaseType: next } })
+    }))
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── apply_owner_artist_fix ───────────────────────────────────────────────────
+// Backfills ownerArtists/ownerArtistIds from data already on the album doc (no NetEase calls,
+// unlike a full syncAlbumTracks re-sync) — excludes anyone already known to be a track-level
+// featuringGuests entry from the artistIds participant list. Fixes the class of bug where a
+// featured guest on one track (most often track 1) got wrongly counted as an album owner, both
+// in the "该专辑有多位歌手" sheet and in which artist pages the album is cross-listed on. Skips
+// albums with no featuringGuests data yet (nothing to exclude) and manually-corrected albums
+// (ownershipSource: 'user-admin-correction' already has a deliberately-set, authoritative owner
+// list that this must never override).
+async function applyOwnerArtistFix(skip) {
+  try {
+    const pageSize = 300
+    const result = await db.collection('albums').skip(skip).limit(pageSize)
+      .field({ _id: true, artist: true, artistIds: true, featuringGuests: true, ownerArtists: true, ownerArtistIds: true, ownershipSource: true })
+      .get()
+    const docs = result.data || []
+    if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
+    let updated = 0
+    const results = await Promise.allSettled(docs.map(d => {
+      if (d.ownershipSource === 'user-admin-correction') return Promise.resolve()
+      const artistIds = Array.isArray(d.artistIds) ? d.artistIds.map(String) : []
+      const guests = Array.isArray(d.featuringGuests) ? d.featuringGuests : []
+      if (!artistIds.length || !guests.length) return Promise.resolve()
+      const guestIds = new Set(guests.map(g => String(g.id || '')).filter(Boolean))
+      const guestNames = new Set(guests.map(g => String(g.name || '').trim()).filter(Boolean))
+      const names = String(d.artist || '').split('/').map(s => s.trim()).filter(Boolean)
+      const nameById = {}
+      artistIds.forEach((id, i) => { if (names[i]) nameById[id] = names[i] })
+      const ownerPairs = artistIds
+        .filter(id => !guestIds.has(id))
+        .map(id => ({ id, name: nameById[id] || '' }))
+        .filter(p => p.name && !guestNames.has(p.name))
+      if (!ownerPairs.length) return Promise.resolve() // safety net: never blank out an album's owners
+      const nextOwnerArtists = ownerPairs.map(p => ({ id: Number(p.id) || 0, name: p.name }))
+      const nextOwnerArtistIds = ownerPairs.map(p => p.id)
+      const sameArtists = JSON.stringify(d.ownerArtists || []) === JSON.stringify(nextOwnerArtists)
+      const sameIds = JSON.stringify((d.ownerArtistIds || []).map(String).slice().sort()) === JSON.stringify(nextOwnerArtistIds.slice().sort())
+      if (sameArtists && sameIds) return Promise.resolve()
+      updated++
+      return db.collection('albums').doc(d._id).update({ data: { ownerArtists: nextOwnerArtists, ownerArtistIds: nextOwnerArtistIds } })
     }))
     const failed = results.filter(r => r.status === 'rejected').length
     return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
