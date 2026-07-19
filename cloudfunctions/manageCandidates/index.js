@@ -535,8 +535,8 @@ async function applyReleaseTypeRules(skip) {
     if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
     let updated = 0
     const results = await Promise.allSettled(docs.map(d => {
+      if (d.releaseType) return Promise.resolve()
       const next = d.isMultiArtist ? (Number(d.trackCount) >= 7 ? 'LP' : 'Mixtape') : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
-      if (d.releaseType === next) return Promise.resolve()
       updated++
       return db.collection('albums').doc(d._id).update({ data: { releaseType: next } })
     }))
