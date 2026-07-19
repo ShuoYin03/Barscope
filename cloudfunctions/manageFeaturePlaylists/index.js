@@ -86,6 +86,19 @@ function normalizeTrack(song, position) {
   }
 }
 
+async function fetchAlbumArtists(albumId) {
+  try {
+    const data = await httpsGet(`https://music.163.com/api/v1/album/${albumId}`)
+    const album = (data && data.album) || (data && data.data && data.data.album) || {}
+    const raw = (Array.isArray(album.artists) && album.artists.length) ? album.artists : (album.artist ? [album.artist] : [])
+    return raw
+      .map(a => ({ id: String(a && a.id || ''), name: String(a && a.name || '').trim() }))
+      .filter(a => a.name)
+  } catch (e) {
+    return null
+  }
+}
+
 async function fetchPlaylist(playlistId) {
   const data = await httpsGet(`https://music.163.com/api/v6/playlist/detail?id=${playlistId}&n=1000&s=0`)
   const playlist = data && playlistFromResponse(data)
@@ -211,15 +224,26 @@ async function reconcileTracks(tracks, contextLabel) {
     },
   }))
 
-  const albumWrites = missingAlbums.map(({ id, track }) => {
-    const primary = (track.artists || [])[0] || {}
-    const artistIds = (track.artists || []).map(x => String(x.id || '')).filter(Boolean)
-    const artistNames = (track.artists || []).map(x => String(x.name || '')).filter(Boolean)
+  const albumWrites = missingAlbums.map(async ({ id, track }) => {
+    // albumMap only ever kept ONE representative track per album (the first one seen in the
+    // playlist) — using that track's own per-song artist credits as the album's artist list wrongly
+    // promotes a featured guest on that one song into a co-owner of the whole album whenever the
+    // representative track happens to be a feature/collab. Fetch the album's own NetEase artist
+    // list instead (same source resolveOwners trusts elsewhere); only fall back to the track's
+    // primary artist — never its full credit list — if that live fetch fails.
+    const albumArtists = await fetchAlbumArtists(id)
+    const fallback = (track.artists || []).slice(0, 1)
+      .map(x => ({ id: String(x.id || ''), name: String(x.name || '').trim() }))
+      .filter(a => a.name)
+    const resolved = (albumArtists && albumArtists.length) ? albumArtists : fallback
+    const primary = resolved[0] || {}
+    const artistIds = resolved.map(x => x.id).filter(Boolean)
+    const artistNames = resolved.map(x => x.name).filter(Boolean)
     return db.collection('album_candidates').add({
       data: {
         title: track.albumName || '未知专辑',
         artist: artistNames.join(' / '),
-        primaryArtist: primary.name || artistNames[0] || '',
+        primaryArtist: primary.name || '',
         neteaseArtistId: primary.id ? String(primary.id) : null,
         artistIds,
         releaseYear: Number(track.albumReleaseYear || 0),
