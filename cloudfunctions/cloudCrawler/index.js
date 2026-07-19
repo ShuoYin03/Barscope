@@ -30,6 +30,8 @@ exports.main = async event => {
     if (action === 'artist') return await runArtist(String(event.artistId || event.param || ''))
     if (action === 'allApproved') return await runAllApproved(Number(event.cursor || 0))
     if (action === 'autoBatch') return await runAutoBatch(Array.isArray(event.ids) ? event.ids : [])
+    if (action === 'abort') return await abortRun()
+    if (action === 'clearLog') { await patchStatus({ log: [] }); return { success: true } }
     return { success: false, error: '未知 action' }
   } catch (e) {
     try { await appendLog(`出错: ${e.message}`); await patchStatus({ status: 'error', completedAt: db.serverDate(), lastRunSummary: { newAlbums: 0, newCandidates: 0, errors: [e.message] } }) } catch (x) {}
@@ -185,3 +187,11 @@ async function patchStatus(data) { const current = await getStatus(); const next
 async function startStatus(mode, param, total) { await patchStatus({ status: 'running', mode, param, abort: false, triggeredAt: db.serverDate(), completedAt: null, progress: { totalArtists: total, processedArtists: 0, albumsFound: 0, candidatesFound: 0 } }) }
 async function doneStatus(total, inserted, log) { await patchStatus({ status: 'done', abort: false, completedAt: db.serverDate(), progress: { totalArtists: total, processedArtists: total, albumsFound: inserted, candidatesFound: 0 }, lastRunSummary: { newAlbums: inserted, newCandidates: 0, errors: [] } }); await appendLog(log) }
 async function appendLog(text) { const s = await getStatus(), logs = Array.isArray(s.log) ? s.log : (Array.isArray(s.logs) ? s.logs.map(x => typeof x === 'string' ? x : x.text || '') : []); const ts = new Date().toISOString().slice(11,19); logs.unshift(`[${ts}] ${text}`); await patchStatus({ log: logs.slice(0, 80) }) }
+async function abortRun() {
+  const cur = await getStatus()
+  if (cur.status !== 'running' && cur.status !== 'pending') return { success: true, noop: true }
+  const p = cur.progress || {}
+  await patchStatus({ status: 'aborted', abort: true, completedAt: db.serverDate(), lastRunSummary: { newAlbums: Number(p.albumsFound || 0), newCandidates: Number(p.candidatesFound || 0), errors: ['用户中止'] } })
+  await appendLog('任务已中止')
+  return { success: true }
+}

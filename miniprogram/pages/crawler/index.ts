@@ -37,22 +37,19 @@ Page({
     heartbeatText:           '暂无记录',
     heartbeatStale:          false,
 
-    crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync',
+    crawlerMode:        'approved' as 'approved' | 'artist' | 'album',
     crawlerParam:       '',
     crawlerProgressPct: 0,
     crawlerNeedsId:     false,
-    crawlerIsCloud:     true,
     crawlerPlaceholder: '',
     crawlerDesc:        '云端一键爬取所有已批准 rapper 的全部专辑 + 单曲，并逐位写入运行日志',
     crawlerLastLog:     '',
     crawlerTriggerTime: 0,
     crawlerModes: [
-      { key: 'approved', label: '全部已批准', desc: '云端一键爬取所有已批准 rapper 的全部专辑 + 单曲，并逐位写入运行日志', needsId: false, cloud: true,  placeholder: '' },
-      { key: 'artist',   label: '按艺人ID',   desc: '云端收录指定网易云艺人的全部专辑 + 单曲', needsId: true, cloud: true, placeholder: '网易云艺人 ID，如 49779880' },
-      { key: 'album',    label: '按专辑ID',   desc: '云端精确收录单张网易云专辑（含单曲）', needsId: true, cloud: true, placeholder: '网易云专辑 ID' },
-      { key: 'fission',  label: '裂变发现',   desc: '本地：从已批准艺人出发发现新合作艺人（需开电脑）', needsId: false, cloud: false, placeholder: '' },
-      { key: 'sync',     label: '同步决定',   desc: '本地：将云端审核结果同步回 rappers.json（需开电脑）', needsId: false, cloud: false, placeholder: '' },
-    ] as Array<{ key: string; label: string; desc: string; needsId: boolean; cloud: boolean; placeholder: string }>,
+      { key: 'approved', label: '全部已批准', desc: '云端一键爬取所有已批准 rapper 的全部专辑 + 单曲，并逐位写入运行日志', needsId: false, placeholder: '' },
+      { key: 'artist',   label: '按艺人ID',   desc: '云端收录指定网易云艺人的全部专辑 + 单曲', needsId: true, placeholder: '网易云艺人 ID，如 49779880' },
+      { key: 'album',    label: '按专辑ID',   desc: '云端精确收录单张网易云专辑（含单曲）', needsId: true, placeholder: '网易云专辑 ID' },
+    ] as Array<{ key: string; label: string; desc: string; needsId: boolean; placeholder: string }>,
   },
 
   onLoad() { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }) },
@@ -66,7 +63,7 @@ Page({
 
   _fetchStatus() {
     wx.cloud.callFunction({
-      name: 'crawlerControl', data: { action: 'getStatus' },
+      name: 'cloudCrawler', data: { action: 'getStatus' },
       success: (res: any) => {
         const r = res.result; if (!r.success) return
         const s = r.status || {}, prog = s.progress || {}
@@ -99,7 +96,7 @@ Page({
     const key = (e.currentTarget.dataset as { key: string }).key
     if (key === this.data.crawlerMode) return
     const m = this.data.crawlerModes.find((x) => x.key === key)
-    this.setData({ crawlerMode:key as any, crawlerNeedsId:!!(m && m.needsId), crawlerIsCloud:!!(m && m.cloud), crawlerPlaceholder:(m && m.placeholder) || '', crawlerDesc:(m && m.desc) || '', crawlerParam:'' })
+    this.setData({ crawlerMode:key as any, crawlerNeedsId:!!(m && m.needsId), crawlerPlaceholder:(m && m.placeholder) || '', crawlerDesc:(m && m.desc) || '', crawlerParam:'' })
   },
   onCrawlerParamInput(e: WechatMiniprogram.Input) { this.setData({ crawlerParam: e.detail.value || '' }) },
 
@@ -113,8 +110,7 @@ Page({
       if (!param) { wx.showToast({ title: '请输入 ID', icon: 'none' }); return }
       if (!/^\d+$/.test(param)) { wx.showToast({ title: 'ID 必须是数字', icon: 'none' }); return }
     }
-    if (this.data.crawlerIsCloud) this._triggerCloud(mode, param)
-    else this._triggerLocal(mode, param)
+    this._triggerCloud(mode, param)
   },
 
   _triggerCloud(mode: string, param: string) {
@@ -129,12 +125,7 @@ Page({
     if (mode === 'approved') { wx.showToast({ title: '已在云端开始', icon: 'success' }); this._startPoll(1500) }
   },
 
-  _triggerLocal(mode: string, param: string) {
-    this.setData({ crawlerTriggering: true })
-    wx.cloud.callFunction({ name: 'crawlerControl', data: { action: 'trigger', mode, param }, success: (res: any) => { this.setData({ crawlerTriggering: false }); if (res.result?.success) { wx.showToast({ title: '已触发，等待本地爬虫', icon: 'success' }); this._fetchStatus() } else wx.showToast({ title: '触发失败', icon: 'error' }) }, fail: () => { this.setData({ crawlerTriggering: false }); wx.showToast({ title: '网络错误', icon: 'error' }) } })
-  },
-
-  onCrawlerAbort() { const s = this.data.crawlerStatus; if (!s || (s.status !== 'running' && s.status !== 'pending')) return; wx.showModal({ title:'中止爬虫', content:'确定中止当前任务？已爬取的数据会保留。', confirmText:'中止', confirmColor:'#C0392B', success:(r)=>{ if(!r.confirm)return; wx.cloud.callFunction({ name:'crawlerControl', data:{ action:'abort' }, success:(res:any)=>{ if(res.result&&res.result.success){ wx.showToast({ title:'已请求中止', icon:'none' }); this._fetchStatus() } else wx.showToast({ title:'操作失败', icon:'error' }) }, fail:()=>wx.showToast({ title:'网络错误', icon:'error' }) }) } }) },
-  onCrawlerClearLog() { wx.cloud.callFunction({ name:'crawlerControl', data:{ action:'clearLog' }, success:()=>{ this._fetchStatus(); wx.showToast({ title:'日志已清除', icon:'success' }) } }) },
+  onCrawlerAbort() { const s = this.data.crawlerStatus; if (!s || (s.status !== 'running' && s.status !== 'pending')) return; wx.showModal({ title:'中止爬虫', content:'确定中止当前任务？已爬取的数据会保留。', confirmText:'中止', confirmColor:'#C0392B', success:(r)=>{ if(!r.confirm)return; wx.cloud.callFunction({ name:'cloudCrawler', data:{ action:'abort' }, success:(res:any)=>{ if(res.result&&res.result.success){ wx.showToast({ title:'已请求中止', icon:'none' }); this._fetchStatus() } else wx.showToast({ title:'操作失败', icon:'error' }) }, fail:()=>wx.showToast({ title:'网络错误', icon:'error' }) }) } }) },
+  onCrawlerClearLog() { wx.cloud.callFunction({ name:'cloudCrawler', data:{ action:'clearLog' }, success:()=>{ this._fetchStatus(); wx.showToast({ title:'日志已清除', icon:'success' }) } }) },
   onCleanupSingles() { wx.showModal({ title:'清理专辑库', content:'将删除 trackCount 为 1 或 2 的条目，然后自动重新筛选剩余专辑，操作不可撤销。', confirmText:'开始清理', confirmColor:'#C0392B', success:(r)=>{ if(!r.confirm)return; wx.showLoading({ title:'清除单曲中…', mask:true }); wx.cloud.callFunction({ name:'manageCandidates', data:{ action:'cleanup_singles' }, success:(res:any)=>{ const result=res.result||{}; wx.hideLoading(); if(!result.success){ wx.showToast({ title:result.error||'操作失败', icon:'none' }); return } wx.showToast({ title:'已开始清理', icon:'success' }); this._fetchStatus() }, fail:()=>{ wx.hideLoading(); wx.showToast({ title:'网络错误', icon:'error' }) } }) } }) },
 })
