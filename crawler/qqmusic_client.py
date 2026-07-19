@@ -84,9 +84,26 @@ class QQMusicClient:
         seen: set[str] = set()
         for raw in items:
             singer = raw.get("singer", raw)
-            mid = str(singer.get("mid") or singer.get("singer_mid") or "").strip()
-            numeric_id = str(singer.get("id") or singer.get("singer_id") or "").strip()
-            name = html.unescape(str(singer.get("name") or singer.get("singer_name") or "")).strip()
+            mid = str(
+                singer.get("singerMID")
+                or singer.get("mid")
+                or singer.get("singer_mid")
+                or ""
+            ).strip()
+            numeric_id = str(
+                singer.get("singerID")
+                or singer.get("id")
+                or singer.get("singer_id")
+                or ""
+            ).strip()
+            name = html.unescape(
+                str(
+                    singer.get("singerName")
+                    or singer.get("name")
+                    or singer.get("singer_name")
+                    or ""
+                )
+            ).strip()
             stable_key = mid or numeric_id
             if not stable_key or not name or stable_key in seen:
                 continue
