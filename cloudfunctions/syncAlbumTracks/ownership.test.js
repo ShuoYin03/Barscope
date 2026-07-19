@@ -3,6 +3,16 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { resolveOwners, buildNameById, isGuest, featureIds } = require('./ownership')
 
+// 疼痛奥林匹克 PAIN OLYMPIX — a real GG Lobster solo LP whose opening track features Flashkore.
+// NetEase's own album page only ever credits GG Lobster; Flashkore is a track-level guest only.
+const SOLO = {
+  ownershipSource: undefined,
+  primaryArtist: 'GG Lobster',
+  artist: 'GG Lobster',
+  artistIds: ['12174183'],
+}
+const SOLO_NE = [ { id: 12174183, name: 'GG Lobster' } ]
+
 // Real fixtures drawn from the cloud DB.
 // 幸存者的负罪感 — a genuine 王以太 × 艾热 joint album (two co-owners, never corrected).
 const JOINT = {
@@ -135,4 +145,29 @@ test('isGuest: a group member is not a Feat guest once resolveOwners trusts the 
   const { ownerIds, ownerNames } = resolveOwners(HIGHEST, HIGHEST_NE_NARROW)
   assert.equal(isGuest({ id: 1132392, name: '马思唯' }, ownerIds, ownerNames), false)
   assert.equal(isGuest({ id: 27868624, name: 'KnowKnow' }, ownerIds, ownerNames), false)
+})
+
+test('ownerArtists: a solo album stays solo even though its opening track features a guest', () => {
+  const { ownerArtists } = resolveOwners(SOLO, SOLO_NE)
+  assert.deepEqual(ownerArtists, [{ id: 12174183, name: 'GG Lobster' }])
+})
+
+test('ownerArtists: track-level guest never appears in the album-level owner list', () => {
+  const { ownerIds, ownerNames } = resolveOwners(SOLO, SOLO_NE)
+  const track1 = [ { id: 12174183, name: 'GG Lobster' }, { id: 12292934, name: 'Flashkore' } ]
+  assert.equal(isGuest(track1[0], ownerIds, ownerNames), false)
+  assert.equal(isGuest(track1[1], ownerIds, ownerNames), true)
+})
+
+test('ownerArtists: joint album returns both co-owners as id+name pairs', () => {
+  const { ownerArtists } = resolveOwners(JOINT, JOINT_NE)
+  assert.deepEqual(
+    ownerArtists.slice().sort((a, b) => a.name.localeCompare(b.name)),
+    [{ id: 1203045, name: '艾热 AIR' }, { id: 12236125, name: '王以太' }].sort((a, b) => a.name.localeCompare(b.name)),
+  )
+})
+
+test('ownerArtists: corrected compilation returns only the pinned owner, not all 5 participants', () => {
+  const { ownerArtists } = resolveOwners(COMP, COMP_NE)
+  assert.deepEqual(ownerArtists, [{ id: 51088331, name: '付思遥' }])
 })
