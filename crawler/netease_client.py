@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 from typing import Any
+import time
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 ARTIST_DETAIL_URL = "https://music.163.com/api/v1/artist/{artist_id}"
@@ -16,9 +19,30 @@ class NetEaseMusicError(RuntimeError):
 
 
 class NetEaseMusicClient:
-    def __init__(self, timeout: float = 15.0, session: requests.Session | None = None):
+    def __init__(
+        self,
+        timeout: float = 15.0,
+        session: requests.Session | None = None,
+        retries: int = 5,
+        backoff_factor: float = 1.0,
+    ):
         self.timeout = timeout
         self.session = session or requests.Session()
+
+        retry_policy = Retry(
+            total=max(0, retries),
+            connect=max(0, retries),
+            read=max(0, retries),
+            status=max(0, retries),
+            backoff_factor=max(0.0, backoff_factor),
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset({"GET"}),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry_policy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+
         self.session.headers.update(
             {
                 "User-Agent": (
