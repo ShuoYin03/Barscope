@@ -3,6 +3,7 @@ const https = require('https')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+const _ = db.command
 
 const FEATURE_ID = '2026-h1-top-50-tracks'
 
@@ -36,6 +37,12 @@ function extractPlaylistId(input) {
   return match ? match[1] : ''
 }
 
+function normalizeTitle(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[\s\-_·•:：()（）\[\]【】'"“”‘’]/g, '')
+}
+
 async function checkAdmin(openId) {
   if (!openId) return false
   try {
@@ -60,8 +67,10 @@ function normalizeTrack(song, position) {
   const artists = (song.artists || song.ar || []).map(artist => ({
     id: String(artist.id || ''),
     name: String(artist.name || '').trim(),
+    picUrl: artist.picUrl || artist.img1v1Url || '',
   })).filter(artist => artist.name)
   const album = song.album || song.al || {}
+  const publishTime = Number(album.publishTime || album.publishTimestamp || 0)
   return {
     position,
     neteaseSongId: String(song.id || ''),
@@ -70,6 +79,8 @@ function normalizeTrack(song, position) {
     artistNames: artists.map(artist => artist.name),
     albumId: String(album.id || ''),
     albumName: String(album.name || '').trim(),
+    albumTrackCount: Number(album.size || album.trackCount || 0),
+    albumReleaseYear: publishTime ? new Date(publishTime).getFullYear() : 0,
     coverUrl: album.picUrl || '',
     durationMs: Number(song.duration || song.dt || 0),
   }
@@ -133,6 +144,124 @@ function publicMeta(item) {
   }
 }
 
+async function queryByIds(collectionName, field, ids, projection) {
+  const unique = Array.from(new Set((ids || []).map(x => String(x || '')).filter(Boolean)))
+  const rows = []
+  for (let i = 0; i < unique.length; i += 100) {
+    try {
+      const chunk = unique.slice(i, i + 100)
+      let query = db.collection(collectionName).where({ [field]: _.in(chunk) })
+      if (projection) query = query.field(projection)
+      const result = await query.limit(chunk.length).get()
+      rows.push(...(result.data || []))
+    } catch (e) {
+      // A review collection may not exist yet in a fresh environment.
+    }
+  }
+  return rows
+}
+
+async function reconcileTracks(tracks, contextLabel) {
+  const safeTracks = Array.isArray(tracks) ? tracks : []
+  const artistMap = new Map()
+  const albumMap = new Map()
+
+  safeTracks.forEach(track => {
+    ;(track.artists || []).forEach(artist => {
+      const id = String(artist.id || '')
+      if (id && !artistMap.has(id)) artistMap.set(id, artist)
+    })
+    const albumId = String(track.albumId || '')
+    if (albumId && !albumMap.has(albumId)) albumMap.set(albumId, track)
+  })
+
+  const artistIds = Array.from(artistMap.keys())
+  const albumIds = Array.from(albumMap.keys())
+  const [knownArtists, existingAlbums, existingAlbumCandidates] = await Promise.all([
+    queryByIds('artist_candidates', 'artistId', artistIds, { _id: true, artistId: true, status: true }),
+    queryByIds('albums', 'sourceId', albumIds, { _id: true, sourceId: true, source: true, approved: true }),
+    queryByIds('album_candidates', 'sourceId', albumIds, { _id: true, sourceId: true, status: true }),
+  ])
+
+  const knownArtistIds = new Set(knownArtists.map(x => String(x.artistId || '')))
+  const albumBySourceId = new Map(existingAlbums.map(x => [String(x.sourceId || ''), x]))
+  const candidateAlbumIds = new Set(existingAlbumCandidates.map(x => String(x.sourceId || '')))
+
+  const missingArtists = Array.from(artistMap.entries())
+    .filter(([id]) => !knownArtistIds.has(id))
+    .map(([id, artist]) => ({ id, artist }))
+
+  const missingAlbums = Array.from(albumMap.entries())
+    .filter(([id]) => !albumBySourceId.has(id) && !candidateAlbumIds.has(id))
+    .map(([id, track]) => ({ id, track }))
+
+  const now = db.serverDate()
+  const artistWrites = missingArtists.map(({ id, artist }) => db.collection('artist_candidates').add({
+    data: {
+      artistId: id,
+      artistName: artist.name || '',
+      picUrl: artist.picUrl || '',
+      albumSize: 0,
+      foundFrom: 'feature_playlist',
+      fromAlbum: contextLabel || '',
+      round: 0,
+      status: 'pending',
+      addedAt: now,
+      decidedAt: null,
+    },
+  }))
+
+  const albumWrites = missingAlbums.map(({ id, track }) => {
+    const primary = (track.artists || [])[0] || {}
+    const artistIds = (track.artists || []).map(x => String(x.id || '')).filter(Boolean)
+    const artistNames = (track.artists || []).map(x => String(x.name || '')).filter(Boolean)
+    return db.collection('album_candidates').add({
+      data: {
+        title: track.albumName || '未知专辑',
+        artist: artistNames.join(' / '),
+        primaryArtist: primary.name || artistNames[0] || '',
+        neteaseArtistId: primary.id ? String(primary.id) : null,
+        artistIds,
+        releaseYear: Number(track.albumReleaseYear || 0),
+        coverUrl: track.coverUrl || '',
+        trackCount: Number(track.albumTrackCount || 0),
+        sourceId: id,
+        source: 'netease',
+        sourcePlatform: 'netease',
+        sourceKey: `netease:${id}`,
+        normalizedTitle: normalizeTitle(track.albumName),
+        candidateReason: `来自专题歌单：${contextLabel || FEATURE_ID}`,
+        status: 'pending',
+        addedAt: now,
+        decidedAt: null,
+      },
+    })
+  })
+
+  await Promise.allSettled([...artistWrites, ...albumWrites])
+
+  const missingArtistIdSet = new Set(missingArtists.map(x => x.id))
+  const resolvedTracks = safeTracks.map(track => {
+    const album = albumBySourceId.get(String(track.albumId || ''))
+    const missingArtistNames = (track.artists || [])
+      .filter(artist => missingArtistIdSet.has(String(artist.id || '')))
+      .map(artist => artist.name)
+    return {
+      ...track,
+      barscopeAlbumId: album ? album._id : '',
+      albumCatalogStatus: album ? 'linked' : 'pending',
+      missingArtistNames,
+    }
+  })
+
+  return {
+    tracks: resolvedTracks,
+    linkedAlbums: resolvedTracks.filter(x => x.barscopeAlbumId).length,
+    pendingAlbums: missingAlbums.length,
+    pendingArtists: missingArtists.length,
+  }
+}
+
 async function importPlaylist(event, openId) {
   const creatorName = String(event.creatorName || '').trim()
   const playlistId = extractPlaylistId(event.playlistUrl || event.playlistId)
@@ -140,6 +269,7 @@ async function importPlaylist(event, openId) {
   if (!playlistId) return { success: false, error: 'invalid_playlist_url' }
 
   const playlist = await fetchPlaylist(playlistId)
+  const reconciliation = await reconcileTracks(playlist.tracks, `${creatorName} · ${playlist.title}`)
   const now = new Date()
   const payload = {
     featureId: FEATURE_ID,
@@ -151,7 +281,13 @@ async function importPlaylist(event, openId) {
     playlistCoverUrl: playlist.coverUrl,
     neteaseCreator: playlist.creator,
     trackCount: playlist.trackCount,
-    tracks: playlist.tracks,
+    tracks: reconciliation.tracks,
+    catalogSync: {
+      linkedAlbums: reconciliation.linkedAlbums,
+      pendingAlbums: reconciliation.pendingAlbums,
+      pendingArtists: reconciliation.pendingArtists,
+      syncedAt: now,
+    },
     sourceType: 'editorial',
     editorialPriority: Number(event.editorialPriority || 100),
     importedBy: openId,
@@ -189,8 +325,9 @@ async function submitPublicPlaylist(event, openId) {
   }
 
   const playlist = await fetchPlaylist(playlistId)
-  const now = new Date()
   const creatorName = String(playlist.creator?.nickname || '网易云用户').trim()
+  const reconciliation = await reconcileTracks(playlist.tracks, `${creatorName} · ${playlist.title}`)
+  const now = new Date()
   const payload = {
     featureId: FEATURE_ID,
     creatorName,
@@ -201,7 +338,13 @@ async function submitPublicPlaylist(event, openId) {
     playlistCoverUrl: playlist.coverUrl,
     neteaseCreator: playlist.creator,
     trackCount: playlist.trackCount,
-    tracks: playlist.tracks,
+    tracks: reconciliation.tracks,
+    catalogSync: {
+      linkedAlbums: reconciliation.linkedAlbums,
+      pendingAlbums: reconciliation.pendingAlbums,
+      pendingArtists: reconciliation.pendingArtists,
+      syncedAt: now,
+    },
     sourceType: 'community',
     editorialPriority: 0,
     submittedBy: openId || '',
@@ -246,6 +389,41 @@ async function listPublicSubmissions() {
   }
 }
 
+async function getPublicDetail(id) {
+  if (!id) return { success: false, error: 'id_required' }
+  const result = await db.collection('feature_playlist_submissions').doc(id).get()
+  const item = result.data
+  if (!item || item.featureId !== FEATURE_ID) return { success: false, error: 'playlist_not_found' }
+
+  const reconciliation = await reconcileTracks(item.tracks || [], `${item.creatorName || ''} · ${item.playlistTitle || ''}`)
+  const now = new Date()
+  await db.collection('feature_playlist_submissions').doc(id).update({
+    data: {
+      tracks: reconciliation.tracks,
+      catalogSync: {
+        linkedAlbums: reconciliation.linkedAlbums,
+        pendingAlbums: reconciliation.pendingAlbums,
+        pendingArtists: reconciliation.pendingArtists,
+        syncedAt: now,
+      },
+    },
+  })
+
+  return {
+    success: true,
+    playlist: {
+      ...publicMeta(item),
+      playlistDescription: item.playlistDescription || '',
+      tracks: reconciliation.tracks,
+      catalogSync: {
+        linkedAlbums: reconciliation.linkedAlbums,
+        pendingAlbums: reconciliation.pendingAlbums,
+        pendingArtists: reconciliation.pendingArtists,
+      },
+    },
+  }
+}
+
 async function removeSubmission(id) {
   if (!id) return { success: false, error: 'id_required' }
   await db.collection('feature_playlist_submissions').doc(id).remove()
@@ -258,6 +436,7 @@ exports.main = async (event) => {
 
   try {
     if (action === 'list_public') return await listPublicSubmissions()
+    if (action === 'get_public_detail') return await getPublicDetail(event.id)
     if (action === 'submit_public') return await submitPublicPlaylist(event, openId)
 
     if (!openId || !(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
