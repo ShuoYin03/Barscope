@@ -8,7 +8,7 @@
     <view class="article-head">
       <text class="category">榜单 · PLAYLIST POLL</text>
       <text class="title">2026 上半年中文说唱 Top50 单曲</text>
-      <text class="intro">提交你的网易云歌单即可参与。乐评人、Rapper 与社区投稿分别展示，并汇总所有有效歌单生成最终 Top50。</text>
+      <text class="intro">提交你的网易云歌单即可参与。乐评人歌单与社区投稿分别展示，并汇总所有有效歌单生成最终 Top50。</text>
     </view>
 
     <view class="rule" />
@@ -22,7 +22,6 @@
 
     <view class="playlist-tabs">
       <view class="playlist-tab {{activePlaylistTab === 'critics' ? 'active' : ''}}" bindtap="onPlaylistTabTap" data-tab="critics"><text>乐评人</text><text class="tab-count">{{criticCount}}</text></view>
-      <view class="playlist-tab {{activePlaylistTab === 'rappers' ? 'active' : ''}}" bindtap="onPlaylistTabTap" data-tab="rappers"><text>RAPPER</text><text class="tab-count">{{rapperCount}}</text></view>
       <view class="playlist-tab {{activePlaylistTab === 'community' ? 'active' : ''}}" bindtap="onPlaylistTabTap" data-tab="community"><text>社区</text><text class="tab-count">{{communityCount}}</text></view>
     </view>
 
@@ -33,17 +32,6 @@
       <view wx:for="{{criticList}}" wx:for-item="playlist" wx:key="_id" class="playlist-card featured" bindtap="onPlaylistTap" data-id="{{playlist._id}}">
         <image class="playlist-cover" src="{{playlist.playlistCoverUrl}}" mode="aspectFill" />
         <view class="playlist-body"><view class="playlist-meta-line"><text class="featured-badge">CRITIC</text><text class="playlist-count">{{playlist.trackCount}} TRACKS</text></view><text class="playlist-creator">{{playlist.creatorName}}</text><text class="playlist-title">{{playlist.playlistTitle}}</text></view>
-        <text class="playlist-toggle">›</text>
-      </view>
-    </view>
-
-    <view class="section tab-section" wx:elif="{{activePlaylistTab === 'rappers'}}">
-      <view class="section-head"><view><text class="section-kicker">RAPPER PICKS</text><text class="section-title">Rapper 歌单</text></view><text class="section-count">{{rapperCount}} 份</text></view>
-      <view wx:if="{{loading && rapperList.length === 0}}" class="empty"><text>加载中…</text></view>
-      <view wx:elif="{{rapperList.length === 0}}" class="empty"><text>暂未收录 Rapper 歌单</text></view>
-      <view wx:for="{{rapperList}}" wx:for-item="playlist" wx:key="_id" class="playlist-card rapper-card" bindtap="onPlaylistTap" data-id="{{playlist._id}}">
-        <image class="playlist-cover" src="{{playlist.playlistCoverUrl}}" mode="aspectFill" />
-        <view class="playlist-body"><view class="playlist-meta-line"><text class="featured-badge">RAPPER</text><text class="playlist-count">{{playlist.trackCount}} TRACKS</text></view><text class="playlist-creator">{{playlist.creatorName}}</text><text class="playlist-title">{{playlist.playlistTitle}}</text></view>
         <text class="playlist-toggle">›</text>
       </view>
     </view>
