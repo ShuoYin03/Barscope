@@ -1,0 +1,52 @@
+<view class="page {{themeClass}}">
+  <block wx:if="{{loading}}">
+    <view class="loading"><text>LOADING PLAYLIST…</text></view>
+  </block>
+
+  <block wx:elif="{{playlist}}">
+    <view class="hero-wrap">
+      <view class="cover-banner">
+        <image wx:if="{{playlist.playlistCoverUrl}}" class="banner-img" src="{{playlist.playlistCoverUrl}}" mode="aspectFill" />
+        <view class="banner-overlay" />
+      </view>
+      <view class="back-bar" style="padding-top: {{statusBarHeight + 8}}px" bindtap="onBack">
+        <text class="back-ch">←</text><text class="back-lbl">返回</text>
+      </view>
+      <view class="hero-cover-wrap">
+        <view class="hero-cover-shell">
+          <image class="hero-cover" src="{{playlist.playlistCoverUrl}}" mode="aspectFill" />
+        </view>
+      </view>
+    </view>
+
+    <view class="playlist-block">
+      <text class="playlist-title">{{playlist.playlistTitle}}</text>
+      <text class="playlist-creator">BY {{playlist.creatorName}}</text>
+      <view class="stats-row">
+        <text class="stat-num">{{playlist.trackCount}}</text><text class="stat-unit">TRACKS</text>
+        <view class="stat-sep" />
+        <text class="stat-num">{{sync ? sync.linkedAlbums : 0}}</text><text class="stat-unit">LINKED</text>
+      </view>
+    </view>
+
+    <view class="orange-rule" />
+
+    <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="side-row"><text class="side-text">SIDE A — TRACKLIST · {{playlist.trackCount}} 首</text><view class="side-rule" /></view>
+      <view wx:if="{{sync}}" class="sync-note">{{sync.linkedAlbums}} 首已关联专辑 · {{sync.pendingAlbums}} 张专辑待审核 · {{sync.pendingArtists}} 位艺人待审核</view>
+      <view class="track-list">
+        <view wx:for="{{tracks}}" wx:key="neteaseSongId" class="track-row" bindtap="onTrackTap" data-album-id="{{item.barscopeAlbumId}}" data-status="{{item.albumCatalogStatus}}">
+          <text class="track-rank">{{item.position}}</text>
+          <image class="track-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+          <view class="track-info">
+            <text class="track-title">{{item.songName}}</text>
+            <text class="track-artist">{{item.artistText}}</text>
+            <text class="track-album">{{item.albumName}}</text>
+          </view>
+          <text class="track-action">{{item.barscopeAlbumId ? '打开专辑 →' : '审核中'}}</text>
+        </view>
+      </view>
+      <view class="end-mark"><text>— END OF PLAYLIST —</text></view>
+    </scroll-view>
+  </block>
+</view>
