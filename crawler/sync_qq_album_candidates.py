@@ -4,7 +4,7 @@
 Flow:
 1. Read resolved NetEase ↔ QQ artist mappings.
 2. Fetch QQ album catalogues for matched artists.
-3. Apply the same basic collection rules used by the NetEase crawler.
+3. Apply the same basic collection rules used by the NetEase crawler, except QQ release dates are optional.
 4. Upload candidates to manageAlbumCandidates.
 5. Cloud-side dedupe binds matching QQ identities onto existing BarScope albums;
    only genuinely missing albums enter album_candidates as pending.
@@ -121,7 +121,10 @@ def build_candidate(row: dict, album: Any, tracks: list[str]) -> tuple[dict[str,
         return None, "missing_artist"
     if not album.cover_url:
         return None, "missing_cover"
-    if year < 1990 or year > CURRENT_YEAR:
+    # QQ's current album endpoints often omit release dates entirely. Missing dates
+    # must not block discovery; only reject a year when QQ actually supplied one
+    # and it is clearly outside the accepted range.
+    if year and (year < 1990 or year > CURRENT_YEAR):
         return None, "invalid_year"
     if track_count < 3:
         return None, "track_count_lt_3"
@@ -130,6 +133,8 @@ def build_candidate(row: dict, album: Any, tracks: list[str]) -> tuple[dict[str,
 
     repeat_meta = repeated_track_metadata(tracks)
     reason = "QQ音乐发现 · 网易云/BarScope现有专辑库未匹配 · 符合当前专辑收录规则"
+    if not year:
+        reason += "；QQ未提供发行日期，待审核时补充"
     if repeat_meta:
         reason += "；同一专辑存在3首及以上同名/版本曲目，需人工确认"
 
