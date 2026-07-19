@@ -17,7 +17,6 @@ import requests
 
 
 MUSICU_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg"
-LEGACY_SINGER_TRACKS_URL = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_singer_track_cp.fcg"
 
 
 @dataclass(frozen=True)
@@ -120,31 +119,32 @@ class QQMusicClient:
         return candidates[:limit]
 
     def get_artist_tracks(self, singer_mid: str, limit: int = 100) -> list[str]:
-        """Fetch track titles for a QQ singer MID.
-
-        The legacy singer-track endpoint is deliberately isolated here. If QQ Music
-        changes it, the resolver and crawl output schema do not need to change.
-        """
-        params = {
-            "singermid": singer_mid,
-            "order": "listen",
-            "begin": 0,
-            "num": max(1, min(limit, 300)),
-            "songstatus": 1,
-            "format": "json",
+        """Fetch track titles for a QQ singer MID via musicu.fcg."""
+        page_size = max(1, min(limit, 300))
+        payload = {
+            "comm": {"ct": 24, "cv": 0},
+            "singerSongList": {
+                "module": "musichall.song_list_server",
+                "method": "GetSingerSongList",
+                "param": {
+                    "order": 1,
+                    "singerMid": singer_mid,
+                    "begin": 0,
+                    "num": page_size,
+                },
+            },
         }
-        response = self.session.get(LEGACY_SINGER_TRACKS_URL, params=params, timeout=self.timeout)
-        response.raise_for_status()
-        try:
-            data = response.json()
-        except ValueError as exc:
-            raise QQMusicError("QQ Music singer-track endpoint returned non-JSON") from exc
+        data = self._post_musicu(payload)
+        block = data.get("singerSongList", {})
+        code = block.get("code", 0)
+        if code not in (0, None):
+            raise QQMusicError(f"QQ Music singer-track request failed with code {code}")
 
-        songs = data.get("data", {}).get("list", []) or []
+        song_rows = block.get("data", {}).get("songList", []) or []
         titles: list[str] = []
-        for item in songs:
-            music = item.get("musicData", item)
-            title = str(music.get("songname") or music.get("title") or "").strip()
+        for item in song_rows:
+            song_info = item.get("songInfo", item)
+            title = str(song_info.get("title") or song_info.get("songname") or "").strip()
             if title:
                 titles.append(title)
         return titles
