@@ -49,16 +49,22 @@
         <text class="section-count">{{communityCount}} 份</text>
       </view>
 
-      <view wx:if="{{loading && communityList.length === 0}}" class="empty"><text>加载中…</text></view>
-      <view wx:elif="{{communityList.length === 0}}" class="empty"><text>还没有社区投稿，来提交第一份歌单吧</text></view>
-      <view wx:else wx:for="{{communityList}}" wx:key="_id" class="playlist-card">
-        <image class="playlist-cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
-        <view class="playlist-body">
-          <text class="playlist-count">{{item.trackCount}} TRACKS</text>
-          <text class="playlist-creator">{{item.creatorName}}</text>
-          <text class="playlist-title">{{item.playlistTitle}}</text>
+      <block wx:if="{{loading && communityList.length === 0}}">
+        <view class="empty"><text>加载中…</text></view>
+      </block>
+      <block wx:elif="{{communityList.length === 0}}">
+        <view class="empty"><text>还没有社区投稿，来提交第一份歌单吧</text></view>
+      </block>
+      <block wx:else>
+        <view wx:for="{{communityList}}" wx:key="_id" class="playlist-card">
+          <image class="playlist-cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
+          <view class="playlist-body">
+            <text class="playlist-count">{{item.trackCount}} TRACKS</text>
+            <text class="playlist-creator">{{item.creatorName}}</text>
+            <text class="playlist-title">{{item.playlistTitle}}</text>
+          </view>
         </view>
-      </view>
+      </block>
     </view>
 
     <view class="end-mark"><text>— 2026 H1 TOP 50 —</text></view>
