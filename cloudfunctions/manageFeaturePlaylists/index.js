@@ -115,6 +115,24 @@ function playlistFromResponse(data) {
   return null
 }
 
+function publicMeta(item) {
+  const isEditorial = item.sourceType !== 'community'
+  return {
+    _id: item._id,
+    creatorName: item.creatorName || item.neteaseCreator?.nickname || '网易云用户',
+    neteasePlaylistId: item.neteasePlaylistId,
+    neteasePlaylistUrl: item.neteasePlaylistUrl,
+    playlistTitle: item.playlistTitle,
+    playlistCoverUrl: item.playlistCoverUrl,
+    trackCount: item.trackCount || 0,
+    neteaseCreator: item.neteaseCreator || null,
+    sourceType: isEditorial ? 'editorial' : 'community',
+    isEditorial,
+    editorialPriority: Number(item.editorialPriority || (isEditorial ? 100 : 0)),
+    updatedAt: item.updatedAt,
+  }
+}
+
 async function importPlaylist(event, openId) {
   const creatorName = String(event.creatorName || '').trim()
   const playlistId = extractPlaylistId(event.playlistUrl || event.playlistId)
@@ -134,6 +152,8 @@ async function importPlaylist(event, openId) {
     neteaseCreator: playlist.creator,
     trackCount: playlist.trackCount,
     tracks: playlist.tracks,
+    sourceType: 'editorial',
+    editorialPriority: Number(event.editorialPriority || 100),
     importedBy: openId,
     updatedAt: now,
   }
@@ -146,13 +166,51 @@ async function importPlaylist(event, openId) {
   if (existing.data.length) {
     const id = existing.data[0]._id
     await db.collection('feature_playlist_submissions').doc(id).update({ data: payload })
-    return { success: true, updated: true, submissionId: id, playlist: payload }
+    return { success: true, updated: true, submissionId: id, playlist: publicMeta({ _id: id, ...payload }) }
   }
 
   const result = await db.collection('feature_playlist_submissions').add({
     data: { ...payload, createdAt: now },
   })
-  return { success: true, updated: false, submissionId: result._id, playlist: payload }
+  return { success: true, updated: false, submissionId: result._id, playlist: publicMeta({ _id: result._id, ...payload }) }
+}
+
+async function submitPublicPlaylist(event, openId) {
+  const playlistId = extractPlaylistId(event.playlistUrl || event.playlistId)
+  if (!playlistId) return { success: false, error: 'invalid_playlist_url' }
+
+  const existing = await db.collection('feature_playlist_submissions')
+    .where({ featureId: FEATURE_ID, neteasePlaylistId: playlistId })
+    .limit(1)
+    .get()
+
+  if (existing.data.length) {
+    return { success: true, duplicate: true, playlist: publicMeta(existing.data[0]) }
+  }
+
+  const playlist = await fetchPlaylist(playlistId)
+  const now = new Date()
+  const creatorName = String(playlist.creator?.nickname || '网易云用户').trim()
+  const payload = {
+    featureId: FEATURE_ID,
+    creatorName,
+    neteasePlaylistId: playlistId,
+    neteasePlaylistUrl: `https://music.163.com/#/playlist?id=${playlistId}`,
+    playlistTitle: playlist.title,
+    playlistDescription: playlist.description,
+    playlistCoverUrl: playlist.coverUrl,
+    neteaseCreator: playlist.creator,
+    trackCount: playlist.trackCount,
+    tracks: playlist.tracks,
+    sourceType: 'community',
+    editorialPriority: 0,
+    submittedBy: openId || '',
+    updatedAt: now,
+    createdAt: now,
+  }
+
+  const result = await db.collection('feature_playlist_submissions').add({ data: payload })
+  return { success: true, duplicate: false, submissionId: result._id, playlist: publicMeta({ _id: result._id, ...payload }) }
 }
 
 async function listSubmissions() {
@@ -164,6 +222,30 @@ async function listSubmissions() {
   return { success: true, list: result.data }
 }
 
+async function listPublicSubmissions() {
+  const result = await db.collection('feature_playlist_submissions')
+    .where({ featureId: FEATURE_ID })
+    .limit(100)
+    .get()
+
+  const list = result.data
+    .map(publicMeta)
+    .sort((a, b) => {
+      if (a.isEditorial !== b.isEditorial) return a.isEditorial ? -1 : 1
+      if (a.editorialPriority !== b.editorialPriority) return b.editorialPriority - a.editorialPriority
+      const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+      const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
+      return bTime - aTime
+    })
+
+  return {
+    success: true,
+    list,
+    editorialCount: list.filter(item => item.isEditorial).length,
+    communityCount: list.filter(item => !item.isEditorial).length,
+  }
+}
+
 async function removeSubmission(id) {
   if (!id) return { success: false, error: 'id_required' }
   await db.collection('feature_playlist_submissions').doc(id).remove()
@@ -173,9 +255,12 @@ async function removeSubmission(id) {
 exports.main = async (event) => {
   const action = event.action || 'list'
   const { OPENID: openId } = cloud.getWXContext()
-  if (!openId || !(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
 
   try {
+    if (action === 'list_public') return await listPublicSubmissions()
+    if (action === 'submit_public') return await submitPublicPlaylist(event, openId)
+
+    if (!openId || !(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
     if (action === 'import') return await importPlaylist(event, openId)
     if (action === 'list') return await listSubmissions()
     if (action === 'remove') return await removeSubmission(event.id)
