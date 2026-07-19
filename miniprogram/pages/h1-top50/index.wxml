@@ -1,0 +1,66 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="brand">FEATURES</text>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="article-head">
+      <text class="category">榜单 · PLAYLIST POLL</text>
+      <text class="title">2026 上半年中文说唱 Top50 单曲</text>
+      <text class="intro">提交你的网易云歌单即可参与。我们会优先展示受邀乐评人与编辑部收录的歌单，并汇总所有投稿生成最终 Top50。</text>
+    </view>
+
+    <view class="rule" />
+
+    <view class="submit-block">
+      <text class="section-kicker">SUBMIT YOUR PLAYLIST</text>
+      <text class="section-title">只需要一个网易云歌单链接</text>
+      <input class="playlist-input" value="{{playlistUrl}}" bindinput="onUrlInput" placeholder="https://music.163.com/#/playlist?id=..." placeholder-style="color:#6f6762" />
+      <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="onSubmitPlaylist">
+        <text>{{submitting ? '正在读取歌单…' : '提交歌单 →'}}</text>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{editorialList.length > 0}}">
+      <view class="section-head">
+        <view>
+          <text class="section-kicker">FEATURED CRITICS</text>
+          <text class="section-title">乐评人歌单</text>
+        </view>
+        <text class="section-count">{{editorialCount}} 份</text>
+      </view>
+      <view wx:for="{{editorialList}}" wx:key="_id" class="playlist-card featured">
+        <image class="playlist-cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
+        <view class="playlist-body">
+          <view class="playlist-meta-line"><text class="featured-badge">FEATURED</text><text class="playlist-count">{{item.trackCount}} TRACKS</text></view>
+          <text class="playlist-creator">{{item.creatorName}}</text>
+          <text class="playlist-title">{{item.playlistTitle}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section community-section">
+      <view class="section-head">
+        <view>
+          <text class="section-kicker">COMMUNITY PLAYLISTS</text>
+          <text class="section-title">社区投稿</text>
+        </view>
+        <text class="section-count">{{communityCount}} 份</text>
+      </view>
+
+      <view wx:if="{{loading && communityList.length === 0}}" class="empty"><text>加载中…</text></view>
+      <view wx:elif="{{communityList.length === 0}}" class="empty"><text>还没有社区投稿，来提交第一份歌单吧</text></view>
+      <view wx:else wx:for="{{communityList}}" wx:key="_id" class="playlist-card">
+        <image class="playlist-cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
+        <view class="playlist-body">
+          <text class="playlist-count">{{item.trackCount}} TRACKS</text>
+          <text class="playlist-creator">{{item.creatorName}}</text>
+          <text class="playlist-title">{{item.playlistTitle}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="end-mark"><text>— 2026 H1 TOP 50 —</text></view>
+  </scroll-view>
+</view>
