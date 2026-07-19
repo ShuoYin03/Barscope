@@ -68,6 +68,43 @@ class QQMusicClient:
         except ValueError as exc:
             raise QQMusicError("QQ Music returned a non-JSON response") from exc
 
+    def _get_legacy_album_payload(self, album_mid: str) -> dict[str, Any]:
+        response = self.session.get(
+            LEGACY_ALBUM_INFO_URL,
+            params={"albummid": album_mid, "format": "json", "platform": "yqq", "newsong": 1},
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise QQMusicError("QQ Music album-info endpoint returned non-JSON") from exc
+
+    @staticmethod
+    def _find_publish_date(value: Any) -> str:
+        """Recursively find a usable release date across QQ's changing response shapes."""
+        preferred_keys = (
+            "pub_time", "publish_date", "publishDate", "publicTime", "publictime",
+            "release_date", "releaseDate", "date", "time_public",
+        )
+        if isinstance(value, dict):
+            for key in preferred_keys:
+                raw = value.get(key)
+                if raw is not None:
+                    text = str(raw).strip()
+                    if re.search(r"(?:19|20)\d{2}", text):
+                        return text
+            for child in value.values():
+                found = QQMusicClient._find_publish_date(child)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = QQMusicClient._find_publish_date(child)
+                if found:
+                    return found
+        return ""
+
     def search_artists(self, keyword: str, limit: int = 10) -> list[QQArtistCandidate]:
         payload = {
             "comm": {"ct": "19", "cv": "1859", "uin": "0"},
@@ -191,6 +228,13 @@ class QQMusicClient:
                 titles.append(title)
         return titles
 
+    def get_album_publish_date(self, album_mid: str) -> str:
+        """Fetch an album's release date from the album-detail payload."""
+        if not album_mid:
+            return ""
+        payload = self._get_legacy_album_payload(album_mid)
+        return self._find_publish_date(payload)
+
     def _get_album_tracks_musicu(self, album_mid: str, limit: int) -> list[str]:
         payload = {
             "comm": {"ct": 24, "cv": 0},
@@ -213,16 +257,7 @@ class QQMusicClient:
         return []
 
     def _get_album_tracks_legacy(self, album_mid: str, limit: int) -> list[str]:
-        response = self.session.get(
-            LEGACY_ALBUM_INFO_URL,
-            params={"albummid": album_mid, "format": "json", "platform": "yqq", "newsong": 1},
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise QQMusicError("QQ Music album-info endpoint returned non-JSON") from exc
+        payload = self._get_legacy_album_payload(album_mid)
         data = payload.get("data", {}) or {}
         for key in ("list", "songlist", "songList", "songs"):
             titles = self._extract_track_titles(data.get(key, []) or [])
@@ -231,12 +266,7 @@ class QQMusicClient:
         return []
 
     def get_album_tracks(self, album_mid: str, limit: int = 500) -> list[str]:
-        """Fetch QQ album track titles, with a legacy endpoint fallback.
-
-        QQ has changed the response shape of the musicu album endpoint more than once.
-        We therefore try the modern endpoint first and fall back to the older album-info
-        endpoint before treating the album as having no readable tracklist.
-        """
+        """Fetch QQ album track titles, with a legacy endpoint fallback."""
         if not album_mid:
             return []
         try:
