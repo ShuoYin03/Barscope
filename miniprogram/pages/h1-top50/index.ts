@@ -20,12 +20,10 @@ Page({
     playlistUrl: '',
     submitting: false,
     loading: false,
-    activePlaylistTab: 'critics' as 'critics' | 'rappers' | 'community',
+    activePlaylistTab: 'critics' as 'critics' | 'community',
     criticList: [] as PlaylistCard[],
-    rapperList: [] as PlaylistCard[],
     communityList: [] as PlaylistCard[],
     criticCount: 0,
-    rapperCount: 0,
     communityCount: 0,
   },
 
@@ -40,7 +38,7 @@ Page({
   onUrlInput(e: WechatMiniprogram.Input) { this.setData({ playlistUrl: e.detail.value || '' }) },
 
   onPlaylistTabTap(e: WechatMiniprogram.TouchEvent) {
-    const tab = String((e.currentTarget.dataset as any).tab || 'critics') as 'critics' | 'rappers' | 'community'
+    const tab = String((e.currentTarget.dataset as any).tab || 'critics') as 'critics' | 'community'
     this.setData({ activePlaylistTab: tab })
   },
 
@@ -53,15 +51,14 @@ Page({
         const r = res.result || {}
         if (!r.success) return
         const list = (r.list || []) as PlaylistCard[]
-        const rapperList = list.filter(item => item.sourceType === 'rapper')
-        const criticList = list.filter(item => item.isEditorial && item.sourceType !== 'rapper')
-        const communityList = list.filter(item => !item.isEditorial && item.sourceType !== 'rapper')
+        // All editor-curated/imported playlists belong to the critic side.
+        // Legacy sourceType='rapper' records are also folded into this tab so no data is hidden.
+        const criticList = list.filter(item => item.isEditorial)
+        const communityList = list.filter(item => !item.isEditorial)
         this.setData({
           criticList,
-          rapperList,
           communityList,
           criticCount: criticList.length,
-          rapperCount: rapperList.length,
           communityCount: communityList.length,
         })
       },
