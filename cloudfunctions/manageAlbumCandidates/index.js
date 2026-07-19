@@ -26,16 +26,122 @@ async function isAdmin(openId) {
   return r.data.length > 0
 }
 
+function normalizeTitle(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[\s\-_·•:：()（）\[\]【】'"“”‘’]/g, '')
+}
+
+function platformOf(item) {
+  return String(item.sourcePlatform || item.source || 'netease').trim().toLowerCase() || 'netease'
+}
+
+function sourceKeyOf(item) {
+  const sourceId = String(item.sourceId || '').trim()
+  return String(item.sourceKey || `${platformOf(item)}:${sourceId}`).trim()
+}
+
+async function findExistingCandidate(item) {
+  const sourceKey = sourceKeyOf(item)
+  if (sourceKey) {
+    const byKey = await db.collection('album_candidates').where({ sourceKey }).limit(1).get()
+    if (byKey.data.length) return byKey.data[0]
+  }
+  const sourceId = String(item.sourceId || '').trim()
+  if (!sourceId) return null
+  const source = platformOf(item)
+  const legacy = await db.collection('album_candidates').where({ sourceId, source }).limit(1).get()
+  return legacy.data[0] || null
+}
+
+async function findExistingAlbum(item) {
+  const sourceKey = sourceKeyOf(item)
+  if (sourceKey) {
+    const byKey = await db.collection('albums').where({ sourceKey }).limit(1).get()
+    if (byKey.data.length) return byKey.data[0]
+  }
+
+  if (platformOf(item) === 'qq' && item.qqAlbumMid) {
+    const byMid = await db.collection('albums').where({ qqAlbumMid: String(item.qqAlbumMid) }).limit(1).get()
+    if (byMid.data.length) return byMid.data[0]
+  }
+
+  const sourceId = String(item.sourceId || '').trim()
+  const source = platformOf(item)
+  if (sourceId) {
+    const direct = await db.collection('albums').where({ sourceId, source }).limit(1).get()
+    if (direct.data.length) return direct.data[0]
+  }
+
+  // Cross-platform album identity: same normalized title + mapped NetEase artist + release year.
+  // This catches QQ copies of albums already present from NetEase without creating a review duplicate.
+  const normalizedTitle = normalizeTitle(item.title)
+  const neteaseArtistId = String(item.neteaseArtistId || '').trim()
+  const releaseYear = Number(item.releaseYear || 0)
+  if (normalizedTitle && neteaseArtistId && releaseYear) {
+    const candidates = await db.collection('albums')
+      .where({ neteaseArtistId, releaseYear })
+      .limit(100)
+      .get()
+    const hit = (candidates.data || []).find(album => normalizeTitle(album.title) === normalizedTitle)
+    if (hit) return hit
+  }
+  return null
+}
+
+async function attachQQIdentity(album, item) {
+  if (!album || platformOf(item) !== 'qq') return
+  const patch = {}
+  if (item.qqAlbumMid && !album.qqAlbumMid) patch.qqAlbumMid = String(item.qqAlbumMid)
+  if (item.qqAlbumId && !album.qqAlbumId) patch.qqAlbumId = String(item.qqAlbumId)
+  if (item.qqArtistMid && !album.qqArtistMid) patch.qqArtistMid = String(item.qqArtistMid)
+  if (Object.keys(patch).length) await db.collection('albums').doc(album._id).update({ data: patch })
+}
+
 async function upsert(candidates) {
   let inserted = 0
-  for (const item of candidates) {
-    if (!item.sourceId) continue
-    const found = await db.collection('album_candidates').where({ sourceId: String(item.sourceId) }).limit(1).get()
-    if (found.data.length) continue
-    await db.collection('album_candidates').add({ data: { ...item, sourceId: String(item.sourceId), status: 'pending', addedAt: db.serverDate(), decidedAt: null } })
-    inserted += 1
+  let skipped = 0
+  let matchedExisting = 0
+  let errors = 0
+
+  for (const raw of candidates) {
+    try {
+      if (!raw.sourceId) { skipped += 1; continue }
+      const source = platformOf(raw)
+      const sourceKey = sourceKeyOf(raw)
+      const item = {
+        ...raw,
+        source,
+        sourcePlatform: source,
+        sourceId: String(raw.sourceId),
+        sourceKey,
+        normalizedTitle: raw.normalizedTitle || normalizeTitle(raw.title),
+      }
+
+      const candidate = await findExistingCandidate(item)
+      if (candidate) { skipped += 1; continue }
+
+      const album = await findExistingAlbum(item)
+      if (album) {
+        await attachQQIdentity(album, item)
+        matchedExisting += 1
+        continue
+      }
+
+      await db.collection('album_candidates').add({
+        data: {
+          ...item,
+          status: 'pending',
+          addedAt: db.serverDate(),
+          decidedAt: null,
+        },
+      })
+      inserted += 1
+    } catch (e) {
+      errors += 1
+    }
   }
-  return { success: true, inserted }
+  return { success: errors === 0, inserted, skipped, matchedExisting, errors }
 }
 
 async function list(status) {
@@ -132,21 +238,30 @@ async function decideHidden(id, decision, openId) {
   return { success: true }
 }
 
-// This used to be a true hard delete with zero trace left anywhere — not even album_candidates — so a
-// later re-crawl (cloudCrawler) had no way to know this exact album had already been reviewed and
-// rejected, and would silently re-insert it as approved. Mirror the candidates' decide()/'delete' path:
-// keep a permanent album_candidates record (status:'deleted', sourceId intact) before the remove().
 async function recordDeletedAlbum(album, openId, reason) {
   if (!album || !album.sourceId) return
   const sourceId = String(album.sourceId)
-  const existing = await db.collection('album_candidates').where({ sourceId }).limit(1).get()
-  if (existing.data.length) {
-    await db.collection('album_candidates').doc(existing.data[0]._id).update({ data: {
+  const source = platformOf(album)
+  const sourceKey = sourceKeyOf({ ...album, source, sourceId })
+  let existing = null
+  if (sourceKey) {
+    const byKey = await db.collection('album_candidates').where({ sourceKey }).limit(1).get()
+    existing = byKey.data[0] || null
+  }
+  if (!existing) {
+    const legacy = await db.collection('album_candidates').where({ sourceId, source }).limit(1).get()
+    existing = legacy.data[0] || null
+  }
+  if (existing) {
+    await db.collection('album_candidates').doc(existing._id).update({ data: {
       status: 'deleted', decision: 'delete', candidateReason: reason, decidedAt: db.serverDate(), decidedBy: openId,
     } })
     return
   }
   const payload = Object.assign({}, album, {
+    source,
+    sourcePlatform: source,
+    sourceKey,
     albumOriginalId: album._id,
     status: 'deleted',
     decision: 'delete',
@@ -178,6 +293,22 @@ function albumFromCandidate(candidate, openId) {
   return { ...album, approved: true, movedToCandidate: false, titleLetter: firstLetter(album.title), isMultiArtist, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId }
 }
 
+async function findAlbumForDecision(candidate) {
+  if (candidate.sourceKey) {
+    const byKey = await db.collection('albums').where({ sourceKey: String(candidate.sourceKey) }).limit(1).get()
+    if (byKey.data.length) return byKey.data[0]
+  }
+  if (platformOf(candidate) === 'qq' && candidate.qqAlbumMid) {
+    const byMid = await db.collection('albums').where({ qqAlbumMid: String(candidate.qqAlbumMid) }).limit(1).get()
+    if (byMid.data.length) return byMid.data[0]
+  }
+  if (candidate.sourceId) {
+    const direct = await db.collection('albums').where({ sourceId: String(candidate.sourceId), source: platformOf(candidate) }).limit(1).get()
+    if (direct.data.length) return direct.data[0]
+  }
+  return null
+}
+
 async function decide(id, decision, openId) {
   if (!id || !['keep', 'delete', 'approve', 'decline'].includes(decision)) return { success: false, error: 'invalid decision' }
   const normalized = decision === 'approve' ? 'keep' : decision === 'decline' ? 'delete' : decision
@@ -188,24 +319,24 @@ async function decide(id, decision, openId) {
   if (normalized === 'keep') {
     if (originalId) {
       await db.collection('albums').doc(originalId).update({ data: { approved: true, movedToCandidate: false, hiddenByAdmin: _.remove(), hiddenAt: _.remove(), hiddenBy: _.remove(), hiddenReason: _.remove(), restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
-    } else if (candidate.sourceId) {
-      const exists = await db.collection('albums').where({ sourceId: String(candidate.sourceId) }).limit(1).get()
-      if (exists.data.length) await db.collection('albums').doc(exists.data[0]._id).update({ data: { approved: true, movedToCandidate: false, hiddenByAdmin: _.remove(), hiddenAt: _.remove(), hiddenBy: _.remove(), hiddenReason: _.remove(), restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
+    } else {
+      const exists = await findAlbumForDecision(candidate)
+      if (exists) await db.collection('albums').doc(exists._id).update({ data: { approved: true, movedToCandidate: false, hiddenByAdmin: _.remove(), hiddenAt: _.remove(), hiddenBy: _.remove(), hiddenReason: _.remove(), restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
       else await db.collection('albums').add({ data: albumFromCandidate(candidate, openId) })
-    } else await db.collection('albums').add({ data: albumFromCandidate(candidate, openId) })
+    }
   }
   if (normalized === 'delete') {
     if (originalId) {
       await Promise.all([removeRelated('reviews', 'albumId', originalId), removeRelated('favorites', 'albumId', originalId)])
       try { await db.collection('albums').doc(originalId).remove() }
       catch (e) { await db.collection('albums').doc(originalId).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
-    } else if (candidate.sourceId) {
-      const exists = await db.collection('albums').where({ sourceId: String(candidate.sourceId) }).limit(20).get()
-      await Promise.all((exists.data || []).map(async a => {
-        await Promise.all([removeRelated('reviews', 'albumId', a._id), removeRelated('favorites', 'albumId', a._id)])
-        try { await db.collection('albums').doc(a._id).remove() }
-        catch (e) { await db.collection('albums').doc(a._id).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
-      }))
+    } else {
+      const exists = await findAlbumForDecision(candidate)
+      if (exists) {
+        await Promise.all([removeRelated('reviews', 'albumId', exists._id), removeRelated('favorites', 'albumId', exists._id)])
+        try { await db.collection('albums').doc(exists._id).remove() }
+        catch (e) { await db.collection('albums').doc(exists._id).update({ data: { approved: false, deletedByAdmin: true, deletedAt: db.serverDate(), deletedBy: openId } }) }
+      }
     }
   }
   await db.collection('album_candidates').doc(id).update({ data: { status: normalized === 'keep' ? 'kept' : 'deleted', decision: normalized, decidedAt: db.serverDate(), decidedBy: openId } })
