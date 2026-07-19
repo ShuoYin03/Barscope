@@ -107,6 +107,8 @@ Page({
     ownershipAuditList: [] as OwnershipAuditItem[],
     ownershipAuditScanning: false,
     ownershipAuditScanDone: 0,
+    ownershipAuditApplying: false,
+    ownershipAuditApplyDone: 0,
 
     multiList: [] as Album[],
     multiLoading: false,
@@ -794,6 +796,45 @@ Page({
   onOwnershipAuditCardTap(e: WechatMiniprogram.TouchEvent) {
     const { id } = e.currentTarget.dataset as { id: string }
     if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+  },
+
+  onApplyOwnershipAuditFix() {
+    if (this.data.ownershipAuditApplying || !this.data.ownershipAuditList.length) return
+    const total = this.data.ownershipAuditList.length
+    wx.showModal({
+      title: '一键跟随网易云修正',
+      content: `会把这 ${total} 张专辑的歌手信息覆盖成网易云当前的专辑级歌手数据，已经手动"修改过专辑归属"的专辑不会被覆盖。这个操作会直接写入数据库，确认继续？`,
+      confirmText: '确认修正',
+      confirmColor: '#C94E25',
+      success: (res) => {
+        if (!res.confirm) return
+        const ids = this.data.ownershipAuditList.map((item) => item._id)
+        this.setData({ ownershipAuditApplying: true, ownershipAuditApplyDone: 0 })
+        this._runApplyOwnershipAuditFixStep(ids, 0)
+      },
+    })
+  },
+
+  _runApplyOwnershipAuditFixStep(ids: string[], offset: number) {
+    const batchSize = 40
+    const batch = ids.slice(offset, offset + batchSize)
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'apply_ownership_audit_fix', ids: batch },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ ownershipAuditApplying: false }); wx.showToast({ title: r.error || '修正失败', icon: 'none' }); return }
+        const done = Math.min(offset + batch.length, ids.length)
+        this.setData({ ownershipAuditApplyDone: done })
+        if (done >= ids.length) {
+          this.setData({ ownershipAuditApplying: false, ownershipAuditList: [], ownershipAuditScanDone: 0 })
+          wx.showToast({ title: '修正完成', icon: 'success' })
+          return
+        }
+        this._runApplyOwnershipAuditFixStep(ids, offset + batchSize)
+      },
+      fail: () => { this.setData({ ownershipAuditApplying: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
   },
 
   onTitleSearch(e: WechatMiniprogram.Input) {

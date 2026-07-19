@@ -168,6 +168,7 @@ exports.main = async (event, context) => {
   if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
   if (action === 'apply_owner_artist_fix')   return await applyOwnerArtistFix(event.skip || 0)
   if (action === 'audit_ownership_mismatches') return await auditOwnershipMismatches(event.skip || 0)
+  if (action === 'apply_ownership_audit_fix') return await applyOwnershipAuditFix(event.ids || [])
   if (action === 'purge_declined')        return await purgeDeclinedCandidates()
 
   return { success: false, error: 'unknown action' }
@@ -672,6 +673,53 @@ async function auditOwnershipMismatches(skip) {
   } catch (e) {
     return { success: false, error: e.message }
   }
+}
+
+// ── apply_ownership_audit_fix ────────────────────────────────────────────────
+// Bulk-applies the fix for whatever audit_ownership_mismatches already flagged: rewrites
+// artist/artistIds/ownerArtists to exactly match NetEase's own live album-level artist list
+// (re-fetched here, not trusted from the client, to avoid acting on stale results). Never touches
+// an album with ownershipSource:'user-admin-correction' — that's a deliberate human decision this
+// must not override — and skips anything whose live artists now match what's already stored
+// (nothing to change). Keeps the removed ids on the doc (ownershipAuditRemovedArtists) so a wrong
+// call here is traceable/reversible rather than silently destructive.
+async function applyOwnershipAuditFix(ids) {
+  const cleanIds = Array.from(new Set((ids || []).map(id => String(id || '')).filter(Boolean)))
+  if (!cleanIds.length) return { success: true, updated: 0, skipped: 0, failed: 0 }
+  let updated = 0, skipped = 0, failed = 0
+  const chunkSize = 40
+  for (let i = 0; i < cleanIds.length; i += chunkSize) {
+    const chunk = cleanIds.slice(i, i + chunkSize)
+    const docs = (await db.collection('albums').where({ _id: _.in(chunk) })
+      .field({ _id: true, sourceId: true, artistIds: true, ownershipSource: true })
+      .get()).data || []
+    const results = await mapWithConcurrency(docs, AUDIT_CONCURRENCY, async d => {
+      if (d.ownershipSource === 'user-admin-correction') return 'skipped'
+      if (!d.sourceId) return 'skipped'
+      const live = await fetchAlbumArtistsLive(d.sourceId)
+      if (!live || !live.length) return 'failed'
+      const liveIds = live.map(a => a.id).filter(Boolean)
+      const storedIds = (Array.isArray(d.artistIds) ? d.artistIds.map(String) : [])
+      const removedIds = storedIds.filter(id => id && !liveIds.includes(id))
+      if (!removedIds.length) return 'skipped'
+      await db.collection('albums').doc(d._id).update({ data: {
+        artist: live.map(a => a.name).join(' / '),
+        primaryArtist: live[0].name,
+        neteaseArtistId: live[0].id || null,
+        artistIds: liveIds,
+        ownerArtistIds: liveIds,
+        ownerArtists: live.map(a => ({ id: Number(a.id) || 0, name: a.name })),
+        isMultiArtist: liveIds.length > 1,
+        ownershipAuditFixedAt: db.serverDate(),
+        ownershipAuditRemovedArtists: removedIds,
+      } })
+      return 'updated'
+    })
+    updated += results.filter(r => r === 'updated').length
+    skipped += results.filter(r => r === 'skipped').length
+    failed += results.filter(r => r === 'failed').length
+  }
+  return { success: true, updated, skipped, failed }
 }
 
 // ── decide ────────────────────────────────────────────────────────────────────

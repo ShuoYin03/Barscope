@@ -426,6 +426,9 @@
         <view class="all-action-btn ghost {{ownershipAuditScanning ? 'btn-disabled' : ''}}" bindtap="onScanOwnershipMismatches">
           <text>{{ownershipAuditScanning ? ('排查中 ' + ownershipAuditScanDone) : '开始排查'}}</text>
         </view>
+        <view wx:if="{{ownershipAuditList.length > 0}}" class="all-action-btn accent {{ownershipAuditApplying ? 'btn-disabled' : ''}}" bindtap="onApplyOwnershipAuditFix">
+          <text>{{ownershipAuditApplying ? ('修正中 ' + ownershipAuditApplyDone + '/' + ownershipAuditList.length) : ('一键跟随网易云修正 ' + ownershipAuditList.length)}}</text>
+        </view>
       </view>
       <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
         <view wx:if="{{!ownershipAuditScanning && ownershipAuditList.length === 0 && !ownershipAuditScanDone}}" class="empty-state">
