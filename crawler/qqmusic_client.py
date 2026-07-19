@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""Small QQ Music client used by the BarScope cross-platform resolver.
-
-QQ Music does not expose a documented public developer API for this workflow, so
-all endpoint details live in this module and can be swapped without touching the
-matching pipeline.
-"""
+"""Small QQ Music client used by the BarScope cross-platform resolver."""
 
 from __future__ import annotations
 
 import html
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import requests
@@ -18,6 +13,7 @@ import requests
 
 MUSICU_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg"
 LEGACY_SINGER_ALBUM_URL = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_singer_album.fcg"
+LEGACY_ALBUM_INFO_URL = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_album_info_cp.fcg"
 
 
 @dataclass(frozen=True)
@@ -55,17 +51,14 @@ class QQMusicClient:
     def __init__(self, timeout: float = 15.0, session: requests.Session | None = None):
         self.timeout = timeout
         self.session = session or requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": (
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0 Safari/537.36"
-                ),
-                "Referer": "https://y.qq.com/",
-                "Origin": "https://y.qq.com",
-            }
-        )
+        self.session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
+            ),
+            "Referer": "https://y.qq.com/",
+            "Origin": "https://y.qq.com",
+        })
 
     def _post_musicu(self, payload: dict[str, Any]) -> dict[str, Any]:
         response = self.session.post(MUSICU_URL, json=payload, timeout=self.timeout)
@@ -76,7 +69,6 @@ class QQMusicClient:
             raise QQMusicError("QQ Music returned a non-JSON response") from exc
 
     def search_artists(self, keyword: str, limit: int = 10) -> list[QQArtistCandidate]:
-        """Search QQ Music and return singer candidates only."""
         payload = {
             "comm": {"ct": "19", "cv": "1859", "uin": "0"},
             "req": {
@@ -91,63 +83,35 @@ class QQMusicClient:
             },
         }
         data = self._post_musicu(payload)
-        body = data.get("req", {}).get("data", {}).get("body", {})
-        singer_block = body.get("singer", {})
-        items = singer_block.get("list", []) or []
-
+        items = data.get("req", {}).get("data", {}).get("body", {}).get("singer", {}).get("list", []) or []
         candidates: list[QQArtistCandidate] = []
         seen: set[str] = set()
         for raw in items:
             singer = raw.get("singer", raw)
-            mid = str(
-                singer.get("singerMID")
-                or singer.get("mid")
-                or singer.get("singer_mid")
-                or ""
-            ).strip()
-            numeric_id = str(
-                singer.get("singerID")
-                or singer.get("id")
-                or singer.get("singer_id")
-                or ""
-            ).strip()
-            name = html.unescape(
-                str(
-                    singer.get("singerName")
-                    or singer.get("name")
-                    or singer.get("singer_name")
-                    or ""
-                )
-            ).strip()
+            mid = str(singer.get("singerMID") or singer.get("mid") or singer.get("singer_mid") or "").strip()
+            numeric_id = str(singer.get("singerID") or singer.get("id") or singer.get("singer_id") or "").strip()
+            name = html.unescape(str(singer.get("singerName") or singer.get("name") or singer.get("singer_name") or "")).strip()
             stable_key = mid or numeric_id
             if not stable_key or not name or stable_key in seen:
                 continue
             seen.add(stable_key)
-            candidates.append(
-                QQArtistCandidate(
-                    artist_id=numeric_id,
-                    mid=mid,
-                    name=re.sub(r"<[^>]+>", "", name),
-                    song_count=int(singer.get("songNum") or singer.get("song_num") or 0),
-                    album_count=int(singer.get("albumNum") or singer.get("album_num") or 0),
-                )
-            )
+            candidates.append(QQArtistCandidate(
+                artist_id=numeric_id,
+                mid=mid,
+                name=re.sub(r"<[^>]+>", "", name),
+                song_count=int(singer.get("songNum") or singer.get("song_num") or 0),
+                album_count=int(singer.get("albumNum") or singer.get("album_num") or 0),
+            ))
         return candidates[:limit]
 
     def get_artist_tracks(self, singer_mid: str, limit: int = 100) -> list[str]:
-        """Fetch track titles for a QQ singer MID via musicu.fcg."""
         page_size = max(1, min(limit, 300))
         payload = {
             "comm": {"ct": 24, "cv": 0},
             "singerSongList": {
                 "module": "musichall.song_list_server",
                 "method": "GetSingerSongList",
-                "param": {
-                    "order": 1,
-                    "singerMid": singer_mid,
-                    "begin": 0,
-                    "num": page_size,
-                },
+                "param": {"order": 1, "singerMid": singer_mid, "begin": 0, "num": page_size},
             },
         }
         data = self._post_musicu(payload)
@@ -155,23 +119,10 @@ class QQMusicClient:
         code = block.get("code", 0)
         if code not in (0, None):
             raise QQMusicError(f"QQ Music singer-track request failed with code {code}")
-
-        song_rows = block.get("data", {}).get("songList", []) or []
-        titles: list[str] = []
-        for item in song_rows:
-            song_info = item.get("songInfo", item)
-            title = str(song_info.get("title") or song_info.get("songname") or "").strip()
-            if title:
-                titles.append(title)
-        return titles
+        rows = block.get("data", {}).get("songList", []) or []
+        return self._extract_track_titles(rows)
 
     def get_artist_albums(self, singer_mid: str, limit: int = 500) -> list[QQAlbum]:
-        """Fetch an artist's album catalogue.
-
-        The legacy singer-album endpoint remains the most tolerant source for album
-        metadata. Keeping it isolated here lets the crawler swap endpoints later
-        without changing the candidate pipeline.
-        """
         albums: list[QQAlbum] = []
         seen: set[str] = set()
         begin = 0
@@ -180,13 +131,7 @@ class QQMusicClient:
         while len(albums) < limit:
             response = self.session.get(
                 LEGACY_SINGER_ALBUM_URL,
-                params={
-                    "singermid": singer_mid,
-                    "order": "time",
-                    "begin": begin,
-                    "num": page_size,
-                    "format": "json",
-                },
+                params={"singermid": singer_mid, "order": "time", "begin": begin, "num": page_size, "format": "json"},
                 timeout=self.timeout,
             )
             response.raise_for_status()
@@ -195,11 +140,9 @@ class QQMusicClient:
             except ValueError as exc:
                 raise QQMusicError("QQ Music singer-album endpoint returned non-JSON") from exc
 
-            data = payload.get("data", {}) or {}
-            rows = data.get("list", []) or []
+            rows = (payload.get("data", {}) or {}).get("list", []) or []
             if not rows:
                 break
-
             for raw in rows:
                 album_mid = str(raw.get("album_mid") or raw.get("albumMID") or raw.get("mid") or "").strip()
                 album_id = str(raw.get("album_id") or raw.get("albumID") or raw.get("id") or "").strip()
@@ -211,55 +154,95 @@ class QQMusicClient:
                 if not stable_key or not title or stable_key in seen:
                     continue
                 seen.add(stable_key)
-                cover_url = f"https://y.qq.com/music/photo_new/T002R800x800M000{album_mid}.jpg" if album_mid else ""
-                albums.append(
-                    QQAlbum(
-                        album_id=album_id,
-                        mid=album_mid,
-                        title=title,
-                        artist_name=artist_name,
-                        artist_mid=singer_mid,
-                        publish_date=publish_date,
-                        track_count=track_count,
-                        cover_url=cover_url,
-                    )
-                )
+                albums.append(QQAlbum(
+                    album_id=album_id,
+                    mid=album_mid,
+                    title=title,
+                    artist_name=artist_name,
+                    artist_mid=singer_mid,
+                    publish_date=publish_date,
+                    track_count=track_count,
+                    cover_url=f"https://y.qq.com/music/photo_new/T002R800x800M000{album_mid}.jpg" if album_mid else "",
+                ))
                 if len(albums) >= limit:
                     break
-
             begin += len(rows)
             if len(rows) < page_size:
                 break
-
         return albums
 
-    def get_album_tracks(self, album_mid: str, limit: int = 500) -> list[str]:
-        """Fetch track titles for a QQ album MID."""
-        if not album_mid:
-            return []
+    @staticmethod
+    def _extract_track_titles(rows: list[Any]) -> list[str]:
+        titles: list[str] = []
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            song = row.get("songInfo") or row.get("songinfo") or row.get("musicData") or row.get("data") or row
+            if not isinstance(song, dict):
+                continue
+            title = str(
+                song.get("title")
+                or song.get("songname")
+                or song.get("songName")
+                or song.get("name")
+                or ""
+            ).strip()
+            if title:
+                titles.append(title)
+        return titles
+
+    def _get_album_tracks_musicu(self, album_mid: str, limit: int) -> list[str]:
         payload = {
             "comm": {"ct": 24, "cv": 0},
             "albumSongList": {
                 "module": "music.musichallAlbum.AlbumSongList",
                 "method": "GetAlbumSongList",
-                "param": {
-                    "albumMid": album_mid,
-                    "begin": 0,
-                    "num": max(1, min(limit, 500)),
-                    "order": 2,
-                },
+                "param": {"albumMid": album_mid, "begin": 0, "num": max(1, min(limit, 500)), "order": 2},
             },
         }
         data = self._post_musicu(payload)
-        block = data.get("albumSongList", {})
+        block = data.get("albumSongList", {}) or {}
         code = block.get("code", 0)
         if code not in (0, None):
-            raise QQMusicError(f"QQ Music album-track request failed with code {code}")
-        rows = block.get("data", {}).get("songList", []) or []
-        titles: list[str] = []
-        for row in rows:
-            song = row.get("songInfo", row)
-            title = str(song.get("title") or song.get("songname") or "").strip()
-            if title:
-                titles.append(title)
-        return titles
+            return []
+        body = block.get("data", {}) or {}
+        for key in ("songList", "list", "songs"):
+            titles = self._extract_track_titles(body.get(key, []) or [])
+            if titles:
+                return titles
+        return []
+
+    def _get_album_tracks_legacy(self, album_mid: str, limit: int) -> list[str]:
+        response = self.session.get(
+            LEGACY_ALBUM_INFO_URL,
+            params={"albummid": album_mid, "format": "json", "platform": "yqq", "newsong": 1},
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise QQMusicError("QQ Music album-info endpoint returned non-JSON") from exc
+        data = payload.get("data", {}) or {}
+        for key in ("list", "songlist", "songList", "songs"):
+            titles = self._extract_track_titles(data.get(key, []) or [])
+            if titles:
+                return titles[:limit]
+        return []
+
+    def get_album_tracks(self, album_mid: str, limit: int = 500) -> list[str]:
+        """Fetch QQ album track titles, with a legacy endpoint fallback.
+
+        QQ has changed the response shape of the musicu album endpoint more than once.
+        We therefore try the modern endpoint first and fall back to the older album-info
+        endpoint before treating the album as having no readable tracklist.
+        """
+        if not album_mid:
+            return []
+        try:
+            titles = self._get_album_tracks_musicu(album_mid, limit)
+            if titles:
+                return titles
+        except (QQMusicError, requests.RequestException, ValueError):
+            pass
+        return self._get_album_tracks_legacy(album_mid, limit)
