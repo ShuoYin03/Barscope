@@ -3,6 +3,7 @@ interface Track {
   neteaseSongId: string
   songName: string
   artistNames: string[]
+  artistText?: string
 }
 
 interface Submission {
@@ -53,7 +54,15 @@ Page({
           this.setData({ loading: false })
           return
         }
-        this.setData({ list: (r.list || []).map((item: Submission) => ({ ...item, expanded: false })), loading: false })
+        const list = (r.list || []).map((item: Submission) => ({
+          ...item,
+          expanded: false,
+          tracks: (item.tracks || []).map(track => ({
+            ...track,
+            artistText: (track.artistNames || []).join(' / '),
+          })),
+        }))
+        this.setData({ list, loading: false })
       },
       fail: () => this.setData({ loading: false }),
     })
