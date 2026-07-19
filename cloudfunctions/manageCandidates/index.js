@@ -615,9 +615,25 @@ async function fetchAlbumArtistsLive(sourceId) {
   }
 }
 
+async function mapWithConcurrency(items, limit, fn) {
+  const output = new Array(items.length)
+  let cursor = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = cursor++
+      if (i >= items.length) return
+      output[i] = await fn(items[i], i)
+    }
+  })
+  await Promise.all(workers)
+  return output
+}
+
+const AUDIT_CONCURRENCY = 8
+
 async function auditOwnershipMismatches(skip) {
   try {
-    const pageSize = 15
+    const pageSize = 40
     const result = await db.collection('albums')
       .where(_.and([
         { isMultiArtist: true },
@@ -630,26 +646,28 @@ async function auditOwnershipMismatches(skip) {
     const docs = result.data || []
     if (!docs.length) return { success: true, done: true, processed: skip, flagged: [] }
 
-    const flagged = []
-    for (const d of docs) {
-      if (!d.sourceId) continue
+    // NetEase calls dominate the runtime here (one per album) — run them AUDIT_CONCURRENCY at a
+    // time instead of sequentially, same tradeoff cloudCrawler already makes for per-album detail
+    // fetches, to keep a full sweep from taking forever without hammering NetEase in one burst.
+    const results = await mapWithConcurrency(docs, AUDIT_CONCURRENCY, async d => {
+      if (!d.sourceId) return null
       const live = await fetchAlbumArtistsLive(d.sourceId)
-      if (!live || !live.length) continue // couldn't verify against NetEase — skip rather than false-flag
+      if (!live || !live.length) return null // couldn't verify against NetEase — skip rather than false-flag
       const liveIds = new Set(live.map(a => a.id).filter(Boolean))
       const storedIds = (Array.isArray(d.artistIds) ? d.artistIds : []).map(String)
       const extraIds = storedIds.filter(id => id && !liveIds.has(id))
-      if (extraIds.length) {
-        const extraNames = extraIds.map(id => {
-          const parts = String(d.artist || '').split('/').map(s => s.trim())
-          const idx = storedIds.indexOf(id)
-          return (idx >= 0 && parts[idx]) || id
-        })
-        flagged.push({
-          _id: d._id, title: d.title, artist: d.artist, coverUrl: d.coverUrl, releaseYear: d.releaseYear,
-          extraNames, liveArtistNames: live.map(a => a.name),
-        })
+      if (!extraIds.length) return null
+      const extraNames = extraIds.map(id => {
+        const parts = String(d.artist || '').split('/').map(s => s.trim())
+        const idx = storedIds.indexOf(id)
+        return (idx >= 0 && parts[idx]) || id
+      })
+      return {
+        _id: d._id, title: d.title, artist: d.artist, coverUrl: d.coverUrl, releaseYear: d.releaseYear,
+        extraNames, liveArtistNames: live.map(a => a.name),
       }
-    }
+    })
+    const flagged = results.filter(Boolean)
     return { success: true, done: false, processed: skip + docs.length, nextSkip: skip + docs.length, flagged }
   } catch (e) {
     return { success: false, error: e.message }
