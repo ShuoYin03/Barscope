@@ -15,5 +15,5 @@ Page({
   onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight}) },
   onShow(){ if(typeof this.getTabBar==='function') this.getTabBar()?.setData({selected:3}); this.setData({themeClass:getThemeClass()}) },
   onFilterTap(e:WechatMiniprogram.TouchEvent){ const value=String((e.currentTarget.dataset as any).value||'全部'); const features=value==='全部'?FEATURES:FEATURES.filter(x=>x.category===value); this.setData({activeFilter:value,features}) },
-  onFeatureTap(e:WechatMiniprogram.TouchEvent){ const id=String((e.currentTarget.dataset as any).id||''); if(!id)return; if(id==='2026-top-reviewers'){wx.navigateTo({url:'/pages/annual-reviewers/index'});return} if(id==='rapper-interview'){wx.navigateTo({url:'/pages/interviews/index'});return} wx.navigateTo({url:`/pages/feature-detail/index?id=${id}`}) }
+  onFeatureTap(e:WechatMiniprogram.TouchEvent){ const id=String((e.currentTarget.dataset as any).id||''); if(!id)return; if(id==='2026-h1-top-50-tracks'){wx.navigateTo({url:'/pages/h1-top50/index'});return} if(id==='2026-top-reviewers'){wx.navigateTo({url:'/pages/annual-reviewers/index'});return} if(id==='rapper-interview'){wx.navigateTo({url:'/pages/interviews/index'});return} wx.navigateTo({url:`/pages/feature-detail/index?id=${id}`}) }
 })
