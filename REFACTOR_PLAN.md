@@ -49,7 +49,7 @@
 
 | timeout | 依据 | 函数 |
 |---|---|---|
-| 60s（硬顶） | 明确的批处理/全量操作 | `getRecentHotAlbums`、`manageCandidates`、`rescreenAlbums`、`backfillReleaseDates`、`updateAlbumTracks`、`exportApprovedRappers` |
+| 60s（硬顶） | 明确的批处理/全量操作 | `getRecentHotAlbums`、`manageCandidates`、~~`rescreenAlbums`~~（后已删除，见下）、`backfillReleaseDates`、`updateAlbumTracks`、`exportApprovedRappers` |
 | 30s | 对 reviews/候选做多页聚合，或 admin 批量操作 | `getReviews`、`manageArtistBrands`、`getUserProfile`、`getAnnualReviewerLeaderboard`、`manageAlbumCandidates`、`submitReview`、`deleteReview` |
 | 20s | 有界单次查询/写入，无全量扫描 | 其余 34 个 |
 
@@ -196,6 +196,18 @@
 **处理**：抽 `createListSection(name, fetcher)` 工厂，五视图共用一份分页/多选逻辑。预计砍掉 400+ 行。
 
 **连带**：`cloudfunctions/manageCandidates/index.js` 800 行 / 24 个 action，按领域拆成 2-3 个函数（候选审核 / 专辑批处理 / 索引重建）。
+
+---
+
+## P2-8. `rescreenAlbums` 是 `cloudCrawler` 插入时逻辑的逐字节重复，且触发页面没有入口
+
+- [x] 已删除
+
+**问题**：`rescreenAlbums/index.js` 的 `inspectTracks`/`normalizeName` 和 `cloudCrawler` 插入新专辑时用的 `inspectAlbumTracks`/`normalizeTrackName` 是完全相同的判定逻辑（同样的正则、同样的阈值、同样的文案），但 `cloudCrawler` 插入专辑时不会写 `qualityRuleV2At` 标记，导致每次重新筛选都会把新爬进来、其实已经检查过的专辑重新拉一遍网易云详情重新判一次。触发它的小程序页面 `pages/album-quality-screen/index` 虽然注册在 `app.json` 里，但全仓库没有任何地方 `navigateTo` 到它——是个有路径但没入口的死页面。
+
+**处理**：删除 `cloudfunctions/rescreenAlbums/`、`miniprogram/pages/album-quality-screen/`，从 `app.json` 的 pages 移除注册，`qualityRuleV2At`/`qualityScreenStatus`/`qualityScreenRetries` 这几个标记字段不再被任何代码写入或读取（已有专辑文档上残留的字段不影响，属于无害死字段，不必单独清理）。
+
+`crawler/rescreen_albums_local.py`（`rescreenAlbums` 云函数被网易云限流时用的本地替代版，逻辑和标记字段跟云函数版完全一致）一并删除。三处标记字段现在全仓库零引用。
 
 ---
 

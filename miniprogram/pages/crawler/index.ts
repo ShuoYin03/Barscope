@@ -15,15 +15,17 @@ function formatAgo(ms: number): string {
   if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'
   return Math.floor(diff / 3600000) + ' 小时前'
 }
+// 分支值来自 cloudCrawlerDailyTrigger 的 touch()，要跟它实际写入的值保持一致
 const HEARTBEAT_BRANCH_LABELS: Record<string, string> = {
-  start: '开始新一轮全量爬取',
-  resume: '链条卡住，接力续跑',
-  'skip-chain-alive': '跳过（链条正常运行中）',
-  'skip-pending': '跳过（等待本地爬虫流程）',
-  'skip-cooldown': '跳过（冷却期内已完成过一轮）',
+  'locked-running': '上一批仍在运行中',
+  'auto-idle': '今日已完成，等待明天',
+  'no-artists': '暂无已批准艺人',
+  'auto-tick': '开始处理新一批',
+  'auto-done': '今日全部处理完成',
+  'auto-ran': '已处理一批，继续中',
   error: '触发失败',
 }
-// 定时器每 5 分钟醒一次；超过这个时长没有心跳，基本可以判定触发器没在正常调用
+// 定时器每 1 分钟醒一次；超过这个时长没有心跳，基本可以判定触发器没在正常调用
 const HEARTBEAT_STALE_MS = 8 * 60 * 1000
 
 Page({
@@ -36,6 +38,7 @@ Page({
     crawlerTriggering:       false,
     heartbeatText:           '暂无记录',
     heartbeatStale:          false,
+    crawlerCompletedText:    '',
 
     crawlerMode:        'approved' as 'approved' | 'artist' | 'album',
     crawlerParam:       '',
@@ -86,7 +89,9 @@ Page({
           ? `${formatAgo(heartbeatMs)} · ${HEARTBEAT_BRANCH_LABELS[s.lastTriggerBranch] || s.lastTriggerBranch || '未知'}${heartbeatDetail}`
           : '暂无记录（定时器可能还没成功调用过）'
         const heartbeatStale = !heartbeatMs || (Date.now() - heartbeatMs) > HEARTBEAT_STALE_MS
-        this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear, heartbeatText, heartbeatStale })
+        const completedMs = toMillis(s.completedAt)
+        const crawlerCompletedText = completedMs ? formatAgo(completedMs) : ''
+        this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear, heartbeatText, heartbeatStale, crawlerCompletedText })
         if (!this.data.crawlerTriggering && s.status !== 'running') this._startPoll(4000)
       },
     })

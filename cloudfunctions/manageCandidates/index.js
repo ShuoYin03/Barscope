@@ -711,7 +711,7 @@ async function cleanupSingles(openId) {
 // ── 找回被误重新收录的专辑 ─────────────────────────────────────────────────────
 // 一张专辑被判定"不该收录"，无论是人工在候选区删除（status:'deleted'）还是自动质检流程标记后还没人
 // 复核（status:'pending'），只要不是 status:'kept'，就说明这个 sourceId 现在不应该出现在 albums 里。
-// 只查 'deleted' 会漏掉 rescreenAlbums 那条自动质检流程留下的 'pending' 记录。一次全量重新爬取如果
+// 只查 'deleted' 会漏掉自动质检流程（如 cloudCrawler 的 upsertCandidate）留下的 'pending' 记录。一次全量重新爬取如果
 // 又扫到同一个艺人，会把这个 sourceId 当全新专辑重新插回 albums（cloudCrawler 已经加了拦截，但爬虫
 // 上次跑的时候还没有这道检查，已经误加回来的需要手动找出来复核）。
 async function findResurrectedAlbums() {
