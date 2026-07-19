@@ -29,6 +29,15 @@ class QQArtistCandidate:
 
 
 @dataclass(frozen=True)
+class QQTrack:
+    title: str
+    duration_ms: int = 0
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class QQAlbum:
     album_id: str
     mid: str
@@ -234,6 +243,83 @@ class QQMusicClient:
             if title:
                 titles.append(title)
         return titles
+
+    @staticmethod
+    def _extract_tracks_detailed(rows: list[Any]) -> list["QQTrack"]:
+        # Same shape-sniffing as _extract_track_titles, but also pulls the song's duration.
+        # QQ Music's songInfo objects carry it as "interval", in whole seconds (confirmed against
+        # a live GetAlbumSongList response — e.g. {"interval": 178, ...}); NetEase's own track
+        # duration fields are milliseconds, so this converts at the point of extraction to keep
+        # every downstream comparison in one unit.
+        tracks: list[QQTrack] = []
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            song = row.get("songInfo") or row.get("songinfo") or row.get("musicData") or row.get("data") or row
+            if not isinstance(song, dict):
+                continue
+            title = str(
+                song.get("title")
+                or song.get("songname")
+                or song.get("songName")
+                or song.get("name")
+                or ""
+            ).strip()
+            if not title:
+                continue
+            interval = song.get("interval")
+            try:
+                duration_ms = int(float(interval)) * 1000 if interval else 0
+            except (TypeError, ValueError):
+                duration_ms = 0
+            tracks.append(QQTrack(title=title, duration_ms=duration_ms))
+        return tracks
+
+    def _get_album_tracks_musicu_detailed(self, album_mid: str, limit: int) -> list["QQTrack"]:
+        payload = {
+            "comm": {"ct": 24, "cv": 0},
+            "albumSongList": {
+                "module": "music.musichallAlbum.AlbumSongList",
+                "method": "GetAlbumSongList",
+                "param": {"albumMid": album_mid, "begin": 0, "num": max(1, min(limit, 500)), "order": 2},
+            },
+        }
+        data = self._post_musicu(payload)
+        block = data.get("albumSongList", {}) or {}
+        code = block.get("code", 0)
+        if code not in (0, None):
+            return []
+        body = block.get("data", {}) or {}
+        for key in ("songList", "list", "songs"):
+            tracks = self._extract_tracks_detailed(body.get(key, []) or [])
+            if tracks:
+                return tracks
+        return []
+
+    def _get_album_tracks_legacy_detailed(self, album_mid: str, limit: int) -> list["QQTrack"]:
+        payload = self._get_legacy_album_payload(album_mid)
+        data = payload.get("data", {}) or {}
+        for key in ("list", "songlist", "songList", "songs"):
+            tracks = self._extract_tracks_detailed(data.get(key, []) or [])
+            if tracks:
+                return tracks[:limit]
+        return []
+
+    def get_album_tracks_detailed(self, album_mid: str, limit: int = 500) -> list["QQTrack"]:
+        """Fetch QQ album tracks with title + duration, with a legacy endpoint fallback.
+
+        Same two-tier fetch strategy as get_album_tracks (title-only), kept as a separate
+        method so existing callers that only need titles are unaffected.
+        """
+        if not album_mid:
+            return []
+        try:
+            tracks = self._get_album_tracks_musicu_detailed(album_mid, limit)
+            if tracks:
+                return tracks
+        except (QQMusicError, requests.RequestException, ValueError):
+            pass
+        return self._get_album_tracks_legacy_detailed(album_mid, limit)
 
     def get_album_publish_date(self, album_mid: str) -> str:
         """Fetch an album's release date from the album-detail payload."""
