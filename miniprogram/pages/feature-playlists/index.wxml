@@ -46,7 +46,7 @@
           <text class="rank">{{track.position < 10 ? '0' + track.position : track.position}}</text>
           <view class="track-copy">
             <text class="track-name">{{track.songName}}</text>
-            <text class="track-artist">{{track.artistNames.join(' / ')}}</text>
+            <text class="track-artist">{{track.artistText}}</text>
           </view>
         </view>
         <view class="remove-btn" catchtap="onRemove" data-id="{{item._id}}">移除这份投稿</view>
