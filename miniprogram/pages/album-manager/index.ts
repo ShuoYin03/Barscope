@@ -29,6 +29,15 @@ const RELEASE_TYPE_CLEAR = '清除标签'
 
 interface LetterCount { letter: string; count: number }
 
+interface OwnershipAuditItem {
+  _id: string
+  title: string
+  artist: string
+  coverUrl: string
+  extraNamesText: string
+  liveArtistNamesText: string
+}
+
 interface OwnerPick { artistId: string; artistName: string; picUrl: string; selected?: boolean }
 
 interface DuplicateSample {
@@ -57,7 +66,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     view: 'artists' as 'artists' | 'albums',
-    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi' | 'uncategorized',
+    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' | 'ownership-audit',
     artistList: [] as Artist[],
     artistLoading: false,
     artistHasMore: false,
@@ -94,6 +103,10 @@ Page({
     applyRulesDone: 0,
     applyingOwnerFix: false,
     applyOwnerFixDone: 0,
+
+    ownershipAuditList: [] as OwnershipAuditItem[],
+    ownershipAuditScanning: false,
+    ownershipAuditScanDone: 0,
 
     multiList: [] as Album[],
     multiLoading: false,
@@ -186,7 +199,7 @@ Page({
   },
 
   onSearchModeTap(e: WechatMiniprogram.TouchEvent) {
-    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' }).mode
+    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' | 'ownership-audit' }).mode
     if (mode === this.data.searchMode) return
     this.setData({ searchMode: mode })
     if (mode === 'all' && !this.data.allLetters.length) this._loadLetterCounts()
@@ -733,6 +746,54 @@ Page({
       },
       fail: () => { this.setData({ applyingOwnerFix: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     })
+  },
+
+  onScanOwnershipMismatches() {
+    if (this.data.ownershipAuditScanning) return
+    wx.showModal({
+      title: '开始排查歌手归属',
+      content: '会对每张多人合作专辑实时请求网易云专辑页做核对，专辑数量多的话会比较慢。只标记疑似问题，不会自动修改任何数据，确认继续？',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ ownershipAuditScanning: true, ownershipAuditScanDone: 0, ownershipAuditList: [] })
+        this._runOwnershipAuditStep(0)
+      },
+    })
+  },
+
+  _runOwnershipAuditStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'audit_ownership_mismatches', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ ownershipAuditScanning: false }); wx.showToast({ title: r.error || '排查失败', icon: 'none' }); return }
+        const incoming = ((r.flagged || []) as any[]).map((item) => ({
+          _id: item._id,
+          title: item.title || '',
+          artist: item.artist || '',
+          coverUrl: item.coverUrl || '',
+          extraNamesText: (item.extraNames || []).join(' / '),
+          liveArtistNamesText: (item.liveArtistNames || []).join(' / '),
+        }))
+        this.setData({
+          ownershipAuditScanDone: r.processed || 0,
+          ownershipAuditList: this.data.ownershipAuditList.concat(incoming),
+        })
+        if (r.done) {
+          this.setData({ ownershipAuditScanning: false })
+          wx.showToast({ title: `排查完成，${this.data.ownershipAuditList.length} 张疑似有问题`, icon: 'none' })
+          return
+        }
+        this._runOwnershipAuditStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ ownershipAuditScanning: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onOwnershipAuditCardTap(e: WechatMiniprogram.TouchEvent) {
+    const { id } = e.currentTarget.dataset as { id: string }
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
   },
 
   onTitleSearch(e: WechatMiniprogram.Input) {

@@ -167,6 +167,7 @@ exports.main = async (event, context) => {
   if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
   if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
   if (action === 'apply_owner_artist_fix')   return await applyOwnerArtistFix(event.skip || 0)
+  if (action === 'audit_ownership_mismatches') return await auditOwnershipMismatches(event.skip || 0)
   if (action === 'purge_declined')        return await purgeDeclinedCandidates()
 
   return { success: false, error: 'unknown action' }
@@ -591,6 +592,65 @@ async function applyOwnerArtistFix(skip) {
     }))
     const failed = results.filter(r => r.status === 'rejected').length
     return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── audit_ownership_mismatches ───────────────────────────────────────────────
+// Live-checks multi-artist albums against NetEase's own album-level artist list, flagging any
+// stored artistIds not present there. Catches ownership pollution regardless of which import path
+// caused it (this cloud function's own crawler, syncAlbumTracks, the feature-playlist importer,
+// or anything future) — unlike apply_owner_artist_fix, which can only clean up what
+// featuringGuests already knows about. Read-only: flags for admin review via 修改专辑归属,
+// never writes. Requires a live NetEase call per album, so this pages in small batches.
+async function fetchAlbumArtistsLive(sourceId) {
+  try {
+    const data = await httpsGet(`https://music.163.com/api/v1/album/${sourceId}`)
+    const album = (data && data.album) || (data && data.data && data.data.album) || {}
+    const raw = (Array.isArray(album.artists) && album.artists.length) ? album.artists : (album.artist ? [album.artist] : [])
+    return raw.map(a => ({ id: String(a && a.id || ''), name: String(a && a.name || '').trim() })).filter(a => a.name)
+  } catch (e) {
+    return null
+  }
+}
+
+async function auditOwnershipMismatches(skip) {
+  try {
+    const pageSize = 15
+    const result = await db.collection('albums')
+      .where(_.and([
+        { isMultiArtist: true },
+        { source: 'netease' },
+        _.or([{ ownershipSource: _.exists(false) }, { ownershipSource: _.neq('user-admin-correction') }]),
+      ]))
+      .skip(skip).limit(pageSize)
+      .field({ _id: true, title: true, artist: true, artistIds: true, sourceId: true, coverUrl: true, primaryArtist: true, releaseYear: true })
+      .get()
+    const docs = result.data || []
+    if (!docs.length) return { success: true, done: true, processed: skip, flagged: [] }
+
+    const flagged = []
+    for (const d of docs) {
+      if (!d.sourceId) continue
+      const live = await fetchAlbumArtistsLive(d.sourceId)
+      if (!live || !live.length) continue // couldn't verify against NetEase — skip rather than false-flag
+      const liveIds = new Set(live.map(a => a.id).filter(Boolean))
+      const storedIds = (Array.isArray(d.artistIds) ? d.artistIds : []).map(String)
+      const extraIds = storedIds.filter(id => id && !liveIds.has(id))
+      if (extraIds.length) {
+        const extraNames = extraIds.map(id => {
+          const parts = String(d.artist || '').split('/').map(s => s.trim())
+          const idx = storedIds.indexOf(id)
+          return (idx >= 0 && parts[idx]) || id
+        })
+        flagged.push({
+          _id: d._id, title: d.title, artist: d.artist, coverUrl: d.coverUrl, releaseYear: d.releaseYear,
+          extraNames, liveArtistNames: live.map(a => a.name),
+        })
+      }
+    }
+    return { success: true, done: false, processed: skip + docs.length, nextSkip: skip + docs.length, flagged }
   } catch (e) {
     return { success: false, error: e.message }
   }

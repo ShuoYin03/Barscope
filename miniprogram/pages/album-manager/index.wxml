@@ -19,6 +19,7 @@
       <view class="mode-tab {{searchMode === 'all' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="all"><text>全部</text></view>
       <view class="mode-tab {{searchMode === 'multi' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="multi"><text>多人合作</text></view>
       <view class="mode-tab {{searchMode === 'uncategorized' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="uncategorized"><text>未分类</text></view>
+      <view class="mode-tab {{searchMode === 'ownership-audit' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="ownership-audit"><text>排查</text></view>
     </view>
 
     <view class="search-bar" wx:if="{{searchMode === 'artist' || searchMode === 'title' || searchMode === 'all'}}">
@@ -416,6 +417,48 @@
           <text class="list-end-text">── 共 {{multiTotal}} 张 ──</text>
         </view>
       </block>
+      </scroll-view>
+    </block>
+
+    <!-- ── 归属排查：拿 NetEase 专辑级歌手信息实时核对，标出多出来的（很可能是被 track 级 feat. 污染的） ── -->
+    <block wx:elif="{{searchMode === 'ownership-audit'}}">
+      <view class="all-action-bar">
+        <view class="all-action-btn ghost {{ownershipAuditScanning ? 'btn-disabled' : ''}}" bindtap="onScanOwnershipMismatches">
+          <text>{{ownershipAuditScanning ? ('排查中 ' + ownershipAuditScanDone) : '开始排查'}}</text>
+        </view>
+      </view>
+      <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+        <view wx:if="{{!ownershipAuditScanning && ownershipAuditList.length === 0 && !ownershipAuditScanDone}}" class="empty-state">
+          <text class="empty-icon">○</text>
+          <text class="empty-text">点击"开始排查"，会拿每张多人合作专辑跟网易云专辑页实时核对，标出疑似被曲目级 feat. 污染归属的专辑</text>
+        </view>
+
+        <view wx:elif="{{!ownershipAuditScanning && ownershipAuditList.length === 0 && ownershipAuditScanDone}}" class="empty-state">
+          <text class="empty-icon">○</text>
+          <text class="empty-text">排查完成，已检查 {{ownershipAuditScanDone}} 张多人合作专辑，没有发现疑似问题</text>
+        </view>
+
+        <block wx:else>
+          <view wx:for="{{ownershipAuditList}}" wx:key="_id" class="album-row" bindtap="onOwnershipAuditCardTap" data-id="{{item._id}}">
+            <view class="album-cover-wrap">
+              <image wx:if="{{item.coverUrl}}" class="album-cover" src="{{item.coverUrl}}" mode="aspectFill" />
+              <view wx:else class="album-cover-fallback"><text class="album-cover-icon">♪</text></view>
+            </view>
+            <view class="album-info">
+              <text class="album-title">{{item.title}}</text>
+              <text class="album-artist">{{item.artist}}</text>
+              <text class="album-meta" style="color:#d45124;">疑似多出：{{item.extraNamesText}}</text>
+              <text class="album-meta">网易云实际歌手：{{item.liveArtistNamesText}}</text>
+            </view>
+          </view>
+
+          <view wx:if="{{ownershipAuditScanning}}" class="load-more">
+            <text class="load-more-text">排查中，已检查 {{ownershipAuditScanDone}} 张，发现 {{ownershipAuditList.length}} 张疑似有问题…</text>
+          </view>
+          <view wx:elif="{{ownershipAuditList.length > 0}}" class="list-end">
+            <text class="list-end-text">── 共检查 {{ownershipAuditScanDone}} 张，{{ownershipAuditList.length}} 张疑似有问题，点击专辑去核实/修改归属 ──</text>
+          </view>
+        </block>
       </scroll-view>
     </block>
 
