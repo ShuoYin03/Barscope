@@ -30,12 +30,37 @@
         </view>
         <text class="section-count">{{editorialCount}} 份</text>
       </view>
-      <view wx:for="{{editorialList}}" wx:key="_id" class="playlist-card featured">
-        <image class="playlist-cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
-        <view class="playlist-body">
-          <view class="playlist-meta-line"><text class="featured-badge">FEATURED</text><text class="playlist-count">{{item.trackCount}} TRACKS</text></view>
-          <text class="playlist-creator">{{item.creatorName}}</text>
-          <text class="playlist-title">{{item.playlistTitle}}</text>
+
+      <view wx:for="{{editorialList}}" wx:for-item="playlist" wx:key="_id" class="playlist-wrap">
+        <view class="playlist-card featured" bindtap="onPlaylistTap" data-id="{{playlist._id}}">
+          <image class="playlist-cover" src="{{playlist.playlistCoverUrl}}" mode="aspectFill" />
+          <view class="playlist-body">
+            <view class="playlist-meta-line"><text class="featured-badge">FEATURED</text><text class="playlist-count">{{playlist.trackCount}} TRACKS</text></view>
+            <text class="playlist-creator">{{playlist.creatorName}}</text>
+            <text class="playlist-title">{{playlist.playlistTitle}}</text>
+          </view>
+          <text class="playlist-toggle">{{playlist.expanded ? '−' : '+'}}</text>
+        </view>
+
+        <view wx:if="{{playlist.expanded}}" class="track-panel">
+          <view wx:if="{{playlist.detailLoading}}" class="track-loading"><text>正在匹配 BarScope 曲库…</text></view>
+          <block wx:else>
+            <view wx:if="{{playlist.catalogSync}}" class="catalog-sync">
+              <text>{{playlist.catalogSync.linkedAlbums}} 首已关联专辑</text>
+              <text wx:if="{{playlist.catalogSync.pendingAlbums > 0}}"> · {{playlist.catalogSync.pendingAlbums}} 张专辑待审核</text>
+              <text wx:if="{{playlist.catalogSync.pendingArtists > 0}}"> · {{playlist.catalogSync.pendingArtists}} 位艺人待审核</text>
+            </view>
+            <view wx:for="{{playlist.tracks}}" wx:for-item="track" wx:key="neteaseSongId" class="track-row" catchtap="onTrackTap" data-album-id="{{track.barscopeAlbumId}}" data-status="{{track.albumCatalogStatus}}">
+              <text class="track-rank">{{track.position}}</text>
+              <image class="track-cover" src="{{track.coverUrl}}" mode="aspectFill" />
+              <view class="track-main">
+                <text class="track-title">{{track.songName}}</text>
+                <text class="track-artist">{{track.artistText}}</text>
+                <text class="track-album">{{track.albumName}}</text>
+              </view>
+              <text class="track-status {{track.barscopeAlbumId ? 'linked' : 'pending'}}">{{track.barscopeAlbumId ? '打开专辑 →' : '待审核'}}</text>
+            </view>
+          </block>
         </view>
       </view>
     </view>
@@ -56,12 +81,36 @@
         <view class="empty"><text>还没有社区投稿，来提交第一份歌单吧</text></view>
       </block>
       <block wx:else>
-        <view wx:for="{{communityList}}" wx:key="_id" class="playlist-card">
-          <image class="playlist-cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
-          <view class="playlist-body">
-            <text class="playlist-count">{{item.trackCount}} TRACKS</text>
-            <text class="playlist-creator">{{item.creatorName}}</text>
-            <text class="playlist-title">{{item.playlistTitle}}</text>
+        <view wx:for="{{communityList}}" wx:for-item="playlist" wx:key="_id" class="playlist-wrap">
+          <view class="playlist-card" bindtap="onPlaylistTap" data-id="{{playlist._id}}">
+            <image class="playlist-cover" src="{{playlist.playlistCoverUrl}}" mode="aspectFill" />
+            <view class="playlist-body">
+              <text class="playlist-count">{{playlist.trackCount}} TRACKS</text>
+              <text class="playlist-creator">{{playlist.creatorName}}</text>
+              <text class="playlist-title">{{playlist.playlistTitle}}</text>
+            </view>
+            <text class="playlist-toggle">{{playlist.expanded ? '−' : '+'}}</text>
+          </view>
+
+          <view wx:if="{{playlist.expanded}}" class="track-panel">
+            <view wx:if="{{playlist.detailLoading}}" class="track-loading"><text>正在匹配 BarScope 曲库…</text></view>
+            <block wx:else>
+              <view wx:if="{{playlist.catalogSync}}" class="catalog-sync">
+                <text>{{playlist.catalogSync.linkedAlbums}} 首已关联专辑</text>
+                <text wx:if="{{playlist.catalogSync.pendingAlbums > 0}}"> · {{playlist.catalogSync.pendingAlbums}} 张专辑待审核</text>
+                <text wx:if="{{playlist.catalogSync.pendingArtists > 0}}"> · {{playlist.catalogSync.pendingArtists}} 位艺人待审核</text>
+              </view>
+              <view wx:for="{{playlist.tracks}}" wx:for-item="track" wx:key="neteaseSongId" class="track-row" catchtap="onTrackTap" data-album-id="{{track.barscopeAlbumId}}" data-status="{{track.albumCatalogStatus}}">
+                <text class="track-rank">{{track.position}}</text>
+                <image class="track-cover" src="{{track.coverUrl}}" mode="aspectFill" />
+                <view class="track-main">
+                  <text class="track-title">{{track.songName}}</text>
+                  <text class="track-artist">{{track.artistText}}</text>
+                  <text class="track-album">{{track.albumName}}</text>
+                </view>
+                <text class="track-status {{track.barscopeAlbumId ? 'linked' : 'pending'}}">{{track.barscopeAlbumId ? '打开专辑 →' : '待审核'}}</text>
+              </view>
+            </block>
           </view>
         </view>
       </block>
