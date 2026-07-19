@@ -15,17 +15,44 @@ from typing import Iterable, Sequence
 from artist_identity import normalise_artist_name
 
 
-TRACK_VERSION_SUFFIX = re.compile(
-    r"\s*(?:[\(\[（【].*?(?:伴奏|inst(?:rumental)?|instrumental|remix|demo|live|explicit).*?[\)\]）】]|"
-    r"[-–—:]\s*(?:伴奏|inst(?:rumental)?|instrumental|remix|demo|live).*)$",
+# Remove platform/version decorations that frequently differ for the same recording.
+# Keep meaningful subtitles unless they clearly describe a version or featured credits.
+TRAILING_DECORATION = re.compile(
+    r"\s*(?:"
+    r"[\(\[（【][^\)\]）】]*(?:"
+    r"feat(?:uring)?\.?|ft\.?|with|prod(?:uced)?\.?|制作人|伴奏|"
+    r"inst(?:rumental)?|instrumental|remix|demo|live|explicit|clean|"
+    r"remaster(?:ed)?|version|版"
+    r")[^\)\]）】]*[\)\]）】]"
+    r"|[-–—:：]\s*(?:"
+    r"feat(?:uring)?\.?|ft\.?|prod(?:uced)?\.?|伴奏|"
+    r"inst(?:rumental)?|instrumental|remix|demo|live|explicit|clean|"
+    r"remaster(?:ed)?|version|版"
+    r").*"
+    r")$",
+    re.IGNORECASE,
+)
+
+FEAT_INLINE = re.compile(
+    r"\s+(?:feat(?:uring)?\.?|ft\.?)\s+.+$",
     re.IGNORECASE,
 )
 
 
 def normalise_track_title(title: str) -> str:
+    """Return a conservative cross-platform comparison key for a track title."""
     value = (title or "").strip().casefold()
-    value = TRACK_VERSION_SUFFIX.sub("", value)
-    value = re.sub(r"[\s\-_.·•:：()（）\[\]【】]+", "", value)
+    value = FEAT_INLINE.sub("", value)
+
+    # Decorations can be stacked, e.g. "Song (feat. X) [Explicit]".
+    previous = None
+    while value != previous:
+        previous = value
+        value = TRAILING_DECORATION.sub("", value).strip()
+
+    # Ignore punctuation/spacing differences without deleting letters or numbers.
+    value = re.sub(r"[\s\-_.·•:：'’‘\"“”`~!！?？,，/\\|]+", "", value)
+    value = re.sub(r"[()（）\[\]【】{}<>《》]", "", value)
     return value
 
 
@@ -55,8 +82,10 @@ def resolve_artist_match(
 ) -> ArtistMatchResult:
     """Score whether two platform artist accounts represent the same artist.
 
-    Track overlap uses the smaller catalogue as denominator. This handles platform
-    exclusives and incomplete catalogues better than dividing by the larger catalogue.
+    Absolute matching-track count is intentionally a strong signal. Platform
+    catalogues are often incomplete, differently ordered, or partially unavailable,
+    so a large number of identical released titles can be stronger evidence than a
+    percentage calculated from two unequal catalogue snapshots.
     """
     ne = _normalised_set(netease_tracks)
     qq = _normalised_set(qq_tracks)
@@ -70,14 +99,29 @@ def resolve_artist_match(
         SequenceMatcher(None, ne_name, qq_name).ratio() if ne_name and qq_name else 0.0
     )
 
-    # Songs remain the dominant signal; names help only when catalogues are sparse.
-    score = min(1.0, track_overlap * 0.9 + name_similarity * 0.1)
+    # The display score remains useful for ranking, while the status rules below
+    # explicitly recognise strong absolute catalogue overlap.
+    absolute_evidence = min(1.0, matched / 15.0)
+    score = min(
+        1.0,
+        track_overlap * 0.55 + absolute_evidence * 0.35 + name_similarity * 0.10,
+    )
 
-    if track_overlap >= 0.80 and matched >= 3:
+    # Very strong absolute evidence: 15 identical titles is enough to auto-bind,
+    # even when one platform exposes only a partial catalogue snapshot.
+    if matched >= 15:
         status = "matched"
-    elif track_overlap >= 0.50 and matched >= 2:
+    # Strong combined evidence for smaller catalogues / newer artists.
+    elif matched >= 8 and name_similarity >= 0.65:
+        status = "matched"
+    elif track_overlap >= 0.70 and matched >= 3 and name_similarity >= 0.50:
+        status = "matched"
+    # Plausible candidates stay in review rather than being discarded.
+    elif matched >= 5:
         status = "review"
-    elif score >= 0.72 and matched >= 2:
+    elif track_overlap >= 0.30 and matched >= 3:
+        status = "review"
+    elif matched >= 2 and name_similarity >= 0.85:
         status = "review"
     else:
         status = "unmatched"

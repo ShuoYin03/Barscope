@@ -255,6 +255,9 @@
           <view class="all-action-btn ghost {{applyingRules ? 'btn-disabled' : ''}}" bindtap="onApplyReleaseTypeRules">
             <text>{{applyingRules ? ('打标签中 ' + applyRulesDone) : '一键打标签'}}</text>
           </view>
+          <view class="all-action-btn ghost {{applyingOwnerFix ? 'btn-disabled' : ''}}" bindtap="onApplyOwnerArtistFix">
+            <text>{{applyingOwnerFix ? ('修正中 ' + applyOwnerFixDone) : '一键修正专辑归属'}}</text>
+          </view>
         </block>
       </view>
 

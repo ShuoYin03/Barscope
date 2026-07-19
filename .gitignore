@@ -11,6 +11,7 @@ project.private.config.json
 .gstack/
 
 crawler/backups/
+crawler/qq_*.json
 
 CLAUDE.md
 

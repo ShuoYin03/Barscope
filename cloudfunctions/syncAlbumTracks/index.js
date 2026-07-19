@@ -23,7 +23,7 @@ exports.main = async event => {
     const neArtistNames = [...new Set(albumArtists.map(a => String(a && a.name || '').trim()).filter(Boolean))]
     const neArtistIds = [...new Set(albumArtists.map(a => String(a && a.id || '')).filter(Boolean))]
     // Owner set drives Feat classification: pinned for corrected albums, else NetEase album-level artists.
-    const { ownerIds, ownerNames } = resolveOwners(albumDoc, albumArtists)
+    const { ownerIds, ownerNames, ownerArtists } = resolveOwners(albumDoc, albumArtists)
     const primaryArtist = String((album.artist || {}).name || neArtistNames[0] || albumDoc.primaryArtist || '').trim()
     const neteaseArtistId = String((album.artist || {}).id || neArtistIds[0] || albumDoc.neteaseArtistId || '')
     const artistDisplay = neArtistNames.join(' / ') || primaryArtist
@@ -46,10 +46,16 @@ exports.main = async event => {
       const mergedNames = mergedIds.map(id => existingNameById[id] || neNameById[id]).filter(Boolean)
       patch.artist = mergedNames.join(' / ') || artistDisplay
       patch.primaryArtist = primaryArtist; patch.neteaseArtistId = neteaseArtistId
-      patch.artistIds = mergedIds; patch.ownerArtistIds = mergedIds; patch.isMultiArtist = mergedIds.length > 1
+      // ownerArtistIds must stay the true-owner subset (drives which artist pages list this album) —
+      // artistIds/isMultiArtist intentionally stay the full owners+guests participant set (drives the
+      // "+N" hero tag). These previously both pointed at mergedIds, so any track-level guest ended up
+      // owning the album too — e.g. a single-artist LP with one featured track wrongly cross-listed
+      // onto the guest's own artist page.
+      patch.artistIds = mergedIds; patch.ownerArtistIds = [...ownerIds]; patch.isMultiArtist = mergedIds.length > 1
+      patch.ownerArtists = ownerArtists
     }
     await db.collection('albums').doc(albumDoc._id).update({ data:patch })
-    return { success:true, albumId:albumDoc._id, sourceId:neteaseAlbumId, trackCount:tracks.length, guestCount:featuringGuests.length, artist:patch.artist || artistDisplay, primaryArtist, artistIds:patch.artistIds || neArtistIds, featureArtistIds:featureIds(patch.artistIds || albumDoc.artistIds || [], ownerIds), tracks, featuringGuests }
+    return { success:true, albumId:albumDoc._id, sourceId:neteaseAlbumId, trackCount:tracks.length, guestCount:featuringGuests.length, artist:patch.artist || artistDisplay, primaryArtist, artistIds:patch.artistIds || neArtistIds, ownerArtists:patch.ownerArtists || albumDoc.ownerArtists || [], featureArtistIds:featureIds(patch.artistIds || albumDoc.artistIds || [], ownerIds), tracks, featuringGuests }
   } catch(e) { return { success:false, error:e.message } }
 }
 function normalizeTrack(song, idx, ownerIds, ownerNames) { const artists=(song.artists || song.ar || []).map(a=>({id:Number(a.id||0),name:String(a.name||'').trim()})).filter(a=>a.name); const guests=artists.filter(a=>isGuest(a, ownerIds, ownerNames)); return {songId:String(song.id||''),no:idx+1,name:song.name||'',duration:Number(song.duration||song.dt||0),artists,guests,hasFeaturing:guests.length>0} }

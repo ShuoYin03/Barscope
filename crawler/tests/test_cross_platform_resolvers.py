@@ -13,7 +13,10 @@ class ArtistResolverTests(unittest.TestCase):
         result = resolve_artist_match(netease, qq, "张方钊", "河南说唱之神")
         self.assertEqual(result.matched_tracks, 9)
         self.assertEqual(result.track_overlap, 0.9)
-        self.assertEqual(result.status, "matched")
+        # High overlap with completely dissimilar names (name_similarity ≈ 0) and fewer
+        # than 15 absolute matches stays "review" rather than auto-matching — see
+        # resolve_artist_match's status rules.
+        self.assertEqual(result.status, "review")
 
     def test_low_overlap_does_not_auto_match_same_name(self):
         result = resolve_artist_match(

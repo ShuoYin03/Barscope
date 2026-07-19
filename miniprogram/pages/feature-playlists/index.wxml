@@ -1,0 +1,57 @@
+<view class="page">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="back" bindtap="onBack">←</view>
+    <view class="titles"><text class="title">FEATURE PLAYLISTS</text><text class="sub">2026 H1 TOP 50</text></view>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="intro">
+      <text class="eyebrow">PLAYLIST IMPORTER</text>
+      <text class="intro-title">博主网易云歌单抓取</text>
+      <text class="intro-copy">输入博主名称与网易云歌单链接，自动保存投稿当下的完整歌曲顺序与曲目快照。</text>
+    </view>
+
+    <view class="form-card">
+      <text class="field-label">博主名称</text>
+      <input class="input" value="{{creatorName}}" bindinput="onCreatorInput" placeholder="例如：某某说唱频道" placeholder-style="color:#666" />
+      <text class="field-label second">网易云歌单链接</text>
+      <textarea class="textarea" value="{{playlistUrl}}" bindinput="onUrlInput" auto-height placeholder="https://music.163.com/#/playlist?id=..." placeholder-style="color:#666" />
+      <view class="import-btn {{importing ? 'disabled' : ''}}" bindtap="onImport">
+        <text>{{importing ? '正在抓取…' : '抓取并保存歌单 →'}}</text>
+      </view>
+    </view>
+
+    <view class="section-head">
+      <text class="section-title">已收录投稿</text>
+      <text class="section-count">{{list.length}} 份</text>
+    </view>
+
+    <view wx:if="{{loading && list.length === 0}}" class="state">加载中…</view>
+    <view wx:elif="{{!loading && list.length === 0}}" class="state">还没有抓取任何博主歌单</view>
+
+    <view wx:for="{{list}}" wx:key="_id" class="submission-card">
+      <view class="submission-main" bindtap="onToggle" data-id="{{item._id}}">
+        <image wx:if="{{item.playlistCoverUrl}}" class="cover" src="{{item.playlistCoverUrl}}" mode="aspectFill" />
+        <view wx:else class="cover fallback">♪</view>
+        <view class="meta">
+          <text class="creator">{{item.creatorName}}</text>
+          <text class="playlist-title">{{item.playlistTitle || '未命名歌单'}}</text>
+          <text class="playlist-meta">{{item.trackCount}} 首 · 网易云 ID {{item.neteasePlaylistId}}</text>
+        </view>
+        <text class="expand">{{item.expanded ? '−' : '+'}}</text>
+      </view>
+
+      <view wx:if="{{item.expanded}}" class="tracks">
+        <view wx:for="{{item.tracks}}" wx:for-item="track" wx:key="neteaseSongId" class="track-row">
+          <text class="rank">{{track.position < 10 ? '0' + track.position : track.position}}</text>
+          <view class="track-copy">
+            <text class="track-name">{{track.songName}}</text>
+            <text class="track-artist">{{track.artistText}}</text>
+          </view>
+        </view>
+        <view class="remove-btn" catchtap="onRemove" data-id="{{item._id}}">移除这份投稿</view>
+      </view>
+    </view>
+    <view class="safe-bottom"></view>
+  </scroll-view>
+</view>

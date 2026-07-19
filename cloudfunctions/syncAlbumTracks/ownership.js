@@ -28,17 +28,18 @@ function resolveOwners(albumDoc, neteaseArtists) {
     // ownerArtists (explicit id+name pairs) is the source of truth going forward — no positional
     // string parsing needed. Older corrections made before this field existed fall back below.
     if (Array.isArray(albumDoc.ownerArtists) && albumDoc.ownerArtists.length) {
-      const ids = albumDoc.ownerArtists.map(a => String(a && a.id || '')).filter(Boolean)
-      const names = albumDoc.ownerArtists.map(a => String(a && a.name || '').trim()).filter(Boolean)
-      return { ownerIds: new Set(ids), ownerNames: new Set(names) }
+      const pairs = albumDoc.ownerArtists
+        .map(a => ({ id: String(a && a.id || ''), name: String(a && a.name || '').trim() }))
+        .filter(a => a.name)
+      return toResult(pairs)
     }
     const ids = (Array.isArray(albumDoc.ownerArtistIds) && albumDoc.ownerArtistIds.length)
       ? albumDoc.ownerArtistIds.map(String)
       : (Array.isArray(albumDoc.artistIds) ? albumDoc.artistIds.map(String) : []) // legacy: pre-migration corrections stored owners in artistIds
     const nameById = buildNameById(albumDoc)
-    const names = ids.map(id => nameById[id]).filter(Boolean)
-    if (!names.length && albumDoc.primaryArtist) names.push(String(albumDoc.primaryArtist).trim())
-    return { ownerIds: new Set(ids.filter(Boolean)), ownerNames: new Set(names) }
+    const pairs = ids.map(id => ({ id, name: nameById[id] || '' })).filter(a => a.name)
+    if (!pairs.length && albumDoc.primaryArtist) pairs.push({ id: '', name: String(albumDoc.primaryArtist).trim() })
+    return toResult(pairs)
   }
   // Uncorrected: trust the album doc's own stored participant list over a fresh NetEase re-fetch.
   // NetEase's endpoints are inconsistent about which artists they attach to an album — a group's
@@ -48,14 +49,25 @@ function resolveOwners(albumDoc, neteaseArtists) {
   if (Array.isArray(albumDoc.artistIds) && albumDoc.artistIds.length) {
     const ids = albumDoc.artistIds.map(String)
     const nameById = buildNameById(albumDoc)
-    const names = ids.map(id => nameById[id]).filter(Boolean)
-    if (names.length) return { ownerIds: new Set(ids), ownerNames: new Set(names) }
+    const pairs = ids.map(id => ({ id, name: nameById[id] || '' })).filter(a => a.name)
+    if (pairs.length) return toResult(pairs)
   }
-  const ne = (neteaseArtists || []).map(a => ({ id: String(a && a.id || ''), name: String(a && a.name || '').trim() }))
-  const ownerIds = new Set(ne.map(a => a.id).filter(Boolean))
-  const ownerNames = new Set(ne.map(a => a.name).filter(Boolean))
-  if (!ownerNames.size && albumDoc.primaryArtist) ownerNames.add(String(albumDoc.primaryArtist).trim())
-  return { ownerIds, ownerNames }
+  const pairs = (neteaseArtists || [])
+    .map(a => ({ id: String(a && a.id || ''), name: String(a && a.name || '').trim() }))
+    .filter(a => a.name)
+  if (!pairs.length && albumDoc.primaryArtist) pairs.push({ id: '', name: String(albumDoc.primaryArtist).trim() })
+  return toResult(pairs)
+}
+
+// Owner id+name pairs — the album-level artist list a UI should actually display (e.g. the
+// "该专辑有多位歌手" sheet), as opposed to any single track's per-song credits which may include
+// guests. Kept alongside the ownerIds/ownerNames Sets that isGuest/featureIds already consume.
+function toResult(pairs) {
+  return {
+    ownerIds: new Set(pairs.map(p => p.id).filter(Boolean)),
+    ownerNames: new Set(pairs.map(p => p.name)),
+    ownerArtists: pairs.map(p => ({ id: Number(p.id) || 0, name: p.name })),
+  }
 }
 
 // Loose name key: case/whitespace/punctuation-insensitive, so "马思唯" still matches a per-track

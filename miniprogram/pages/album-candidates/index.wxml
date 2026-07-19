@@ -17,7 +17,7 @@
   <view class="head">
     <view class="head-copy">
       <text class="head-title">{{mode === 'pending' ? '专辑审核' : hiddenScope === 'manual' ? '手动隐藏专辑' : '历史未显示专辑'}}</text>
-      <text class="head-desc">{{mode === 'pending' ? '包含被举报专辑、网易云匹配提交和用户手动提交' : hiddenScope === 'manual' ? '仅展示管理员主动隐藏的专辑' : '展示历史 approved=false 且未标记为手动隐藏的专辑'}}</text>
+      <text class="head-desc">{{mode === 'pending' ? '包含被举报专辑、网易云匹配、QQ音乐补录和用户手动提交' : hiddenScope === 'manual' ? '仅展示管理员主动隐藏的专辑' : '展示历史 approved=false 且未标记为手动隐藏的专辑'}}</text>
     </view>
     <text class="count">{{total}} {{mode === 'pending' ? '待处理' : '张'}}</text>
   </view>
@@ -59,7 +59,7 @@
               <text class="reason">说明：{{item.hiddenReason}}</text>
             </block>
             <block wx:else>
-              <text class="reason">来源：{{item.submissionMode === 'manual' ? '用户手动提交' : item.submissionMode === 'netease' ? '网易云匹配' : '专辑举报'}}</text>
+              <text class="reason">来源：{{item.submissionMode === 'manual' ? '用户手动提交' : item.submissionMode === 'netease' ? '网易云匹配' : item.submissionMode === 'qq' || item.source === 'qq' ? 'QQ音乐补录' : '专辑举报'}}</text>
               <text class="reason">说明：{{item.reportReason || item.candidateReason || '待管理员复核'}}</text>
             </block>
             <text wx:if="{{item.tracks && item.tracks.length}}" class="tracks">曲目：<block wx:for="{{item.tracks}}" wx:for-item="track" wx:key="no">{{index ? ' / ' : ''}}{{track.name || track}}</block></text>

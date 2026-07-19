@@ -92,6 +92,8 @@ Page({
     backfillDone: 0,
     applyingRules: false,
     applyRulesDone: 0,
+    applyingOwnerFix: false,
+    applyOwnerFixDone: 0,
 
     multiList: [] as Album[],
     multiLoading: false,
@@ -697,6 +699,39 @@ Page({
         this._runApplyRulesStep(r.nextSkip)
       },
       fail: () => { this.setData({ applyingRules: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onApplyOwnerArtistFix() {
+    if (this.data.applyingOwnerFix) return
+    wx.showModal({
+      title: '一键修正专辑归属',
+      content: '把每张专辑已知的 Featuring 嘉宾从"专辑歌手"里排除掉（只用已有数据比对，不重新拉取网易云）。不会动手动改过归属的专辑，也不会动还没有嘉宾数据的专辑，确认继续？',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ applyingOwnerFix: true, applyOwnerFixDone: 0 })
+        this._runApplyOwnerFixStep(0)
+      },
+    })
+  },
+
+  _runApplyOwnerFixStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'apply_owner_artist_fix', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ applyingOwnerFix: false }); wx.showToast({ title: r.error || '修正失败', icon: 'none' }); return }
+        this.setData({ applyOwnerFixDone: r.processed || 0 })
+        if (r.done) {
+          this.setData({ applyingOwnerFix: false })
+          wx.showToast({ title: '归属修正完成', icon: 'success' })
+          this._loadAllAlbums(this.data.allActiveLetter, 1)
+          return
+        }
+        this._runApplyOwnerFixStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ applyingOwnerFix: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     })
   },
 
