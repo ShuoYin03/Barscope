@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Local-only QQ album candidate dedupe.
 
-Reads an exported BarScope albums JSON file and qq_album_candidates.json.
+Reads an exported BarScope albums JSON/JSONL file and qq_album_candidates.json.
 Does not require WeChat AppSecret and never accesses or modifies Cloud DB.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -31,7 +32,64 @@ def extract_rows(payload: Any) -> List[Dict[str, Any]]:
             if isinstance(value, list) and all(isinstance(x, dict) for x in value):
                 return value
 
-    raise ValueError("无法识别 JSON 格式：需要顶层数组，或 results/data/records/items/list 数组")
+        # A single document is also a valid one-row export payload.
+        return [payload]
+
+    raise ValueError("无法识别 JSON 格式")
+
+
+def load_export_rows(path: Path) -> List[Dict[str, Any]]:
+    """Load normal JSON, JSON Lines, or multiple concatenated JSON documents."""
+    text = path.read_text(encoding="utf-8-sig").strip()
+    if not text:
+        return []
+
+    # 1) Standard JSON array/object.
+    try:
+        return extract_rows(json.loads(text))
+    except json.JSONDecodeError:
+        pass
+
+    # 2) CloudBase exports are often JSONL: one complete document per line.
+    rows: List[Dict[str, Any]] = []
+    jsonl_ok = True
+    for line_no, raw_line in enumerate(text.splitlines(), 1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            jsonl_ok = False
+            break
+        try:
+            rows.extend(extract_rows(payload))
+        except ValueError as exc:
+            raise ValueError(f"第 {line_no} 行格式无法识别: {exc}") from exc
+    if jsonl_ok and rows:
+        return rows
+
+    # 3) Fallback for JSON documents concatenated without newline boundaries.
+    decoder = json.JSONDecoder()
+    rows = []
+    pos = 0
+    length = len(text)
+    while pos < length:
+        while pos < length and text[pos].isspace():
+            pos += 1
+        if pos >= length:
+            break
+        try:
+            payload, end = decoder.raw_decode(text, pos)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"既不是标准 JSON，也不是可识别的 JSONL/连续 JSON；"
+                f"错误位置 line {exc.lineno} column {exc.colno}: {exc.msg}"
+            ) from exc
+        rows.extend(extract_rows(payload))
+        pos = end
+
+    return rows
 
 
 def main() -> int:
@@ -56,8 +114,7 @@ def main() -> int:
     try:
         candidate_payload = load_json(candidates_path)
         candidates = extract_rows(candidate_payload)
-        album_payload = load_json(albums_path)
-        albums = extract_rows(album_payload)
+        albums = load_export_rows(albums_path)
     except Exception as exc:
         print(f"读取 JSON 失败: {exc}", file=sys.stderr)
         return 2
