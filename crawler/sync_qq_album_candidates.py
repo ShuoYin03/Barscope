@@ -109,20 +109,24 @@ def load_rows(paths: list[Path]) -> list[dict]:
     return rows
 
 
-def build_candidate(row: dict, album: Any, tracks: list[str]) -> dict[str, Any] | None:
+def build_candidate(row: dict, album: Any, tracks: list[str]) -> tuple[dict[str, Any] | None, str]:
     title = str(album.title or "").strip()
     artist = str(row.get("displayName") or album.artist_name or "").strip()
     year = parse_year(album.publish_date)
     track_count = int(album.track_count or len(tracks) or 0)
 
-    if not title or not artist or not album.cover_url:
-        return None
+    if not title:
+        return None, "missing_title"
+    if not artist:
+        return None, "missing_artist"
+    if not album.cover_url:
+        return None, "missing_cover"
     if year < 1990 or year > CURRENT_YEAR:
-        return None
+        return None, "invalid_year"
     if track_count < 3:
-        return None
+        return None, "track_count_lt_3"
     if any(keyword.lower() in title.lower() for keyword in SKIP_KEYWORDS):
-        return None
+        return None, "skip_keyword"
 
     repeat_meta = repeated_track_metadata(tracks)
     reason = "QQ音乐发现 · 网易云/BarScope现有专辑库未匹配 · 符合当前专辑收录规则"
@@ -156,7 +160,7 @@ def build_candidate(row: dict, album: Any, tracks: list[str]) -> dict[str, Any] 
         "trackCount": track_count,
         "tracks": [{"no": i + 1, "name": name} for i, name in enumerate(tracks)],
         **repeat_meta,
-    }
+    }, "passed"
 
 
 def get_access_token(appid: str, appsecret: str) -> str:
@@ -214,6 +218,7 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--artist-limit", type=int, default=0, help="仅测试前 N 个 matched 艺人；0=全部")
     parser.add_argument("--sleep", type=float, default=0.2)
+    parser.add_argument("--debug-filter-limit", type=int, default=12, help="最多打印 N 条被过滤专辑样本")
     args = parser.parse_args()
 
     match_paths = [Path(p) for p in args.matches] if args.matches else [DEFAULT_MATCHES]
@@ -225,6 +230,8 @@ def main() -> None:
     qq = QQMusicClient()
     candidates: list[dict] = []
     stats: Counter = Counter()
+    filter_reasons: Counter = Counter()
+    debug_printed = 0
 
     for index, row in enumerate(rows, start=1):
         best = row.get("bestCandidate") or {}
@@ -239,24 +246,39 @@ def main() -> None:
             continue
 
         stats["albums_seen"] += len(albums)
+        artist_passed = 0
         for album in albums:
             try:
                 tracks = qq.get_album_tracks(album.mid) if album.mid else []
             except (QQMusicError, requests.RequestException, OSError, ValueError) as exc:
                 tracks = []
-                print(f"  [!] track fetch failed {album.title}: {exc}")
+                stats["track_fetch_errors"] += 1
+                if debug_printed < args.debug_filter_limit:
+                    print(f"  [!] track fetch failed {album.title}: {exc}")
 
-            candidate = build_candidate(row, album, tracks)
+            candidate, filter_reason = build_candidate(row, album, tracks)
             if candidate:
                 candidates.append(candidate)
                 stats["passed_rules"] += 1
+                artist_passed += 1
             else:
                 stats["filtered"] += 1
+                filter_reasons[filter_reason] += 1
+                if debug_printed < args.debug_filter_limit:
+                    print(
+                        "  FILTER "
+                        f"[{filter_reason}] {album.title!r} | "
+                        f"date={album.publish_date!r} | "
+                        f"listCount={album.track_count} | fetchedTracks={len(tracks)} | "
+                        f"mid={album.mid!r}"
+                    )
+                    debug_printed += 1
 
             if args.sleep > 0:
                 time.sleep(args.sleep)
 
-    # Local dedupe before upload.
+        print(f"  albums={len(albums)} passed={artist_passed}")
+
     deduped: list[dict] = []
     seen_keys: set[str] = set()
     for item in candidates:
@@ -272,6 +294,7 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"\nRule-passed QQ albums: {len(deduped)} -> {output}")
+    print(f"Filter reasons: {dict(filter_reasons)}")
 
     if args.dry_run:
         print(f"Dry run complete: {dict(stats)}")
