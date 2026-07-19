@@ -191,6 +191,13 @@ class QQMusicClient:
                 if not stable_key or not title or stable_key in seen:
                     continue
                 seen.add(stable_key)
+
+                if not publish_date and album_mid:
+                    try:
+                        publish_date = self.get_album_publish_date(album_mid)
+                    except (QQMusicError, requests.RequestException, ValueError):
+                        publish_date = ""
+
                 albums.append(QQAlbum(
                     album_id=album_id,
                     mid=album_mid,
