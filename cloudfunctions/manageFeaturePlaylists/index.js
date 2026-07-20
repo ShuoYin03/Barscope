@@ -454,6 +454,17 @@ async function removeSubmission(id) {
   return { success: true }
 }
 
+async function setSourceType(id, sourceType) {
+  if (!id) return { success: false, error: 'id_required' }
+  if (sourceType !== 'editorial' && sourceType !== 'community') return { success: false, error: 'invalid_source_type' }
+  const data = { sourceType, updatedAt: new Date() }
+  // Community submissions carry no priority; give a promoted-to-editorial one the same default
+  // importPlaylist uses so it doesn't silently sort behind every deliberately-imported list.
+  if (sourceType === 'editorial') data.editorialPriority = 100
+  await db.collection('feature_playlist_submissions').doc(id).update({ data })
+  return { success: true }
+}
+
 exports.main = async (event) => {
   const action = event.action || 'list'
   const { OPENID: openId } = cloud.getWXContext()
@@ -467,6 +478,7 @@ exports.main = async (event) => {
     if (action === 'import') return await importPlaylist(event, openId)
     if (action === 'list') return await listSubmissions()
     if (action === 'remove') return await removeSubmission(event.id)
+    if (action === 'set_source_type') return await setSourceType(event.id, event.sourceType)
     return { success: false, error: 'unknown_action' }
   } catch (error) {
     console.error('[manageFeaturePlaylists]', action, error)

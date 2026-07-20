@@ -42,6 +42,12 @@
       </view>
 
       <view wx:if="{{item.expanded}}" class="tracks">
+        <view class="source-type-row">
+          <text class="source-type-badge {{item.isEditorial ? 'editorial' : 'community'}}">{{item.isEditorial ? '乐评人' : '社区'}}</text>
+          <view class="source-type-switch {{item.switchingSourceType ? 'disabled' : ''}}" catchtap="onToggleSourceType" data-id="{{item._id}}">
+            <text>{{item.switchingSourceType ? '切换中…' : (item.isEditorial ? '设为社区歌单' : '设为乐评人歌单')}}</text>
+          </view>
+        </view>
         <view wx:for="{{item.tracks}}" wx:for-item="track" wx:key="neteaseSongId" class="track-row">
           <text class="rank">{{track.position < 10 ? '0' + track.position : track.position}}</text>
           <view class="track-copy">

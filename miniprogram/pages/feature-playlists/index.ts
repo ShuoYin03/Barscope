@@ -16,6 +16,9 @@ interface Submission {
   trackCount: number
   tracks: Track[]
   expanded?: boolean
+  sourceType?: 'editorial' | 'community'
+  isEditorial?: boolean
+  switchingSourceType?: boolean
 }
 
 Page({
@@ -57,6 +60,7 @@ Page({
         const list = (r.list || []).map((item: Submission) => ({
           ...item,
           expanded: false,
+          isEditorial: item.sourceType !== 'community',
           tracks: (item.tracks || []).map(track => ({
             ...track,
             artistText: (track.artistNames || []).join(' / '),
@@ -120,6 +124,41 @@ Page({
               this.setData({ list: this.data.list.filter((x: Submission) => x._id !== id) })
               wx.showToast({ title: '已移除', icon: 'none' })
             }
+          },
+        })
+      },
+    })
+  },
+
+  onToggleSourceType(e: WechatMiniprogram.TouchEvent) {
+    const id = String((e.currentTarget.dataset as any).id || '')
+    const item = this.data.list.find((x: Submission) => x._id === id)
+    if (!item || item.switchingSourceType) return
+    const nextType: 'editorial' | 'community' = item.isEditorial ? 'community' : 'editorial'
+    const label = nextType === 'editorial' ? '乐评人歌单' : '社区歌单'
+    wx.showModal({
+      title: '切换归属',
+      content: `把「${item.creatorName}」的这份投稿设为${label}？`,
+      confirmText: '确认切换',
+      confirmColor: '#C94E25',
+      success: res => {
+        if (!res.confirm) return
+        this.setData({ list: this.data.list.map((x: Submission) => x._id === id ? { ...x, switchingSourceType: true } : x) })
+        wx.cloud.callFunction({
+          name: 'manageFeaturePlaylists',
+          data: { action: 'set_source_type', id, sourceType: nextType },
+          success: (r: any) => {
+            const ok = !!r.result?.success
+            this.setData({
+              list: this.data.list.map((x: Submission) => x._id === id
+                ? { ...x, switchingSourceType: false, sourceType: ok ? nextType : x.sourceType, isEditorial: ok ? nextType === 'editorial' : x.isEditorial }
+                : x),
+            })
+            wx.showToast({ title: ok ? '已切换' : (r.result?.error || '切换失败'), icon: ok ? 'none' : 'none' })
+          },
+          fail: () => {
+            this.setData({ list: this.data.list.map((x: Submission) => x._id === id ? { ...x, switchingSourceType: false } : x) })
+            wx.showToast({ title: '网络错误', icon: 'none' })
           },
         })
       },
