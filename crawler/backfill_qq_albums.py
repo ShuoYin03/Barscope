@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Backfill every QQ-sourced BarScope album/candidate with canonical owners and QQ metadata.
+"""Backfill QQ-sourced BarScope albums/candidates into the canonical album schema.
 
-What this repairs:
-- canonical BarScope rapper ownership (neteaseArtistId / artistIds / ownerArtists)
-- releaseDate + releaseYear
+Repairs:
+- canonical BarScope rapper ownership
+- QQ releaseDate / releaseYear (including QQ's aDate field)
 - record company / label
 - full track list
-- per-track featuring guests (all credited track artists minus album owners)
+- per-track featuring guests
 - aggregate featuringGuests + trackCount
 
-The script never overwrites scores, reviews, approval state, or comments.
+Important ownership rule:
+An existing valid neteaseArtistId is treated as the strongest album-owner anchor. This
+prevents album-level QQ credits or track participants from expanding a single-owner album
+into multiple BarScope owners. Other credited artists remain track-level featuring guests.
 
 Usage:
   python3 backfill_qq_albums.py --dry-run
@@ -25,6 +28,7 @@ import html
 import json
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,13 +46,23 @@ HEADERS = {
 
 
 def norm(value: Any) -> str:
-    return re.sub(r"[\s\-_.·•。'\"“”‘’()（）\[\]【】/\\?!！？，,:：]+", "", str(value or "").strip().lower()).replace("explicit", "")
+    return re.sub(
+        r"[\s\-_.·•。'\"“”‘’()（）\[\]【】/\\?!！？，,:：]+",
+        "",
+        str(value or "").strip().lower(),
+    ).replace("explicit", "")
 
 
 def get_token(cfg: dict[str, Any]) -> str:
-    r = requests.get("https://api.weixin.qq.com/cgi-bin/token", params={
-        "grant_type": "client_credential", "appid": cfg.get("appid", ""), "secret": cfg.get("appsecret", "")
-    }, timeout=20)
+    r = requests.get(
+        "https://api.weixin.qq.com/cgi-bin/token",
+        params={
+            "grant_type": "client_credential",
+            "appid": cfg.get("appid", ""),
+            "secret": cfg.get("appsecret", ""),
+        },
+        timeout=20,
+    )
     r.raise_for_status()
     data = r.json()
     if not data.get("access_token"):
@@ -109,9 +123,14 @@ def fetch_all_artists(token: str, env: str) -> list[dict[str, Any]]:
 
 
 def load_local_qq_mappings() -> dict[str, dict[str, str]]:
-    """QQ singer MID -> canonical BarScope/NetEase artist identity from resolver output files."""
+    """QQ singer MID -> canonical BarScope/NetEase artist identity."""
     result: dict[str, dict[str, str]] = {}
-    paths = sorted(set(glob.glob(str(BASE_DIR / "qq_artist_matches*.json")) + glob.glob(str(BASE_DIR / "*artist*match*.json"))))
+    paths = sorted(
+        set(
+            glob.glob(str(BASE_DIR / "qq_artist_matches*.json"))
+            + glob.glob(str(BASE_DIR / "*artist*match*.json"))
+        )
+    )
     for raw_path in paths:
         path = Path(raw_path)
         try:
@@ -133,18 +152,18 @@ def load_local_qq_mappings() -> dict[str, dict[str, str]]:
 def build_artist_indexes(artists: list[dict[str, Any]]) -> tuple[dict[str, dict], dict[str, dict]]:
     by_id: dict[str, dict] = {}
     by_name: dict[str, dict] = {}
-    for a in artists:
-        aid = str(a.get("artistId") or "").strip()
-        name = str(a.get("artistName") or "").strip()
+    for artist in artists:
+        aid = str(artist.get("artistId") or "").strip()
+        name = str(artist.get("artistName") or "").strip()
         if not aid or not name:
             continue
-        by_id[aid] = a
-        names = [name, a.get("aka")]
-        names += a.get("aliases") if isinstance(a.get("aliases"), list) else []
-        for n in names:
-            key = norm(n)
+        by_id[aid] = artist
+        names = [name, artist.get("aka")]
+        names += artist.get("aliases") if isinstance(artist.get("aliases"), list) else []
+        for candidate_name in names:
+            key = norm(candidate_name)
             if key:
-                by_name.setdefault(key, a)
+                by_name.setdefault(key, artist)
     return by_id, by_name
 
 
@@ -155,7 +174,12 @@ def post_musicu(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def album_detail(mid: str) -> dict[str, Any]:
-    r = requests.get(LEGACY_ALBUM_INFO_URL, params={"albummid": mid, "format": "json", "platform": "yqq", "newsong": 1}, headers=HEADERS, timeout=20)
+    r = requests.get(
+        LEGACY_ALBUM_INFO_URL,
+        params={"albummid": mid, "format": "json", "platform": "yqq", "newsong": 1},
+        headers=HEADERS,
+        timeout=20,
+    )
     r.raise_for_status()
     return r.json()
 
@@ -164,7 +188,8 @@ def album_tracks(mid: str) -> list[dict[str, Any]]:
     payload = {
         "comm": {"ct": 24, "cv": 0},
         "albumSongList": {
-            "module": "music.musichallAlbum.AlbumSongList", "method": "GetAlbumSongList",
+            "module": "music.musichallAlbum.AlbumSongList",
+            "method": "GetAlbumSongList",
             "param": {"albumMid": mid, "begin": 0, "num": 500, "order": 2},
         },
     }
@@ -175,13 +200,21 @@ def album_tracks(mid: str) -> list[dict[str, Any]]:
         rows = body.get("songList") or body.get("list") or body.get("songs") or []
     except Exception:
         rows = []
+
     if not rows:
         detail = album_detail(mid)
         data = detail.get("data", {}) or {}
         rows = data.get("list") or data.get("songlist") or data.get("songList") or data.get("songs") or []
-    out = []
+
+    out: list[dict[str, Any]] = []
     for row in rows or []:
-        song = (row or {}).get("songInfo") or (row or {}).get("songinfo") or (row or {}).get("musicData") or (row or {}).get("data") or row
+        song = (
+            (row or {}).get("songInfo")
+            or (row or {}).get("songinfo")
+            or (row or {}).get("musicData")
+            or (row or {}).get("data")
+            or row
+        )
         if not isinstance(song, dict):
             continue
         name = str(song.get("title") or song.get("songname") or song.get("songName") or song.get("name") or "").strip()
@@ -191,22 +224,32 @@ def album_tracks(mid: str) -> list[dict[str, Any]]:
         if not isinstance(singer_rows, list):
             singer_rows = [singer_rows]
         singers = []
-        for s in singer_rows:
-            if not isinstance(s, dict):
+        for singer in singer_rows:
+            if not isinstance(singer, dict):
                 continue
-            sname = html.unescape(str(s.get("name") or s.get("singerName") or s.get("singer_name") or "")).strip()
-            smid = str(s.get("mid") or s.get("singerMID") or s.get("singer_mid") or "").strip()
+            sname = html.unescape(str(singer.get("name") or singer.get("singerName") or singer.get("singer_name") or "")).strip()
+            smid = str(singer.get("mid") or singer.get("singerMID") or singer.get("singer_mid") or "").strip()
             if sname or smid:
                 singers.append({"name": sname, "mid": smid})
-        seconds = int(float(song.get("interval") or song.get("duration") or 0) or 0)
-        out.append({"name": name, "mid": str(song.get("mid") or song.get("songmid") or song.get("songMid") or ""), "singers": singers, "duration": seconds})
+        try:
+            seconds = int(float(song.get("interval") or song.get("duration") or 0) or 0)
+        except (TypeError, ValueError):
+            seconds = 0
+        out.append(
+            {
+                "name": name,
+                "mid": str(song.get("mid") or song.get("songmid") or song.get("songMid") or ""),
+                "singers": singers,
+                "duration": seconds,
+            }
+        )
     return out
 
 
 def walk_find(value: Any, keys: tuple[str, ...]) -> str:
     if isinstance(value, dict):
-        for k in keys:
-            raw = value.get(k)
+        for key in keys:
+            raw = value.get(key)
             if raw is not None and not isinstance(raw, (dict, list)) and str(raw).strip():
                 return str(raw).strip()
         for child in value.values():
@@ -221,17 +264,80 @@ def walk_find(value: Any, keys: tuple[str, ...]) -> str:
     return ""
 
 
-def release_date(detail: dict[str, Any]) -> str:
-    raw = walk_find(detail, ("pub_time", "publish_date", "publishDate", "publicTime", "publictime", "release_date", "releaseDate", "time_public"))
-    m = re.search(r"((?:19|20)\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})", raw)
-    if m:
-        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
-    y = re.search(r"(?:19|20)\d{2}", raw)
-    return y.group(0) if y else ""
+def normalize_release_date(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    full = re.search(r"((?:19|20)\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})", text)
+    if full:
+        return f"{full.group(1)}-{int(full.group(2)):02d}-{int(full.group(3)):02d}"
+
+    compact = re.search(r"\b((?:19|20)\d{2})(\d{2})(\d{2})\b", text)
+    if compact:
+        return f"{compact.group(1)}-{compact.group(2)}-{compact.group(3)}"
+
+    # Some QQ payload variants expose Unix timestamps instead of a formatted date.
+    if re.fullmatch(r"\d{10,13}", text):
+        try:
+            timestamp = int(text)
+            if len(text) == 13:
+                timestamp //= 1000
+            year = datetime.fromtimestamp(timestamp, tz=timezone.utc).year
+            if 1990 <= year <= datetime.now().year + 1:
+                return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
+        except (OverflowError, OSError, ValueError):
+            pass
+
+    year = re.search(r"(?:19|20)\d{2}", text)
+    return year.group(0) if year else ""
+
+
+def release_date(detail: dict[str, Any], record: dict[str, Any]) -> tuple[str, str]:
+    """Return normalized release date and the field/source that produced it."""
+    data = detail.get("data") if isinstance(detail.get("data"), dict) else detail
+
+    # QQ's legacy album endpoint commonly exposes the visible album release date as `aDate`.
+    # Check known album-level keys first, before any recursive scan can accidentally pick a track date.
+    priority_keys = (
+        "aDate",
+        "adate",
+        "publish_date",
+        "publishDate",
+        "pub_time",
+        "publicTime",
+        "publictime",
+        "release_date",
+        "releaseDate",
+        "time_public",
+        "date",
+    )
+    if isinstance(data, dict):
+        for key in priority_keys:
+            normalized = normalize_release_date(data.get(key))
+            if normalized:
+                return normalized, f"detail.data.{key}"
+
+    recursive = walk_find(detail, priority_keys)
+    normalized = normalize_release_date(recursive)
+    if normalized:
+        return normalized, "detail.recursive"
+
+    # Preserve any usable date that was already stored in BarScope rather than replacing it with blank.
+    for key in ("releaseDate", "publishDate", "aDate"):
+        normalized = normalize_release_date(record.get(key))
+        if normalized:
+            return normalized, f"record.{key}"
+
+    release_year = str(record.get("releaseYear") or "").strip()
+    if re.fullmatch(r"(?:19|20)\d{2}", release_year):
+        return release_year, "record.releaseYear"
+
+    return "", "missing"
 
 
 def top_level_singers(detail: dict[str, Any]) -> list[dict[str, str]]:
-    """Only album-level singer nodes; never recursively collect track artists."""
+    """Read album-level singers only; never recursively collect track artists."""
     data = detail.get("data") if isinstance(detail.get("data"), dict) else detail
     candidates: list[Any] = []
     if isinstance(data, dict):
@@ -239,13 +345,14 @@ def top_level_singers(detail: dict[str, Any]) -> list[dict[str, str]]:
             if data.get(key):
                 candidates = data[key] if isinstance(data[key], list) else [data[key]]
                 break
+
     out: list[dict[str, str]] = []
     seen: set[str] = set()
-    for s in candidates:
-        if not isinstance(s, dict):
+    for singer in candidates:
+        if not isinstance(singer, dict):
             continue
-        name = html.unescape(str(s.get("name") or s.get("singerName") or s.get("singer_name") or "")).strip()
-        mid = str(s.get("mid") or s.get("singerMID") or s.get("singer_mid") or "").strip()
+        name = html.unescape(str(singer.get("name") or singer.get("singerName") or singer.get("singer_name") or "")).strip()
+        mid = str(singer.get("mid") or singer.get("singerMID") or singer.get("singer_mid") or "").strip()
         key = mid or norm(name)
         if key and key not in seen:
             seen.add(key)
@@ -253,31 +360,98 @@ def top_level_singers(detail: dict[str, Any]) -> list[dict[str, str]]:
     return out
 
 
-def resolve_owners(record: dict[str, Any], singers: list[dict[str, str]], local_map: dict[str, dict[str, str]], by_id: dict[str, dict], by_name: dict[str, dict]) -> list[dict[str, str]]:
-    resolved: list[dict[str, str]] = []
+def canonical_artist(aid: str, by_id: dict[str, dict]) -> dict[str, str] | None:
+    artist = by_id.get(str(aid or "").strip())
+    if not artist:
+        return None
+    return {"id": str(artist["artistId"]), "name": str(artist["artistName"])}
+
+
+def resolve_owners(
+    record: dict[str, Any],
+    singers: list[dict[str, str]],
+    local_map: dict[str, dict[str, str]],
+    by_id: dict[str, dict],
+    by_name: dict[str, dict],
+) -> tuple[list[dict[str, str]], str]:
+    """Resolve canonical album owners without promoting featured artists to owners.
+
+    Priority:
+    1. Existing valid neteaseArtistId: this is the original BarScope ownership anchor.
+    2. Existing qqArtistMid mapped by the cross-platform resolver.
+    3. Existing ownerArtistIds (only when no stronger single-owner anchor exists).
+    4. Album-level QQ singers via MID mapping / canonical alias matching.
+    """
+    primary_id = str(record.get("neteaseArtistId") or "").strip()
+    primary = canonical_artist(primary_id, by_id)
+    if primary:
+        return [primary], "record.neteaseArtistId"
+
+    record_qq_mid = str(record.get("qqArtistMid") or "").strip()
+    mapped = local_map.get(record_qq_mid)
+    if mapped:
+        canonical = canonical_artist(str(mapped.get("id") or ""), by_id)
+        if canonical:
+            return [canonical], "record.qqArtistMid"
+
+    existing_owner_ids = record.get("ownerArtistIds") if isinstance(record.get("ownerArtistIds"), list) else []
+    existing: list[dict[str, str]] = []
     seen: set[str] = set()
-    # 1) Explicit resolver map by QQ MID.
+    for raw_id in existing_owner_ids:
+        canonical = canonical_artist(str(raw_id), by_id)
+        if canonical and canonical["id"] not in seen:
+            existing.append(canonical)
+            seen.add(canonical["id"])
+    if existing:
+        return existing, "record.ownerArtistIds"
+
+    resolved: list[dict[str, str]] = []
+    seen.clear()
     for singer in singers:
-        mid = singer.get("mid", "")
+        mid = str(singer.get("mid") or "").strip()
+        candidate: dict[str, str] | None = None
         mapped = local_map.get(mid)
-        if mapped and mapped["id"] in by_id and mapped["id"] not in seen:
-            a = by_id[mapped["id"]]
-            resolved.append({"id": str(a["artistId"]), "name": str(a["artistName"])})
-            seen.add(str(a["artistId"]))
-    # 2) Canonical name / aliases.
+        if mapped:
+            candidate = canonical_artist(str(mapped.get("id") or ""), by_id)
+        if not candidate:
+            hit = by_name.get(norm(singer.get("name")))
+            if hit:
+                candidate = {"id": str(hit["artistId"]), "name": str(hit["artistName"])}
+        if candidate and candidate["id"] not in seen:
+            resolved.append(candidate)
+            seen.add(candidate["id"])
+
+    return resolved, "album.singers"
+
+
+def owner_qq_mids(
+    record: dict[str, Any],
+    singers: list[dict[str, str]],
+    owner_ids: list[str],
+    local_map: dict[str, dict[str, str]],
+    by_name: dict[str, dict],
+) -> set[str]:
+    """Only return QQ MIDs that actually resolve to a selected BarScope owner."""
+    owner_id_set = set(owner_ids)
+    mids: set[str] = set()
+
+    record_mid = str(record.get("qqArtistMid") or "").strip()
+    mapped_record = local_map.get(record_mid)
+    if record_mid and mapped_record and str(mapped_record.get("id") or "") in owner_id_set:
+        mids.add(record_mid)
+
     for singer in singers:
+        mid = str(singer.get("mid") or "").strip()
+        if not mid:
+            continue
+        mapped = local_map.get(mid)
+        if mapped and str(mapped.get("id") or "") in owner_id_set:
+            mids.add(mid)
+            continue
         hit = by_name.get(norm(singer.get("name")))
-        if hit and str(hit["artistId"]) not in seen:
-            resolved.append({"id": str(hit["artistId"]), "name": str(hit["artistName"])})
-            seen.add(str(hit["artistId"]))
-    # 3) Preserve existing canonical IDs only when they are valid BarScope rapper IDs.
-    for raw_id in [record.get("neteaseArtistId"), *(record.get("artistIds") or [])]:
-        aid = str(raw_id or "").strip()
-        if aid in by_id and aid not in seen:
-            a = by_id[aid]
-            resolved.append({"id": aid, "name": str(a["artistName"])})
-            seen.add(aid)
-    return resolved
+        if hit and str(hit.get("artistId") or "") in owner_id_set:
+            mids.add(mid)
+    return mids
 
 
 def aggregate_guests(tracks: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -287,16 +461,26 @@ def aggregate_guests(tracks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             key = str(guest.get("id") or "") or norm(guest.get("name"))
             if not key:
                 continue
-            row = agg.setdefault(key, {"id": guest.get("id") or 0, "name": guest.get("name") or "", "count": 0, "trackNos": []})
+            row = agg.setdefault(
+                key,
+                {"id": guest.get("id") or 0, "name": guest.get("name") or "", "count": 0, "trackNos": []},
+            )
             row["count"] += 1
             row["trackNos"].append(track["no"])
     return sorted(agg.values(), key=lambda x: (-x["count"], x["name"]))
 
 
-def enrich(record: dict[str, Any], local_map: dict[str, dict[str, str]], by_id: dict[str, dict], by_name: dict[str, dict]) -> dict[str, Any]:
-    mid = str(record.get("qqAlbumMid") or (record.get("sourceId") if str(record.get("sourcePlatform") or record.get("source") or "").lower() == "qq" else "") or "").strip()
+def enrich(
+    record: dict[str, Any],
+    local_map: dict[str, dict[str, str]],
+    by_id: dict[str, dict],
+    by_name: dict[str, dict],
+) -> dict[str, Any]:
+    platform = str(record.get("sourcePlatform") or record.get("source") or "").lower()
+    mid = str(record.get("qqAlbumMid") or (record.get("sourceId") if platform == "qq" else "") or "").strip()
     if not mid:
         raise RuntimeError("missing qqAlbumMid")
+
     detail = album_detail(mid)
     raw_tracks = album_tracks(mid)
     singers = top_level_singers(detail)
@@ -304,40 +488,78 @@ def enrich(record: dict[str, Any], local_map: dict[str, dict[str, str]], by_id: 
         mids = record.get("qqArtistMids") or ([record.get("qqArtistMid")] if record.get("qqArtistMid") else [])
         names = [x.strip() for x in str(record.get("artist") or record.get("primaryArtist") or "").split("/") if x.strip()]
         singers = [{"mid": str(mids[i]) if i < len(mids) else "", "name": name} for i, name in enumerate(names)]
-    owners = resolve_owners(record, singers, local_map, by_id, by_name)
-    owner_names = [x["name"] for x in owners] or [x.get("name", "") for x in singers if x.get("name")]
+
+    owners, owner_source = resolve_owners(record, singers, local_map, by_id, by_name)
+    owner_names = [x["name"] for x in owners]
     owner_ids = [x["id"] for x in owners]
-    owner_mids = {str(x.get("mid") or "") for x in singers if x.get("mid")}
-    owner_name_keys = {norm(x) for x in owner_names} | {norm(x.get("name")) for x in singers}
+
+    # If no canonical BarScope owner can be resolved, preserve display text but do not invent IDs.
+    if not owner_names:
+        existing_name = str(record.get("primaryArtist") or record.get("artist") or "").split("/")[0].strip()
+        if existing_name:
+            owner_names = [existing_name]
+        elif singers:
+            owner_names = [str(singers[0].get("name") or "").strip()]
+
+    resolved_owner_mids = owner_qq_mids(record, singers, owner_ids, local_map, by_name)
+    owner_name_keys = {norm(name) for name in owner_names if name}
 
     tracks: list[dict[str, Any]] = []
-    for i, track in enumerate(raw_tracks, 1):
-        credited = [{"id": 0, "name": s.get("name", ""), "qqArtistMid": s.get("mid", "")} for s in track.get("singers", []) if s.get("name")]
+    for index, track in enumerate(raw_tracks, 1):
+        credited = [
+            {"id": 0, "name": singer.get("name", ""), "qqArtistMid": singer.get("mid", "")}
+            for singer in track.get("singers", [])
+            if singer.get("name")
+        ]
         guests = []
+        seen_guests: set[str] = set()
         for artist in credited:
-            if artist["qqArtistMid"] and artist["qqArtistMid"] in owner_mids:
+            artist_mid = str(artist["qqArtistMid"] or "")
+            artist_name_key = norm(artist["name"])
+            if artist_mid and artist_mid in resolved_owner_mids:
                 continue
-            if norm(artist["name"]) in owner_name_keys:
+            if artist_name_key and artist_name_key in owner_name_keys:
                 continue
-            hit = local_map.get(artist["qqArtistMid"]) or None
-            guest_id = str(hit.get("id")) if hit and hit.get("id") in by_id else ""
-            guests.append({"id": guest_id or 0, "name": by_id[guest_id]["artistName"] if guest_id else artist["name"]})
-        tracks.append({
-            "no": i,
-            "name": track["name"],
-            "artists": [{"id": 0, "name": a["name"]} for a in credited] or [{"id": x["id"], "name": x["name"]} for x in owners],
-            "guests": guests,
-            "hasFeaturing": bool(guests),
-            "duration": track.get("duration", 0),
-            "durationMs": int(track.get("duration", 0)) * 1000,
-            "qqSongMid": track.get("mid", ""),
-        })
 
-    date = release_date(detail)
-    year_m = re.search(r"(?:19|20)\d{2}", date)
-    company = walk_find(detail, ("company", "company_name", "companyName", "label", "record_company", "recordCompany"))
+            mapped_guest = local_map.get(artist_mid)
+            guest_id = str(mapped_guest.get("id") or "") if mapped_guest else ""
+            if guest_id not in by_id:
+                guest_id = ""
+            guest_name = str(by_id[guest_id]["artistName"]) if guest_id else artist["name"]
+            guest_key = guest_id or norm(guest_name)
+            if not guest_key or guest_key in seen_guests:
+                continue
+            seen_guests.add(guest_key)
+            guests.append({"id": guest_id or 0, "name": guest_name})
+
+        tracks.append(
+            {
+                "no": index,
+                "name": track["name"],
+                "artists": [{"id": 0, "name": artist["name"]} for artist in credited]
+                or [{"id": owner["id"], "name": owner["name"]} for owner in owners],
+                "guests": guests,
+                "hasFeaturing": bool(guests),
+                "duration": track.get("duration", 0),
+                "durationMs": int(track.get("duration", 0)) * 1000,
+                "qqSongMid": track.get("mid", ""),
+            }
+        )
+
+    date, date_source = release_date(detail, record)
+    year_match = re.search(r"(?:19|20)\d{2}", date)
+    company = walk_find(
+        detail,
+        ("company", "company_name", "companyName", "label", "record_company", "recordCompany"),
+    ) or str(record.get("company") or "")
     title = walk_find(detail, ("album_name", "albumName")) or str(record.get("title") or "")
-    qq_mids = [x.get("mid", "") for x in singers if x.get("mid")]
+
+    qq_mids = sorted(resolved_owner_mids)
+    if not qq_mids:
+        existing_mid = str(record.get("qqArtistMid") or "").strip()
+        if existing_mid:
+            qq_mids = [existing_mid]
+
     patch = {
         "title": title,
         "artist": " / ".join(owner_names),
@@ -346,41 +568,56 @@ def enrich(record: dict[str, Any], local_map: dict[str, dict[str, str]], by_id: 
         "artistIds": owner_ids,
         "ownerArtistIds": owner_ids,
         "ownerArtists": owners,
-        "qqArtistMid": qq_mids[0] if qq_mids else str(record.get("qqArtistMid") or ""),
-        "qqArtistMids": qq_mids or record.get("qqArtistMids") or [],
+        "qqArtistMid": qq_mids[0] if qq_mids else "",
+        "qqArtistMids": qq_mids,
         "releaseDate": date,
-        "releaseYear": int(year_m.group(0)) if year_m else 0,
+        "releaseYear": int(year_match.group(0)) if year_match else 0,
         "company": company,
         "tracks": tracks,
         "trackCount": len(tracks),
         "featuringGuests": aggregate_guests(tracks),
         "metadataCompleteness": {
-            "releaseDate": bool(date), "company": bool(company), "tracks": len(tracks), "ownerArtistIds": len(owner_ids)
+            "releaseDate": bool(date),
+            "company": bool(company),
+            "tracks": len(tracks),
+            "ownerArtistIds": len(owner_ids),
         },
         "qqMetadataBackfilledAt": int(time.time()),
+        "qqMetadataDebug": {
+            "releaseDateSource": date_source,
+            "ownerSource": owner_source,
+        },
     }
     return patch
 
 
-def push_updates(token: str, env: str, collection: str, updates: list[dict[str, Any]], batch_size: int = 10) -> tuple[int, int]:
+def push_updates(
+    token: str,
+    env: str,
+    collection: str,
+    updates: list[dict[str, Any]],
+    batch_size: int = 10,
+) -> tuple[int, int]:
     ok = fail = 0
     for i in range(0, len(updates), batch_size):
-        batch = updates[i:i + batch_size]
+        batch = updates[i : i + batch_size]
         res = invoke(token, env, {"action": "update", "collection": collection, "updates": batch})
         ok += int(res.get("updated", 0))
         fail += int(res.get("failed", 0))
-        print(f"  写入 {i + 1}-{i + len(batch)}/{len(updates)}：成功 {res.get('updated', 0)}，失败 {res.get('failed', 0)}")
+        print(
+            f"  写入 {i + 1}-{i + len(batch)}/{len(updates)}：成功 {res.get('updated', 0)}，失败 {res.get('failed', 0)}"
+        )
         time.sleep(0.25)
     return ok, fail
 
 
 def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--albums-only", action="store_true")
-    p.add_argument("--limit", type=int, default=0)
-    p.add_argument("--sleep", type=float, default=0.15)
-    args = p.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--albums-only", action="store_true")
+    parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--sleep", type=float, default=0.15)
+    args = parser.parse_args()
 
     cfg = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
     token = get_token(cfg)
@@ -397,25 +634,40 @@ def main() -> None:
     for collection in collections:
         records = fetch_all_records(token, env, collection)
         if args.limit:
-            records = records[:args.limit]
+            records = records[: args.limit]
         print(f"\n{collection}: 找到 {len(records)} 条 QQ 记录，开始补全…")
+
         updates = []
         failed = []
+        missing_dates = 0
         for idx, row in enumerate(records, 1):
             try:
                 patch = enrich(row, local_map, by_id, by_name)
                 updates.append({"_id": row["_id"], "patch": patch})
-                print(f"  [{idx}/{len(records)}] ✓ {patch['title']} | {patch['releaseDate'] or '无日期'} | {patch['trackCount']} tracks | owner={patch['artist'] or '未匹配'}")
+                if not patch["releaseDate"]:
+                    missing_dates += 1
+                debug = patch.get("qqMetadataDebug") or {}
+                print(
+                    f"  [{idx}/{len(records)}] ✓ {patch['title']} | "
+                    f"{patch['releaseDate'] or '无日期'} [{debug.get('releaseDateSource', 'unknown')}] | "
+                    f"{patch['trackCount']} tracks | owner={patch['artist'] or '未匹配'} "
+                    f"[{debug.get('ownerSource', 'unknown')}] | feat={len(patch['featuringGuests'])}"
+                )
             except Exception as exc:
                 failed.append({"_id": row.get("_id"), "title": row.get("title"), "error": str(exc)})
                 print(f"  [{idx}/{len(records)}] ✗ {row.get('title')}：{exc}")
             time.sleep(max(args.sleep, 0))
 
         if args.dry_run:
-            print(f"预览完成：可更新 {len(updates)}，失败 {len(failed)}；未写数据库")
+            print(
+                f"预览完成：可更新 {len(updates)}，失败 {len(failed)}，仍缺日期 {missing_dates}；未写数据库"
+            )
         else:
             ok, write_fail = push_updates(token, env, collection, updates)
-            print(f"{collection} 回填完成：成功 {ok}，抓取失败 {len(failed)}，写入失败 {write_fail}")
+            print(
+                f"{collection} 回填完成：成功 {ok}，抓取失败 {len(failed)}，写入失败 {write_fail}，仍缺日期 {missing_dates}"
+            )
+
         if failed:
             out = BASE_DIR / f"qq_backfill_failed_{collection}.json"
             out.write_text(json.dumps(failed, ensure_ascii=False, indent=2), encoding="utf-8")
