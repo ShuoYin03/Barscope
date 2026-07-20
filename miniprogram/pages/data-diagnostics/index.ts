@@ -10,6 +10,8 @@ Page({
     themeClass:'',
     loading:false,
     sending:false,
+    hasScanned:false,
+    scanError:'',
     activeTab:'artists' as 'artists'|'ownership',
     summary:{healthScore:100,albumCount:0,artistCount:0,missingOwnership:0,missingArtists:0,missingDescription:0,missingCover:0,missingReleaseDate:0},
     missingArtists:[] as MissingArtist[],
@@ -22,28 +24,42 @@ Page({
   onTabTap(e:WechatMiniprogram.TouchEvent){const tab=String((e.currentTarget.dataset as any).tab||'artists') as 'artists'|'ownership';this.setData({activeTab:tab})},
   onScan(){
     if(this.data.loading)return
-    this.setData({loading:true})
+    this.setData({loading:true,scanError:''})
     wx.cloud.callFunction({
       name:'manageDataDiagnostics',
       data:{action:'scan'},
       success:(res:any)=>{
         const r=res.result||{}
-        if(!r.success){wx.showToast({title:r.error==='unauthorized'?'仅管理员可用':'扫描失败',icon:'none'});return}
-        this.setData({summary:r.summary||this.data.summary,missingArtists:(r.missingArtists||[]).map((x:any)=>({...x,selected:false})),missingOwnership:r.missingOwnership||[],selectedCount:0})
+        if(!r.success){
+          const message=r.error==='unauthorized'?'仅管理员可用':(r.detail||r.error||'扫描失败')
+          this.setData({hasScanned:false,scanError:message})
+          wx.showToast({title:r.error==='unauthorized'?'仅管理员可用':'扫描失败',icon:'none'})
+          return
+        }
+        this.setData({hasScanned:true,scanError:'',summary:r.summary||this.data.summary,missingArtists:(r.missingArtists||[]).map((x:any)=>({...x,selected:false})),missingOwnership:r.missingOwnership||[],selectedCount:0})
       },
-      fail:()=>wx.showToast({title:'扫描失败',icon:'none'}),
+      fail:(err:any)=>{
+        const message=String(err&&err.errMsg||'云函数调用失败')
+        this.setData({hasScanned:false,scanError:message})
+        wx.showToast({title:'扫描失败',icon:'none'})
+      },
       complete:()=>this.setData({loading:false}),
     } as any)
   },
   onToggleArtist(e:WechatMiniprogram.TouchEvent){
     const id=String((e.currentTarget.dataset as any).id||'')
-    const list=this.data.missingArtists.map(x=>x.artistId===id?{...x,selected:!x.selected}:x)
+    const name=String((e.currentTarget.dataset as any).name||'')
+    const list=this.data.missingArtists.map(x=>(x.artistId===id&&x.artistName===name)?{...x,selected:!x.selected}:x)
     this.setData({missingArtists:list,selectedCount:list.filter(x=>x.selected).length})
   },
   onSelectAll(){
     const allSelected=this.data.missingArtists.length>0&&this.data.missingArtists.every(x=>x.selected)
     const list=this.data.missingArtists.map(x=>({...x,selected:!allSelected}))
     this.setData({missingArtists:list,selectedCount:list.filter(x=>x.selected).length})
+  },
+  onSendAll(){
+    if(!this.data.missingArtists.length){wx.showToast({title:'没有可送审的艺人',icon:'none'});return}
+    this._send(this.data.missingArtists)
   },
   onSendSelected(){
     const items=this.data.missingArtists.filter(x=>x.selected)
@@ -52,7 +68,8 @@ Page({
   },
   onSendOne(e:WechatMiniprogram.TouchEvent){
     const id=String((e.currentTarget.dataset as any).id||'')
-    const item=this.data.missingArtists.find(x=>x.artistId===id)
+    const name=String((e.currentTarget.dataset as any).name||'')
+    const item=this.data.missingArtists.find(x=>x.artistId===id&&x.artistName===name)
     if(item)this._send([item])
   },
   _send(items:MissingArtist[]){
