@@ -1,0 +1,43 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="back" bindtap="onBack">←</view>
+    <view class="headings"><text class="title">BARSCOPE CMS</text><text class="sub">内容管理控制台</text></view>
+  </view>
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="hero">
+      <text class="eyebrow">ADMIN CONSOLE</text>
+      <text class="hero-title">CONTROL ROOM</text>
+      <text class="hero-desc">内容、审核、数据与系统运行统一入口</text>
+      <view class="hero-stats">
+        <view class="hero-stat" data-url="/pages/review-center/index" bindtap="go"><text class="hero-num">{{reviewCount}}</text><text class="hero-label">待审核</text></view>
+        <view class="hero-stat" data-url="/pages/album-admin/index" bindtap="go"><text class="hero-num">{{albumCount}}</text><text class="hero-label">专辑待处理</text></view>
+        <view class="hero-stat" data-url="/pages/data-diagnostics/index" bindtap="go"><text class="hero-num">△</text><text class="hero-label">DATA HEALTH</text></view>
+      </view>
+    </view>
+
+    <view class="section-label">CONTENT · 内容管理</view>
+    <view class="panel">
+      <view class="row" data-url="/pages/artist-brands/index" bindtap="go"><text class="icon">⌁</text><view class="row-main"><text class="row-title">ARTISTS / 厂牌</text><text class="row-desc">艺人、角色与厂牌归属</text></view><text class="arrow">→</text></view>
+      <view class="row" data-url="/pages/album-admin/index" bindtap="go"><text class="icon">◉</text><view class="row-main"><text class="row-title">专辑库</text><text class="row-desc">专辑、归属、类型与数据维护</text></view><text wx:if="{{albumCount>0}}" class="badge">{{albumCount}}</text><text class="arrow">→</text></view>
+      <view class="row" data-url="/pages/editorial-templates/index" bindtap="go"><text class="icon">▧</text><view class="row-main"><text class="row-title">专题内容</text><text class="row-desc">模板、专题编辑与发布流程</text></view><text class="arrow">→</text></view>
+    </view>
+
+    <view class="section-label">REVIEW · 审核中心</view>
+    <view class="panel">
+      <view class="row featured" data-url="/pages/review-center/index" bindtap="go"><text class="icon">✦</text><view class="row-main"><text class="row-title">统一审核中心</text><text class="row-desc">艺人、评论举报与修正请求</text></view><text wx:if="{{reviewCount>0}}" class="badge">{{reviewCount}}</text><text class="arrow">→</text></view>
+    </view>
+
+    <view class="section-label">DATA · 数据中心</view>
+    <view class="panel">
+      <view class="row" data-url="/pages/data-diagnostics/index" bindtap="go"><text class="icon">△</text><view class="row-main"><text class="row-title">Data Health</text><text class="row-desc">数据库体检、归属与一致性诊断</text></view><text class="arrow">→</text></view>
+      <view class="row" data-url="/pages/feature-playlists/index" bindtap="go"><text class="icon">♫</text><view class="row-main"><text class="row-title">Collectors</text><text class="row-desc">专题歌单导入与内容采集</text></view><text class="arrow">→</text></view>
+      <view class="row" data-url="/pages/crawler/index" bindtap="go"><text class="icon">⟳</text><view class="row-main"><text class="row-title">Crawler Jobs</text><text class="row-desc">爬虫任务、手动运行与同步</text></view><text class="arrow">→</text></view>
+    </view>
+
+    <view class="section-label">SYSTEM · 系统</view>
+    <view class="panel last-panel">
+      <view class="row" data-url="/pages/crawler-reports/index" bindtap="go"><text class="icon">☷</text><view class="row-main"><text class="row-title">Run Reports</text><text class="row-desc">查看抓取与任务运行结果</text></view><text class="arrow">→</text></view>
+    </view>
+    <view class="footer">BARSCOPE CMS · SIDE B</view>
+  </scroll-view>
+</view>
