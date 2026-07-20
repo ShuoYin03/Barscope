@@ -1,0 +1,47 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <view class="topbar-copy"><text class="title">ARTIST CORRECTION</text><text class="subtitle">艺人资料纠错</text></view>
+  </view>
+
+  <view wx:if="{{loading}}" class="state"><text>LOADING...</text></view>
+  <scroll-view wx:else class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="section">
+      <text class="label">艺人名称</text>
+      <input class="input" value="{{artistName}}" data-field="artistName" bindinput="onInput" placeholder="输入艺人名称" />
+    </view>
+
+    <view class="section">
+      <text class="label">身份</text>
+      <view class="role-grid">
+        <view wx:for="{{roleOptions}}" wx:key="key" class="role-option {{item.selected ? 'selected' : ''}}" bindtap="onToggleRole" data-role="{{item.key}}"><text>{{item.label}}</text><text>{{item.selected ? '✓' : '+'}}</text></view>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="label">头像</text>
+      <view class="image-row">
+        <view class="avatar-preview"><image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" /><text wx:else>?</text></view>
+        <view class="image-action" bindtap="onChooseAvatar"><text>{{uploadingAvatar ? '上传中…' : '更换头像'}}</text><text>›</text></view>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="label">主页壁纸</text>
+      <view class="hero-preview" bindtap="onChooseHero">
+        <image wx:if="{{heroImageUrl}}" src="{{heroImageUrl}}" mode="aspectFill" />
+        <view class="hero-overlay" />
+        <text>{{uploadingHero ? '上传中…' : '点击更换壁纸'}}</text>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="label">艺人简介</text>
+      <textarea class="textarea" value="{{briefDesc}}" data-field="briefDesc" bindinput="onInput" placeholder="补充艺人简介" maxlength="-1" />
+    </view>
+
+    <view class="submit {{saving ? 'disabled' : ''}}" bindtap="onSave"><text>{{saving ? '提交中…' : '提交纠错'}}</text></view>
+    <text class="note">修改会进入管理员审核，审核通过后才会更新艺人主页</text>
+    <view class="bottom-space" />
+  </scroll-view>
+</view>
