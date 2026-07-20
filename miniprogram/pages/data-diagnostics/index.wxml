@@ -13,12 +13,14 @@
 
     <view class="scan-panel {{scanError?'error':''}}">
       <view class="scan-copy">
-        <text class="scan-title">{{loading?'正在扫描数据库':(scanError?'扫描没有完成':(hasScanned?'扫描已完成':'开始数据库体检'))}}</text>
-        <text class="scan-desc" wx:if="{{scanError}}">{{scanError}}</text>
+        <text class="scan-title">{{loading?'正在分批扫描数据库':(scanError?'扫描没有完成':(hasScanned?'扫描已完成':'开始数据库体检'))}}</text>
+        <text class="scan-desc" wx:if="{{loading}}">已处理 {{scanCurrent}} / {{scanTotal}} · {{scanProgress}}%</text>
+        <text class="scan-desc" wx:elif="{{scanError}}">{{scanError}}</text>
         <text class="scan-desc" wx:elif="{{hasScanned}}">已检查已入库专辑与 Artists 数据归属关系</text>
         <text class="scan-desc" wx:else>扫描后会在下方直接列出具体缺失艺人与相关专辑</text>
+        <view wx:if="{{loading}}" class="progress-track"><view class="progress-fill" style="width: {{scanProgress}}%"></view></view>
       </view>
-      <view class="primary-scan-btn" bindtap="onScan">{{loading?'扫描中…':(scanError?'重新扫描':'扫描数据库')}}</view>
+      <view class="primary-scan-btn {{loading?'disabled':''}}" bindtap="onScan">{{loading?scanProgress+'%':(scanError?'重新扫描':'扫描数据库')}}</view>
     </view>
 
     <view class="grid">
