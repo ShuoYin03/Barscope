@@ -37,7 +37,7 @@ Page({
     heartbeatText:           '暂无记录',
     heartbeatStale:          false,
 
-    crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync',
+    crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync' | 'qq_link_incremental',
     crawlerParam:       '',
     crawlerProgressPct: 0,
     crawlerNeedsId:     false,
@@ -52,6 +52,7 @@ Page({
       { key: 'album',    label: '按专辑ID',   desc: '云端精确收录单张网易云专辑（含单曲）', needsId: true, cloud: true, placeholder: '网易云专辑 ID' },
       { key: 'fission',  label: '裂变发现',   desc: '本地：从已批准艺人出发发现新合作艺人（需开电脑）', needsId: false, cloud: false, placeholder: '' },
       { key: 'sync',     label: '同步决定',   desc: '本地：将云端审核结果同步回 rappers.json（需开电脑）', needsId: false, cloud: false, placeholder: '' },
+      { key: 'qq_link_incremental', label: 'QQ音乐增量关联', desc: '本地：只处理还没关联QQ音乐ID的新艺人，已关联过的会自动跳过（需开电脑）', needsId: false, cloud: false, placeholder: '' },
     ] as Array<{ key: string; label: string; desc: string; needsId: boolean; cloud: boolean; placeholder: string }>,
   },
 

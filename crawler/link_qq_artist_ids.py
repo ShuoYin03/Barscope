@@ -26,34 +26,57 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_MATCHES = BASE_DIR / "qq_artist_matches.json"
 
 
+def links_from_results(rows: list[dict], seen: set[str] | None = None) -> list[dict]:
+    """Extract link payloads from resolve_qq_artist_candidates.py-shaped rows.
+
+    Shared by the file-based CLI below and incremental_qq_link.py, which builds this same
+    "results" shape in memory (from a live resolve run) without ever writing it to disk.
+    """
+    seen = seen if seen is not None else set()
+    links: list[dict] = []
+    for row in rows:
+        if row.get("resolutionStatus") != "matched":
+            continue
+        best = row.get("bestCandidate") or {}
+        match = best.get("match") or {}
+        netease_id = str(row.get("neteaseArtistId") or "").strip()
+        qq_mid = str(best.get("mid") or "").strip()
+        if not netease_id or not qq_mid or netease_id in seen:
+            continue
+        seen.add(netease_id)
+        links.append({
+            "neteaseArtistId": netease_id,
+            "qqArtistMid": qq_mid,
+            "qqArtistId": str(best.get("artist_id") or ""),
+            "qqArtistName": str(best.get("name") or row.get("displayName") or ""),
+            # Evidence backing the "matched" verdict — the cloud function re-checks this
+            # floor itself rather than trusting resolutionStatus alone.
+            "matchedTracks": int(match.get("matched_tracks") or 0),
+            "trackOverlap": float(match.get("track_overlap") or 0),
+            "nameSimilarity": float(match.get("name_similarity") or 0),
+            "score": float(match.get("score") or 0),
+        })
+    return links
+
+
 def load_links(paths: list[Path]) -> list[dict]:
     links: list[dict] = []
     seen: set[str] = set()
     for path in paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        for row in payload.get("results", []) or []:
-            if row.get("resolutionStatus") != "matched":
-                continue
-            best = row.get("bestCandidate") or {}
-            match = best.get("match") or {}
-            netease_id = str(row.get("neteaseArtistId") or "").strip()
-            qq_mid = str(best.get("mid") or "").strip()
-            if not netease_id or not qq_mid or netease_id in seen:
-                continue
-            seen.add(netease_id)
-            links.append({
-                "neteaseArtistId": netease_id,
-                "qqArtistMid": qq_mid,
-                "qqArtistId": str(best.get("artist_id") or ""),
-                "qqArtistName": str(best.get("name") or row.get("displayName") or ""),
-                # Evidence backing the "matched" verdict — the cloud function re-checks this
-                # floor itself rather than trusting resolutionStatus alone.
-                "matchedTracks": int(match.get("matched_tracks") or 0),
-                "trackOverlap": float(match.get("track_overlap") or 0),
-                "nameSimilarity": float(match.get("name_similarity") or 0),
-                "score": float(match.get("score") or 0),
-            })
+        links.extend(links_from_results(payload.get("results", []) or [], seen))
     return links
+
+
+def upload_links(links: list[dict], token: str, env: str, batch_size: int = 50) -> dict:
+    """Shared by main() below and incremental_qq_link.py."""
+    batches = [links[i:i + batch_size] for i in range(0, len(links), batch_size)]
+    totals = {"updated": 0, "inserted": 0, "errors": 0, "rejected": 0}
+    for batch in batches:
+        result = invoke_cloud_fn(token, env, "manageCandidates", {"action": "link_qq_artists", "links": batch})
+        for key in totals:
+            totals[key] += int(result.get(key, 0))
+    return totals
 
 
 def main() -> None:
