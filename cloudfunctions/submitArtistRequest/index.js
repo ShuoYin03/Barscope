@@ -58,8 +58,14 @@ exports.main = async event => {
       // shouldn't be unsubmittable).
       return { success:true, needsManual:true, searchedName:keyword }
     }
+    // NetEase name search can return several unrelated artists sharing the exact same name —
+    // among exact-name matches, prefer one with an actual profile photo over a blank/low-effort
+    // account, since a photo-less same-named result is far more often the wrong person than the
+    // one the user actually meant.
     const normalized = keyword.toLowerCase().replace(/\s/g,'')
-    const picked = artists.find(a => String(a.name||'').toLowerCase().replace(/\s/g,'') === normalized) || artists[0]
+    const exactMatches = artists.filter(a => String(a.name||'').toLowerCase().replace(/\s/g,'') === normalized)
+    const hasPhoto = a => !!(a.picUrl || a.img1v1Url)
+    const picked = exactMatches.find(hasPhoto) || exactMatches[0] || artists.find(hasPhoto) || artists[0]
     const artistId = Number(picked.id || 0)
     if (!artistId) return { success:false, error:'网易云艺人信息无效' }
 

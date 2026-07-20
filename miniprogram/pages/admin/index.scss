@@ -181,6 +181,14 @@
 .status-chip.approved { background: #dcfce7; color: #16a34a; }
 .status-chip.declined { background: #fee2e2; color: #dc2626; }
 
+.card-warn-row {
+  margin-bottom: 8rpx;
+}
+.card-warn {
+  font-size: 20rpx;
+  color: #d97706;
+  display: block;
+}
 .card-from {
   font-size: 22rpx;
   color: var(--gray-mid);
