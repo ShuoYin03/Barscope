@@ -3,15 +3,61 @@ const https = require('https')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
+// Deterministic negative id for manual (no NetEase match) submissions — never collides with a
+// real NetEase artistId (always positive), and hashing the name means resubmitting the same
+// name twice naturally lands on the same synthetic id instead of creating duplicates.
+function hashString(str) {
+  let hash = 5381
+  for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0
+  return hash
+}
+
+async function submitManual(keyword, OPENID) {
+  const manualId = -Math.abs(hashString(keyword.toLowerCase().replace(/\s/g, ''))) || -Date.now()
+  const exists = await db.collection('artist_candidates').where({ artistId: manualId }).limit(1).get()
+  if (exists.data.length) {
+    const current = exists.data[0]
+    return { success: true, existed: true, status: current.status, artistName: current.artistName || keyword }
+  }
+  await db.collection('artist_candidates').add({ data: {
+    artistId: manualId,
+    artistName: keyword,
+    picUrl: '', avatarUrl: '', coverUrl: '', backgroundUrl: '', heroImageUrl: '',
+    albumSize: 0, musicSize: 0, fansSize: 0,
+    roles: ['rapper'],
+    foundFrom: '用户提交',
+    fromAlbum: '',
+    round: 999,
+    status: 'pending',
+    requestSource: 'profile-submit-manual',
+    requesterOpenId: OPENID,
+    requestedName: keyword,
+    manualEntry: true,
+    addedAt: db.serverDate(),
+    decidedAt: null,
+  } })
+  return { success: true, existed: false, artistName: keyword, artistId: manualId, manualEntry: true }
+}
+
 exports.main = async event => {
   const { OPENID } = cloud.getWXContext()
   const keyword = String(event.name || '').trim()
+  const manual = !!event.manual
   if (!OPENID) return { success:false, error:'请先登录' }
   if (keyword.length < 1 || keyword.length > 50) return { success:false, error:'请输入有效的 rapper 名称' }
   try {
+    // Explicit manual submission — the caller already confirmed after a failed NetEase search,
+    // so skip straight to creating a source-less candidate for admin review.
+    if (manual) return await submitManual(keyword, OPENID)
+
     const search = await getJson(`https://music.163.com/api/search/get/web?csrf_token=&s=${encodeURIComponent(keyword)}&type=100&offset=0&total=true&limit=10`)
     const artists = (search && search.result && search.result.artists) || []
-    if (!artists.length) return { success:false, error:'未找到对应网易云艺人' }
+    if (!artists.length) {
+      // No NetEase presence at all — let the caller offer a manual submission instead of just
+      // failing outright (a real rapper who's QQ-only, too new, or otherwise not on NetEase
+      // shouldn't be unsubmittable).
+      return { success:true, needsManual:true, searchedName:keyword }
+    }
     const normalized = keyword.toLowerCase().replace(/\s/g,'')
     const picked = artists.find(a => String(a.name||'').toLowerCase().replace(/\s/g,'') === normalized) || artists[0]
     const artistId = Number(picked.id || 0)
