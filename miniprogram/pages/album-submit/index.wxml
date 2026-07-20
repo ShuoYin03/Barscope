@@ -7,10 +7,11 @@
   <scroll-view class="content" scroll-y>
     <block wx:if="{{mode==='search'}}">
       <view class="section">
-        <text class="label">先搜索网易云</text>
+        <text class="label">搜索专辑</text>
         <input class="input" value="{{searchName}}" data-field="searchName" bindinput="onInput" placeholder="输入专辑名称" placeholder-class="ph"/>
-        <view class="primary" bindtap="onSearch">{{searching?'正在查询…':'查询并提交'}}</view>
-        <view class="manual-link" bindtap="onManual"><text>网易云没有这张专辑？手动提交 →</text></view>
+        <view class="primary" bindtap="onSearchNetEase">{{searchingPlatform==='netease'?'正在查询网易云…':'在网易云音乐中寻找'}}</view>
+        <view class="primary" style="margin-top:20rpx;" bindtap="onSearchQQ">{{searchingPlatform==='qq'?'正在查询QQ音乐…':'在QQ音乐中寻找'}}</view>
+        <view class="manual-link" bindtap="onManual"><text>两个平台都没有这张专辑？手动提交 →</text></view>
       </view>
     </block>
 
@@ -80,7 +81,6 @@
     </block>
   </scroll-view>
 
-  <!-- ── 嘉宾选择浮层 ── -->
   <view wx:if="{{guestPickerVisible}}" class="guest-sheet-mask" bindtap="onCloseGuestPicker">
     <view class="guest-sheet" catchtap="noop">
       <view class="guest-sheet-head">
