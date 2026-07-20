@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Final global QQ album dedupe against the full BarScope catalogue.
 
-This pass intentionally ignores artist ownership. It removes a QQ candidate when any of these is true:
-1) its normalized album title strongly matches any existing BarScope album title;
-2) its track count matches and the tracklist strongly describes the same release; or
-3) its title clearly looks like programme / event / campaign content that BarScope does not want as an album.
+This pass intentionally ignores artist ownership for title/track matching. It removes a QQ candidate when any of these is true:
+1) its title clearly looks like programme / event / campaign content that BarScope does not want as an album;
+2) for the mapped NetEase rapper, an existing BarScope album has a release date within ±3 days;
+3) its normalized album title strongly matches any existing BarScope album title; or
+4) its track count matches and the tracklist strongly describes the same release.
+
+The date rule deliberately uses the candidate's mapped neteaseArtistId, but does not care whether that rapper is
+first, second, or any other displayed creator on QQ. The purpose is to catch the same collaborative release when
+platforms order the artists differently.
 
 It reuses final_tracklist_prune.py to hydrate the full BarScope catalogue with NetEase tracklists.
 """
@@ -15,6 +20,7 @@ import argparse
 import json
 import re
 import unicodedata
+from datetime import date, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -92,14 +98,106 @@ def content_blacklist_reason(title: str) -> str | None:
     return None
 
 
+def parse_release_date(value: Any) -> date | None:
+    """Parse common QQ/NetEase/Cloud DB date representations into a calendar date."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, (int, float)):
+        number = float(value)
+        # Accept second or millisecond timestamps.
+        if number > 1e12:
+            number /= 1000.0
+        try:
+            return datetime.fromtimestamp(number).date()
+        except (OverflowError, OSError, ValueError):
+            return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+    # Common Chinese / slash / dot separators.
+    normalized = text.replace("年", "-").replace("月", "-").replace("日", "")
+    normalized = normalized.replace("/", "-").replace(".", "-")
+    match = re.search(r"((?:19|20)\d{2})-(\d{1,2})-(\d{1,2})", normalized)
+    if match:
+        try:
+            return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        except ValueError:
+            return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def album_artist_ids(album: dict[str, Any]) -> set[str]:
+    """Collect every NetEase-style artist id present on an album record, not just the first artist."""
+    result: set[str] = set()
+    for key in ("neteaseArtistId", "primaryArtistId"):
+        value = str(album.get(key) or "").strip()
+        if value:
+            result.add(value)
+    for key in ("artistIds", "ownerArtistIds"):
+        values = album.get(key) or []
+        if isinstance(values, list):
+            for value in values:
+                text = str(value or "").strip()
+                if text:
+                    result.add(text)
+    for owner in album.get("ownerArtists") or []:
+        if isinstance(owner, dict):
+            value = str(owner.get("id") or owner.get("artistId") or owner.get("neteaseArtistId") or "").strip()
+            if value:
+                result.add(value)
+    return result
+
+
+def build_artist_date_index(catalog: list[dict[str, Any]]) -> dict[str, list[tuple[date, dict[str, Any]]]]:
+    index: dict[str, list[tuple[date, dict[str, Any]]]] = {}
+    for album in catalog:
+        release = parse_release_date(album.get("releaseDate"))
+        if release is None:
+            continue
+        for artist_id in album_artist_ids(album):
+            index.setdefault(artist_id, []).append((release, album))
+    return index
+
+
+def find_same_rapper_date_match(
+    item: dict[str, Any],
+    artist_date_index: dict[str, list[tuple[date, dict[str, Any]]]],
+    max_days: int,
+) -> tuple[dict[str, Any] | None, int | None]:
+    candidate_date = parse_release_date(item.get("releaseDate"))
+    artist_id = str(item.get("neteaseArtistId") or "").strip()
+    if candidate_date is None or not artist_id:
+        return None, None
+
+    best_album: dict[str, Any] | None = None
+    best_diff: int | None = None
+    for existing_date, album in artist_date_index.get(artist_id, []):
+        diff = abs((candidate_date - existing_date).days)
+        if diff <= max_days and (best_diff is None or diff < best_diff):
+            best_album = album
+            best_diff = diff
+            if diff == 0:
+                break
+    return best_album, best_diff
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="忽略艺人归属，按全库专辑名 + tracks + 内容规则最终压缩 QQ 候选")
+    parser = argparse.ArgumentParser(description="按内容规则 + 同rapper发行日期±3天 + 全库专辑名 + tracks 最终压缩 QQ 候选")
     parser.add_argument("--input", default=str(DEFAULT_INPUT))
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--removed-output", default=str(DEFAULT_REMOVED))
     parser.add_argument("--cache", default=str(DEFAULT_CACHE))
     parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--title-threshold", type=float, default=0.70)
+    parser.add_argument("--date-window-days", type=int, default=3, help="同一映射 rapper 下，发行日期相差多少天内视为重复")
     args = parser.parse_args()
 
     source = load_json(Path(args.input))
@@ -129,9 +227,12 @@ def main() -> None:
         if album_norm and album_norm not in exact_title_map:
             exact_title_map[album_norm] = album
 
+    artist_date_index = build_artist_date_index(catalog)
+
     kept: list[dict[str, Any]] = []
     removed: list[dict[str, Any]] = []
     rule_removed = 0
+    date_removed = 0
     title_removed = 0
     track_removed = 0
 
@@ -146,6 +247,25 @@ def main() -> None:
                 **item,
                 "filterReason": f"最终内容规则剔除：标题命中「{blacklist_reason}」类非标准专辑内容",
                 "filteredBy": "final_content_blacklist",
+            })
+            continue
+
+        # Same mapped rapper + release date within ±N days. This intentionally does not care about creator order.
+        date_album, date_diff = find_same_rapper_date_match(item, artist_date_index, max(0, int(args.date_window_days)))
+        if date_album is not None and date_diff is not None:
+            date_removed += 1
+            removed.append({
+                **item,
+                "matchedExistingAlbumId": date_album.get("_id"),
+                "matchedExistingTitle": date_album.get("title"),
+                "matchedExistingSourceId": date_album.get("sourceId"),
+                "matchedExistingReleaseDate": date_album.get("releaseDate") or "",
+                "dateDiffDays": date_diff,
+                "filterReason": (
+                    f"同一映射 rapper 的网易云/BarScope 专辑发行日期在 ±{args.date_window_days} 天内，"
+                    f"实际相差 {date_diff} 天"
+                ),
+                "filteredBy": "same_rapper_release_date_window",
             })
             continue
 
@@ -228,7 +348,8 @@ def main() -> None:
         if index % 25 == 0 or index == len(candidates):
             print(
                 f"  全局查重 {index}/{len(candidates)} · "
-                f"规则剔除 {rule_removed} · 标题剔除 {title_removed} · tracks 剔除 {track_removed} · 保留 {len(kept)}"
+                f"规则剔除 {rule_removed} · 日期剔除 {date_removed} · "
+                f"标题剔除 {title_removed} · tracks 剔除 {track_removed} · 保留 {len(kept)}"
             )
 
     Path(args.output).write_text(
@@ -242,8 +363,10 @@ def main() -> None:
             "catalogCount": len(catalog),
             "catalogWithTracks": len(hydrated),
             "hydrateStats": stats,
+            "dateWindowDays": args.date_window_days,
             "titleThreshold": args.title_threshold,
             "ruleRemoved": rule_removed,
+            "dateRemoved": date_removed,
             "titleRemoved": title_removed,
             "trackRemoved": track_removed,
             "results": removed,
@@ -253,6 +376,7 @@ def main() -> None:
 
     print("\n完成")
     print(f"内容规则剔除:                  {rule_removed}")
+    print(f"同 rapper 发行日期 ±{args.date_window_days} 天剔除:   {date_removed}")
     print(f"标题查重剔除:                  {title_removed}")
     print(f"tracks 查重剔除:               {track_removed}")
     print(f"总剔除:                        {len(removed)} -> {args.removed_output}")
