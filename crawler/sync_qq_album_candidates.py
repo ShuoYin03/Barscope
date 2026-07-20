@@ -231,6 +231,7 @@ def main() -> None:
     parser.add_argument("--preview", action="store_true", help="联网跑真实的去重判定（跟正式上传一样），但不写入任何数据")
     parser.add_argument("--artist-limit", type=int, default=0, help="仅测试前 N 个 matched 艺人；0=全部")
     parser.add_argument("--sleep", type=float, default=0.2)
+    parser.add_argument("--batch-size", type=int, default=20, help="每次云函数调用处理多少条候选；调小可以缓解云函数超时")
     parser.add_argument("--debug-filter-limit", type=int, default=12, help="最多打印 N 条被过滤专辑样本")
     args = parser.parse_args()
 
@@ -323,7 +324,7 @@ def main() -> None:
         raise SystemExit("config.json 缺少 appid / appsecret / env")
 
     token = get_access_token(appid, appsecret)
-    upload_stats = upload_candidates(deduped, token, env, dry_run=args.preview)
+    upload_stats = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
     print(f"\nCrawler stats: {dict(stats)}")
     print(f"Cloud result: {dict(upload_stats)}")
     if args.preview:
