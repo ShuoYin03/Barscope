@@ -46,7 +46,7 @@ function calculateHeat(item: FeatureItem) {
 
 function decorate(items: FeatureItem[]) {
   return items.map(item => {
-    const heatScore = Number(item.heatScore || calculateHeat(item))
+    const heatScore = calculateHeat(item)
     return {
       ...item,
       heatScore,
@@ -65,7 +65,7 @@ function sortFeatures(items: FeatureItem[]) {
     if (priorityDiff) return priorityDiff
     const recentDiff = Number(b.recentHeatScore || 0) - Number(a.recentHeatScore || 0)
     if (recentDiff) return recentDiff
-    return Number(b.heatScore || calculateHeat(b)) - Number(a.heatScore || calculateHeat(a))
+    return calculateHeat(b) - calculateHeat(a)
   })
 }
 
@@ -76,22 +76,58 @@ Page({
     this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight})
     this._loadFeatureMetrics()
   },
-  onShow(){ if(typeof this.getTabBar==='function') this.getTabBar()?.setData({selected:3}); this.setData({themeClass:getThemeClass()}) },
+  onShow(){
+    if(typeof this.getTabBar==='function') this.getTabBar()?.setData({selected:3})
+    this.setData({themeClass:getThemeClass()})
+    this._loadFeatureMetrics()
+  },
   _loadFeatureMetrics(){
-    wx.cloud.callFunction({
-      name:'manageFeaturePlaylists',
-      data:{action:'list_public'},
-      success:(res:any)=>{
-        const r=res.result||{}
-        if(!r.success)return
-        const playlistCount=Number(r.editorialCount||0)+Number(r.communityCount||0)
-        const updated=BASE_FEATURES.map(item=>item.id==='2026-h1-top-50-tracks'?{...item,participantCount:playlistCount}:item)
-        const allFeatures=decorate(sortFeatures(updated))
-        const activeFilter=this.data.activeFilter
-        this.setData({allFeatures,features:activeFilter==='全部'?allFeatures:allFeatures.filter((x:any)=>x.category===activeFilter)})
-      },
-    } as any)
+    const featureIds=BASE_FEATURES.map(x=>x.id)
+    const statsCall=wx.cloud.callFunction({name:'manageFeatureStats',data:{action:'get_many',featureIds}}).catch(()=>({result:{success:false,list:[]}}))
+    const playlistCall=wx.cloud.callFunction({name:'manageFeaturePlaylists',data:{action:'list_public'}}).catch(()=>({result:{success:false}}))
+    Promise.all([statsCall,playlistCall]).then((results:any[])=>{
+      const statsResult=results[0]?.result||{}
+      const playlistResult=results[1]?.result||{}
+      const statsMap:any={}
+      if(statsResult.success)(statsResult.list||[]).forEach((x:any)=>{statsMap[String(x.featureId||'')]=x})
+      const playlistCount=playlistResult.success?Number(playlistResult.editorialCount||0)+Number(playlistResult.communityCount||0):0
+      const updated=BASE_FEATURES.map(item=>{
+        const stats=statsMap[item.id]||{}
+        const recentHeatScore=Number(stats.recentViewCount||0)+Number(stats.recentShareCount||0)*12
+        return {
+          ...item,
+          viewCount:Number(stats.viewCount||0),
+          shareCount:Number(stats.shareCount||0),
+          recentHeatScore,
+          participantCount:item.id==='2026-h1-top-50-tracks'?playlistCount:Number(item.participantCount||0),
+        }
+      })
+      const allFeatures=decorate(sortFeatures(updated))
+      const activeFilter=this.data.activeFilter
+      this.setData({allFeatures,features:activeFilter==='全部'?allFeatures:allFeatures.filter((x:any)=>x.category===activeFilter)})
+    })
+  },
+  _track(featureId:string,action:'track_view'|'track_share'){
+    if(!featureId)return
+    wx.cloud.callFunction({name:'manageFeatureStats',data:{action,featureId},complete:()=>this._loadFeatureMetrics()} as any)
   },
   onFilterTap(e:WechatMiniprogram.TouchEvent){ const value=String((e.currentTarget.dataset as any).value||'全部'); const allFeatures=this.data.allFeatures as any[]; const features=value==='全部'?allFeatures:allFeatures.filter(x=>x.category===value); this.setData({activeFilter:value,features}) },
-  onFeatureTap(e:WechatMiniprogram.TouchEvent){ const id=String((e.currentTarget.dataset as any).id||''); if(!id)return; if(id==='2026-h1-top-50-tracks'){wx.navigateTo({url:'/pages/h1-top50/index'});return} if(id==='2026-top-reviewers'){wx.navigateTo({url:'/pages/annual-reviewers/index'});return} if(id==='rapper-interview'){wx.navigateTo({url:'/pages/interviews/index'});return} wx.navigateTo({url:`/pages/feature-detail/index?id=${id}`}) }
+  onFeatureTap(e:WechatMiniprogram.TouchEvent){
+    const id=String((e.currentTarget.dataset as any).id||'')
+    if(!id)return
+    this._track(id,'track_view')
+    if(id==='2026-h1-top-50-tracks'){wx.navigateTo({url:'/pages/h1-top50/index'});return}
+    if(id==='2026-top-reviewers'){wx.navigateTo({url:'/pages/annual-reviewers/index'});return}
+    if(id==='rapper-interview'){wx.navigateTo({url:'/pages/interviews/index'});return}
+    wx.navigateTo({url:`/pages/feature-detail/index?id=${id}`})
+  },
+  onShareAppMessage(options:any){
+    const ds=(options.target&&options.target.dataset)||{}
+    const id=String(ds.id||'')
+    const title=String(ds.title||'BarScope 专题')
+    if(id)this._track(id,'track_share')
+    const path=id==='2026-h1-top-50-tracks'?'/pages/h1-top50/index':id==='2026-top-reviewers'?'/pages/annual-reviewers/index':id==='rapper-interview'?'/pages/interviews/index':`/pages/feature-detail/index?id=${id}`
+    return {title,path}
+  },
+  noop(){},
 })
