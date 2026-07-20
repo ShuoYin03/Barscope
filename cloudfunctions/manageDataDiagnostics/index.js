@@ -11,18 +11,6 @@ async function checkAdmin(openId) {
   } catch (e) { return false }
 }
 
-async function fetchAll(collection, where) {
-  let q = db.collection(collection)
-  if (where && Object.keys(where).length) q = q.where(where)
-  const total = Number((await q.count()).total || 0)
-  const out = []
-  for (let i = 0; i < total; i += 100) {
-    const r = await q.skip(i).limit(100).get()
-    out.push(...(r.data || []))
-  }
-  return out
-}
-
 function ownerPairs(album) {
   if (Array.isArray(album.ownerArtists) && album.ownerArtists.length) {
     return album.ownerArtists
@@ -40,22 +28,58 @@ function ownerPairs(album) {
   return []
 }
 
-async function scan() {
-  const allAlbums = await fetchAll('albums')
-  const albums = allAlbums.filter(a => a.approved !== false)
-  const approvedCandidates = await fetchAll('artist_candidates', { status: 'approved' }).catch(() => [])
-  const approvedIds = new Set(approvedCandidates.map(a => String(a.artistId || '')).filter(Boolean))
-  const approvedNames = new Set(approvedCandidates.map(a => String(a.artistName || '').trim().toLowerCase()).filter(Boolean))
+async function scanMeta() {
+  const albumCount = Number((await db.collection('albums').count()).total || 0)
+  let artistCount = 0
+  try { artistCount += Number((await db.collection('artist_candidates').where({ status: 'approved' }).count()).total || 0) } catch (e) {}
+  try { artistCount += Number((await db.collection('artists').count()).total || 0) } catch (e) {}
+  return { success: true, albumCount, artistCount, pageSize: 80 }
+}
 
-  try {
-    const artists = await fetchAll('artists')
-    artists.forEach(a => {
-      const id = String(a.artistId || a.neteaseArtistId || a.id || '')
-      const name = String(a.artistName || a.name || '').trim().toLowerCase()
-      if (id) approvedIds.add(id)
-      if (name) approvedNames.add(name)
-    })
-  } catch (e) {}
+async function findExistingOwners(owners) {
+  const ids = [...new Set(owners.map(o => String(o.id || '')).filter(Boolean))].slice(0, 100)
+  const names = [...new Set(owners.map(o => String(o.name || '').trim().toLowerCase()).filter(Boolean))]
+  const existingIds = new Set()
+  const existingNames = new Set()
+
+  if (ids.length) {
+    try {
+      const r = await db.collection('artist_candidates').where({ status: 'approved', artistId: _.in(ids) }).field({ artistId: true, artistName: true }).limit(100).get()
+      r.data.forEach(a => {
+        if (a.artistId) existingIds.add(String(a.artistId))
+        if (a.artistName) existingNames.add(String(a.artistName).trim().toLowerCase())
+      })
+    } catch (e) {}
+    try {
+      const r = await db.collection('artists').where({ artistId: _.in(ids) }).field({ artistId: true, neteaseArtistId: true, name: true, artistName: true }).limit(100).get()
+      r.data.forEach(a => {
+        const id = String(a.artistId || a.neteaseArtistId || '')
+        const name = String(a.artistName || a.name || '').trim().toLowerCase()
+        if (id) existingIds.add(id)
+        if (name) existingNames.add(name)
+      })
+    } catch (e) {}
+  }
+
+  // A small batch can safely use exact name lookups as a fallback for old data without IDs.
+  for (const name of names.slice(0, 20)) {
+    if (existingNames.has(name)) continue
+    try {
+      const r = await db.collection('artist_candidates').where({ status: 'approved', artistName: db.RegExp({ regexp: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, options: 'i' }) }).field({ artistName: true }).limit(1).get()
+      if (r.data.length) existingNames.add(name)
+    } catch (e) {}
+  }
+  return { existingIds, existingNames }
+}
+
+async function scanPage(skip, limit) {
+  const safeSkip = Math.max(0, Number(skip || 0))
+  const safeLimit = Math.min(100, Math.max(20, Number(limit || 80)))
+  const r = await db.collection('albums').skip(safeSkip).limit(safeLimit).get()
+  const albums = (r.data || []).filter(a => a.approved !== false)
+  const allOwners = []
+  albums.forEach(a => allOwners.push(...ownerPairs(a)))
+  const { existingIds, existingNames } = await findExistingOwners(allOwners)
 
   const missingOwnership = []
   const missingArtistMap = new Map()
@@ -82,7 +106,7 @@ async function scan() {
 
     owners.forEach(owner => {
       const normalizedName = String(owner.name || '').trim().toLowerCase()
-      const exists = (owner.id && approvedIds.has(owner.id)) || (normalizedName && approvedNames.has(normalizedName))
+      const exists = (owner.id && existingIds.has(String(owner.id))) || (normalizedName && existingNames.has(normalizedName))
       if (exists || (!owner.id && !normalizedName)) return
       const key = owner.id || `name:${normalizedName}`
       if (!missingArtistMap.has(key)) {
@@ -101,24 +125,17 @@ async function scan() {
     })
   }
 
-  const missingArtists = Array.from(missingArtistMap.values()).sort((a, b) => b.albumCount - a.albumCount || a.artistName.localeCompare(b.artistName))
-  const issueCount = missingOwnership.length + missingArtists.length + missingDescription + missingCover + missingReleaseDate
-  const healthScore = albums.length ? Math.max(0, Math.round((1 - issueCount / Math.max(albums.length * 4, 1)) * 1000) / 10) : 100
-
   return {
     success: true,
-    summary: {
-      healthScore,
-      albumCount: albums.length,
-      artistCount: approvedIds.size || approvedNames.size,
-      missingOwnership: missingOwnership.length,
-      missingArtists: missingArtists.length,
-      missingDescription,
-      missingCover,
-      missingReleaseDate,
-    },
+    skip: safeSkip,
+    nextSkip: safeSkip + (r.data || []).length,
+    fetched: (r.data || []).length,
+    scanned: albums.length,
+    missingDescription,
+    missingCover,
+    missingReleaseDate,
     missingOwnership,
-    missingArtists,
+    missingArtists: Array.from(missingArtistMap.values()),
   }
 }
 
@@ -163,8 +180,9 @@ exports.main = async event => {
   try {
     const { OPENID: openId } = cloud.getWXContext()
     if (!openId || !(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
-    const action = String(event.action || 'scan')
-    if (action === 'scan') return await scan()
+    const action = String(event.action || 'scan_meta')
+    if (action === 'scan_meta') return await scanMeta()
+    if (action === 'scan_page') return await scanPage(event.skip, event.limit)
     if (action === 'send_artists_to_review') return await sendArtistsToReview(event.items || [])
     return { success: false, error: 'unknown_action' }
   } catch (e) {
