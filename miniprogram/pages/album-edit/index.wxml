@@ -1,0 +1,27 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top: {{statusBarHeight}}px"><text class="back" bindtap="onBack">←</text><text class="title">修改封面 / 信息</text></view>
+  <scroll-view class="content" scroll-y>
+    <view class="cover-row">
+      <image wx:if="{{coverUrl}}" class="cover" src="{{coverUrl}}" mode="aspectFill" />
+      <view wx:else class="cover empty">暂无封面</view>
+      <view class="cover-btn" bindtap="onChooseCover">{{uploading ? '上传中…' : '修改封面'}}</view>
+    </view>
+
+    <view class="section">
+      <text class="label">归属歌手</text>
+      <view class="action" bindtap="onEditOwnership"><text>修改专辑归属</text><text>›</text></view>
+    </view>
+
+    <view class="section"><text class="label">发行日期</text><input class="input" value="{{releaseDate}}" data-field="releaseDate" bindinput="onInput" placeholder="YYYY-MM-DD" /></view>
+    <view class="section"><text class="label">发行公司</text><input class="input" value="{{company}}" data-field="company" bindinput="onInput" placeholder="未确定" /></view>
+    <view class="section"><text class="label">类型</text><picker range="{{releaseTypes}}" bindchange="onTypeChange"><view class="picker">{{releaseType || '请选择类型'}} <text>›</text></view></picker></view>
+    <view class="section"><text class="label">专辑简介</text><textarea class="textarea" value="{{description}}" data-field="description" bindinput="onInput" maxlength="3000" placeholder="填写专辑简介" /></view>
+
+    <view class="section">
+      <text class="label">Tracks</text>
+      <view class="action" bindtap="onEditTracks"><text>提交曲目纠错</text><text>›</text></view>
+    </view>
+
+    <view class="save {{saving ? 'disabled' : ''}}" bindtap="onSave">{{saving ? '保存中…' : '保存修改'}}</view>
+  </scroll-view>
+</view>
