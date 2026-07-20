@@ -102,9 +102,6 @@ function pickBestUserDoc(rows) {
   return rows.reduce((acc, doc) => (!acc || (!acc.avatarUrl && doc.avatarUrl)) ? doc : acc, null)
 }
 
-// Directly link to the account that actually submitted this playlist, when we know it — a
-// community submission (submit_public) records the logged-in user's own openId at submit time,
-// so that's an exact, guaranteed-correct identity, not a guess.
 async function findBarscopeCreatorBySubmitter(openId) {
   if (!openId) return null
   try {
@@ -119,11 +116,6 @@ async function findBarscopeCreatorBySubmitter(openId) {
   }
 }
 
-// Fallback for playlists with no known submitter (e.g. admin-imported 乐评人 lists, where
-// importedBy is the admin's own account, not necessarily the critic's) — best-effort nickname
-// match against the NetEase creator name. Only meaningful for critics using the same handle on
-// both platforms; there's no real foreign key between a NetEase identity and a WeChat-authenticated
-// Barscope account, so this is a guess, not a guarantee.
 async function findBarscopeCreatorByName(name) {
   const trimmed = String(name || '').trim()
   if (!trimmed) return null
@@ -140,11 +132,6 @@ async function findBarscopeCreatorByName(name) {
   }
 }
 
-// A submitter isn't necessarily the playlist's own NetEase creator — someone can paste a link to
-// a playlist they merely like, not curated. submittedBy is only trusted as an identity match when
-// the user explicitly attested at submit time that it's their own playlist (isOwnPlaylist); an
-// unclaimed submission falls back to the best-effort nickname guess instead of assuming the
-// submitter is the creator.
 async function resolveBarscopeCreator(item) {
   if (item.isOwnPlaylist) {
     const bySubmitter = await findBarscopeCreatorBySubmitter(item.submittedBy)
@@ -234,9 +221,7 @@ async function queryByIds(collectionName, field, ids, projection) {
       if (projection) query = query.field(projection)
       const result = await query.limit(chunk.length).get()
       rows.push(...(result.data || []))
-    } catch (e) {
-      // A review collection may not exist yet in a fresh environment.
-    }
+    } catch (e) {}
   }
   return rows
 }
@@ -267,6 +252,9 @@ async function reconcileTracks(tracks, contextLabel) {
   const albumBySourceId = new Map(existingAlbums.map(x => [String(x.sourceId || ''), x]))
   const candidateAlbumIds = new Set(existingAlbumCandidates.map(x => String(x.sourceId || '')))
 
+  // Playlist imports must never auto-create artist review candidates. We still keep track of
+  // unresolved artist names for diagnostics/UI, but only an explicit admin action or the dedicated
+  // data-diagnostics/manual-artist flow may enqueue a rapper for review.
   const missingArtists = Array.from(artistMap.entries())
     .filter(([id]) => !knownArtistIds.has(id))
     .map(([id, artist]) => ({ id, artist }))
@@ -276,28 +264,7 @@ async function reconcileTracks(tracks, contextLabel) {
     .map(([id, track]) => ({ id, track }))
 
   const now = db.serverDate()
-  const artistWrites = missingArtists.map(({ id, artist }) => db.collection('artist_candidates').add({
-    data: {
-      artistId: id,
-      artistName: artist.name || '',
-      picUrl: artist.picUrl || '',
-      albumSize: 0,
-      foundFrom: 'feature_playlist',
-      fromAlbum: contextLabel || '',
-      round: 0,
-      status: 'pending',
-      addedAt: now,
-      decidedAt: null,
-    },
-  }))
-
   const albumWrites = missingAlbums.map(async ({ id, track }) => {
-    // albumMap only ever kept ONE representative track per album (the first one seen in the
-    // playlist) — using that track's own per-song artist credits as the album's artist list wrongly
-    // promotes a featured guest on that one song into a co-owner of the whole album whenever the
-    // representative track happens to be a feature/collab. Fetch the album's own NetEase artist
-    // list instead (same source resolveOwners trusts elsewhere); only fall back to the track's
-    // primary artist — never its full credit list — if that live fetch fails.
     const albumArtists = await fetchAlbumArtists(id)
     const fallback = (track.artists || []).slice(0, 1)
       .map(x => ({ id: String(x.id || ''), name: String(x.name || '').trim() }))
@@ -329,7 +296,7 @@ async function reconcileTracks(tracks, contextLabel) {
     })
   })
 
-  await Promise.allSettled([...artistWrites, ...albumWrites])
+  await Promise.allSettled(albumWrites)
 
   const missingArtistIdSet = new Set(missingArtists.map(x => x.id))
   const resolvedTracks = safeTracks.map(track => {
@@ -349,7 +316,9 @@ async function reconcileTracks(tracks, contextLabel) {
     tracks: resolvedTracks,
     linkedAlbums: resolvedTracks.filter(x => x.barscopeAlbumId).length,
     pendingAlbums: missingAlbums.length,
-    pendingArtists: missingArtists.length,
+    // informational only: these artists are unresolved, but nothing is automatically queued.
+    pendingArtists: 0,
+    unresolvedArtists: missingArtists.length,
   }
 }
 
@@ -373,57 +342,43 @@ async function importPlaylist(event, openId) {
     neteaseCreator: playlist.creator,
     trackCount: playlist.trackCount,
     tracks: reconciliation.tracks,
-    catalogSync: {
-      linkedAlbums: reconciliation.linkedAlbums,
-      pendingAlbums: reconciliation.pendingAlbums,
-      pendingArtists: reconciliation.pendingArtists,
-      syncedAt: now,
-    },
-    sourceType: 'editorial',
+    linkedAlbumCount: reconciliation.linkedAlbums,
+    pendingAlbumCount: reconciliation.pendingAlbums,
+    pendingArtistCount: 0,
+    unresolvedArtistCount: reconciliation.unresolvedArtists || 0,
+    sourceType: event.sourceType === 'community' ? 'community' : 'editorial',
     editorialPriority: Number(event.editorialPriority || 100),
     importedBy: openId,
     updatedAt: now,
   }
 
-  const existing = await db.collection('feature_playlist_submissions')
-    .where({ featureId: FEATURE_ID, neteasePlaylistId: playlistId })
-    .limit(1)
-    .get()
-
+  const existing = await db.collection('feature_playlist_submissions').where({ featureId: FEATURE_ID, neteasePlaylistId: playlistId }).limit(1).get()
   if (existing.data.length) {
-    const id = existing.data[0]._id
-    await db.collection('feature_playlist_submissions').doc(id).update({ data: payload })
-    return { success: true, updated: true, submissionId: id, playlist: publicMeta({ _id: id, ...payload }) }
+    await db.collection('feature_playlist_submissions').doc(existing.data[0]._id).update({ data: payload })
+    return { success: true, updated: true, id: existing.data[0]._id, ...reconciliation }
   }
 
-  const result = await db.collection('feature_playlist_submissions').add({
-    data: { ...payload, createdAt: now },
-  })
-  return { success: true, updated: false, submissionId: result._id, playlist: publicMeta({ _id: result._id, ...payload }) }
+  const result = await db.collection('feature_playlist_submissions').add({ data: { ...payload, createdAt: now } })
+  return { success: true, updated: false, id: result._id, ...reconciliation }
 }
 
-async function submitPublicPlaylist(event, openId) {
+async function submitPublic(event, openId) {
+  if (!openId) return { success: false, error: 'login_required' }
   const playlistId = extractPlaylistId(event.playlistUrl || event.playlistId)
   if (!playlistId) return { success: false, error: 'invalid_playlist_url' }
 
-  const existing = await db.collection('feature_playlist_submissions')
-    .where({ featureId: FEATURE_ID, neteasePlaylistId: playlistId })
-    .limit(1)
-    .get()
-
   const playlist = await fetchPlaylist(playlistId)
-  const priorDoc = existing.data[0]
-  const creatorName = priorDoc ? priorDoc.creatorName : String(playlist.creator?.nickname || '网易云用户').trim()
-  // Pasting a link that's already tracked re-runs the missing-artist/album check instead of just
-  // no-op'ing — approvals that landed since the first submission narrow the pending list, and
-  // this is the only way a plain community re-paste (not the admin re-import flow) can pick that
-  // up. sourceType/editorialPriority are intentionally preserved rather than reset, so re-scanning
-  // never silently undoes an admin's 乐评人/社区 reclassification.
+  const existing = await db.collection('feature_playlist_submissions').where({ featureId: FEATURE_ID, neteasePlaylistId: playlistId }).limit(1).get()
+  if (existing.data.length) return { success: false, error: 'playlist_already_exists' }
+
+  const creatorName = String(event.creatorName || playlist.creator?.nickname || '网易云用户').trim()
   const reconciliation = await reconcileTracks(playlist.tracks, `${creatorName} · ${playlist.title}`)
   const now = new Date()
   const payload = {
     featureId: FEATURE_ID,
     creatorName,
+    submittedBy: openId,
+    isOwnPlaylist: !!event.isOwnPlaylist,
     neteasePlaylistId: playlistId,
     neteasePlaylistUrl: `https://music.163.com/#/playlist?id=${playlistId}`,
     playlistTitle: playlist.title,
@@ -432,133 +387,75 @@ async function submitPublicPlaylist(event, openId) {
     neteaseCreator: playlist.creator,
     trackCount: playlist.trackCount,
     tracks: reconciliation.tracks,
-    catalogSync: {
-      linkedAlbums: reconciliation.linkedAlbums,
-      pendingAlbums: reconciliation.pendingAlbums,
-      pendingArtists: reconciliation.pendingArtists,
-      syncedAt: now,
-    },
-    sourceType: priorDoc ? priorDoc.sourceType : 'community',
-    editorialPriority: priorDoc ? priorDoc.editorialPriority : 0,
-    submittedBy: priorDoc ? priorDoc.submittedBy : (openId || ''),
-    isOwnPlaylist: priorDoc ? !!priorDoc.isOwnPlaylist : !!event.isOwnPlaylist,
+    linkedAlbumCount: reconciliation.linkedAlbums,
+    pendingAlbumCount: reconciliation.pendingAlbums,
+    pendingArtistCount: 0,
+    unresolvedArtistCount: reconciliation.unresolvedArtists || 0,
+    sourceType: 'community',
+    editorialPriority: 0,
+    importedBy: openId,
+    createdAt: now,
     updatedAt: now,
   }
-
-  if (priorDoc) {
-    await db.collection('feature_playlist_submissions').doc(priorDoc._id).update({ data: payload })
-    return { success: true, duplicate: true, rescanned: true, submissionId: priorDoc._id, playlist: publicMeta({ _id: priorDoc._id, ...payload }) }
-  }
-
-  const result = await db.collection('feature_playlist_submissions').add({ data: { ...payload, createdAt: now } })
-  return { success: true, duplicate: false, submissionId: result._id, playlist: publicMeta({ _id: result._id, ...payload }) }
+  const result = await db.collection('feature_playlist_submissions').add({ data: payload })
+  return { success: true, id: result._id, ...reconciliation }
 }
 
-async function listSubmissions() {
-  const result = await db.collection('feature_playlist_submissions')
-    .where({ featureId: FEATURE_ID })
-    .orderBy('updatedAt', 'desc')
-    .limit(100)
-    .get()
-  return { success: true, list: result.data }
-}
-
-async function listPublicSubmissions() {
-  const result = await db.collection('feature_playlist_submissions')
-    .where({ featureId: FEATURE_ID })
-    .limit(100)
-    .get()
-
-  const list = result.data
-    .map(publicMeta)
-    .sort((a, b) => {
-      if (a.isEditorial !== b.isEditorial) return a.isEditorial ? -1 : 1
-      if (a.editorialPriority !== b.editorialPriority) return b.editorialPriority - a.editorialPriority
-      const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
-      const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-      return bTime - aTime
-    })
-
-  return {
-    success: true,
-    list,
-    editorialCount: list.filter(item => item.isEditorial).length,
-    communityCount: list.filter(item => !item.isEditorial).length,
-  }
+async function listPublic() {
+  const result = await db.collection('feature_playlist_submissions').where({ featureId: FEATURE_ID }).limit(100).get()
+  const rows = await Promise.all((result.data || []).filter(item => !item.statsRecord).map(async item => {
+    const creator = await resolveBarscopeCreator(item)
+    return { ...publicMeta(item), barscopeCreator: creator }
+  }))
+  return { success: true, list: rows }
 }
 
 async function getPublicDetail(id) {
-  if (!id) return { success: false, error: 'id_required' }
   const result = await db.collection('feature_playlist_submissions').doc(id).get()
   const item = result.data
-  if (!item || item.featureId !== FEATURE_ID) return { success: false, error: 'playlist_not_found' }
-
-  const reconciliation = await reconcileTracks(item.tracks || [], `${item.creatorName || ''} · ${item.playlistTitle || ''}`)
-  const now = new Date()
-  await db.collection('feature_playlist_submissions').doc(id).update({
-    data: {
-      tracks: reconciliation.tracks,
-      catalogSync: {
-        linkedAlbums: reconciliation.linkedAlbums,
-        pendingAlbums: reconciliation.pendingAlbums,
-        pendingArtists: reconciliation.pendingArtists,
-        syncedAt: now,
-      },
-    },
-  })
-
-  const barscopeCreator = await resolveBarscopeCreator(item)
-
-  return {
-    success: true,
-    playlist: {
-      ...publicMeta(item),
-      playlistDescription: item.playlistDescription || '',
-      barscopeCreator,
-      tracks: reconciliation.tracks,
-      catalogSync: {
-        linkedAlbums: reconciliation.linkedAlbums,
-        pendingAlbums: reconciliation.pendingAlbums,
-        pendingArtists: reconciliation.pendingArtists,
-      },
-    },
-  }
+  if (!item || item.statsRecord) return { success: false, error: 'not_found' }
+  const creator = await resolveBarscopeCreator(item)
+  return { success: true, item: { ...item, barscopeCreator: creator } }
 }
 
-async function removeSubmission(id) {
-  if (!id) return { success: false, error: 'id_required' }
+async function removePlaylist(id, openId) {
+  if (!(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
+  if (!id) return { success: false, error: 'missing_id' }
   await db.collection('feature_playlist_submissions').doc(id).remove()
   return { success: true }
 }
 
-async function setSourceType(id, sourceType) {
-  if (!id) return { success: false, error: 'id_required' }
-  if (sourceType !== 'editorial' && sourceType !== 'community') return { success: false, error: 'invalid_source_type' }
-  const data = { sourceType, updatedAt: new Date() }
-  // Community submissions carry no priority; give a promoted-to-editorial one the same default
-  // importPlaylist uses so it doesn't silently sort behind every deliberately-imported list.
-  if (sourceType === 'editorial') data.editorialPriority = 100
-  await db.collection('feature_playlist_submissions').doc(id).update({ data })
-  return { success: true }
+async function setSourceType(id, sourceType, openId) {
+  if (!(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
+  if (!id) return { success: false, error: 'missing_id' }
+  const normalized = sourceType === 'community' ? 'community' : 'editorial'
+  await db.collection('feature_playlist_submissions').doc(id).update({
+    data: {
+      sourceType: normalized,
+      editorialPriority: normalized === 'editorial' ? 100 : 0,
+      updatedAt: new Date(),
+    },
+  })
+  return { success: true, sourceType: normalized }
 }
 
-exports.main = async (event) => {
-  const action = event.action || 'list'
-  const { OPENID: openId } = cloud.getWXContext()
-
+exports.main = async event => {
   try {
-    if (action === 'list_public') return await listPublicSubmissions()
-    if (action === 'get_public_detail') return await getPublicDetail(event.id)
-    if (action === 'submit_public') return await submitPublicPlaylist(event, openId)
+    const { OPENID: openId } = cloud.getWXContext()
+    const action = String(event.action || 'import')
 
-    if (!openId || !(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
-    if (action === 'import') return await importPlaylist(event, openId)
-    if (action === 'list') return await listSubmissions()
-    if (action === 'remove') return await removeSubmission(event.id)
-    if (action === 'set_source_type') return await setSourceType(event.id, event.sourceType)
+    if (action === 'import') {
+      if (!(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
+      return await importPlaylist(event, openId)
+    }
+    if (action === 'submit_public') return await submitPublic(event, openId)
+    if (action === 'list_public') return await listPublic()
+    if (action === 'get_public_detail') return await getPublicDetail(event.id)
+    if (action === 'remove') return await removePlaylist(event.id, openId)
+    if (action === 'set_source_type') return await setSourceType(event.id, event.sourceType, openId)
     return { success: false, error: 'unknown_action' }
-  } catch (error) {
-    console.error('[manageFeaturePlaylists]', action, error)
-    return { success: false, error: error.message || 'unknown_error' }
+  } catch (e) {
+    console.error('[manageFeaturePlaylists]', e)
+    return { success: false, error: e.message || 'internal_error' }
   }
 }
