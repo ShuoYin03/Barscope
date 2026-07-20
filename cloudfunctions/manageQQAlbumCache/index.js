@@ -7,6 +7,7 @@ exports.main = async event => {
   try {
     if (action === 'stats') return stats()
     if (action === 'promote') return promote(event)
+    if (action === 'seed') return seed(event)
     return list(event)
   } catch (e) {
     console.error('manageQQAlbumCache failed:', e)
@@ -17,8 +18,7 @@ exports.main = async event => {
 async function list(event) {
   const keyword = String(event.keyword || '').trim()
   const limit = Math.min(Math.max(Number(event.limit) || 50, 1), 100)
-  let query = db.collection('qq_album_cache').where({ status:'ready' })
-  const res = await query.orderBy('syncedAt', 'desc').limit(limit).get()
+  const res = await db.collection('qq_album_cache').where({ status:'ready' }).orderBy('syncedAt', 'desc').limit(limit).get()
   let rows = res.data || []
   if (keyword) {
     const k = normalize(keyword)
@@ -33,6 +33,38 @@ async function stats() {
     db.collection('qq_album_cache').where({ status:'promoted' }).count(),
   ])
   return { success:true, ready:ready.total || 0, promoted:promoted.total || 0 }
+}
+
+async function seed(event) {
+  const albums = Array.isArray(event.albums) ? event.albums.slice(0,50) : []
+  let inserted = 0
+  let updated = 0
+  let skipped = 0
+  for (const album of albums) {
+    const sourceId = String(album && (album.qqAlbumMid || album.sourceId) || '').trim()
+    if (!sourceId) { skipped++; continue }
+    const sourceKey = `qq:${sourceId}`
+    const existing = await db.collection('qq_album_cache').where({ sourceKey }).limit(1).get()
+    const data = {
+      ...album,
+      source:'qq',
+      sourcePlatform:'qq',
+      sourceId,
+      sourceKey,
+      qqAlbumMid:sourceId,
+      status:'ready',
+      syncedAt:db.serverDate(),
+    }
+    delete data._id
+    if (existing.data.length) {
+      await db.collection('qq_album_cache').doc(existing.data[0]._id).update({ data })
+      updated++
+    } else {
+      await db.collection('qq_album_cache').add({ data })
+      inserted++
+    }
+  }
+  return { success:true, inserted, updated, skipped }
 }
 
 async function promote(event) {
@@ -54,7 +86,6 @@ async function promote(event) {
     }
     const payload = {
       ...row,
-      _id: undefined,
       status:'pending',
       decision:null,
       source:'qq',
@@ -70,6 +101,7 @@ async function promote(event) {
       decidedAt:null,
       decidedBy:null,
     }
+    delete payload._id
     delete payload.syncedAt
     await db.collection('album_candidates').add({ data:payload })
     await db.collection('qq_album_cache').doc(id).update({ data:{ status:'promoted', promotedAt:db.serverDate() } })
