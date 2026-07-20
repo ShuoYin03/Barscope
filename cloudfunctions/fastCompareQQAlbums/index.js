@@ -82,7 +82,17 @@ async function catalogPage(event) {
   const offset = Math.max(0, Number(event.offset || 0))
   const limit = Math.max(1, Math.min(100, Number(event.limit || 100)))
   const r = await db.collection('albums')
-    .field({ _id: true, title: true, releaseDate: true, releaseYear: true, neteaseArtistId: true, artist: true, primaryArtist: true })
+    .field({
+      _id: true,
+      title: true,
+      releaseDate: true,
+      releaseYear: true,
+      neteaseArtistId: true,
+      artist: true,
+      primaryArtist: true,
+      trackCount: true,
+      tracks: true,
+    })
     .skip(offset)
     .limit(limit)
     .get()
