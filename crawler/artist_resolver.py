@@ -74,6 +74,34 @@ class ArtistMatchResult:
         return asdict(self)
 
 
+def classify_match(matched: int, track_overlap: float, name_similarity: float) -> str:
+    """Decide matched/review/unmatched from already-computed evidence.
+
+    Pulled out of resolve_artist_match() so a re-classification pass can re-apply a changed
+    threshold to evidence that was already fetched and scored in a prior run, without needing
+    the raw track lists (or a new network call) again.
+
+    A pure track_overlap>=0.70 floor with no minimum matched_tracks would auto-bind two
+    different people off a single coincidentally-titled track (a common freestyle/interlude
+    name, say) — matched>=2 keeps that from being one lucky title away from a permanent
+    cross-platform identity link, while still being much looser than the matched>=3 +
+    name_similarity>=0.50 combination this replaces for exactly that overlap band.
+    """
+    if matched >= 15:
+        return "matched"
+    if matched >= 8 and name_similarity >= 0.65:
+        return "matched"
+    if track_overlap >= 0.70 and matched >= 2:
+        return "matched"
+    if matched >= 5:
+        return "review"
+    if track_overlap >= 0.30 and matched >= 3:
+        return "review"
+    if matched >= 2 and name_similarity >= 0.85:
+        return "review"
+    return "unmatched"
+
+
 def resolve_artist_match(
     netease_tracks: Sequence[str],
     qq_tracks: Sequence[str],
@@ -107,24 +135,7 @@ def resolve_artist_match(
         track_overlap * 0.55 + absolute_evidence * 0.35 + name_similarity * 0.10,
     )
 
-    # Very strong absolute evidence: 15 identical titles is enough to auto-bind,
-    # even when one platform exposes only a partial catalogue snapshot.
-    if matched >= 15:
-        status = "matched"
-    # Strong combined evidence for smaller catalogues / newer artists.
-    elif matched >= 8 and name_similarity >= 0.65:
-        status = "matched"
-    elif track_overlap >= 0.70 and matched >= 3 and name_similarity >= 0.50:
-        status = "matched"
-    # Plausible candidates stay in review rather than being discarded.
-    elif matched >= 5:
-        status = "review"
-    elif track_overlap >= 0.30 and matched >= 3:
-        status = "review"
-    elif matched >= 2 and name_similarity >= 0.85:
-        status = "review"
-    else:
-        status = "unmatched"
+    status = classify_match(matched, track_overlap, name_similarity)
 
     return ArtistMatchResult(
         score=round(score, 4),

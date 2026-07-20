@@ -280,7 +280,9 @@ function isStrongArtistMatch(l) {
   const nameSim = Number(l.nameSimilarity || 0)
   if (matched >= 15) return true
   if (matched >= 8 && nameSim >= 0.65) return true
-  if (overlap >= 0.70 && matched >= 3 && nameSim >= 0.50) return true
+  // matched>=2 keeps a single coincidentally-titled track from being enough on its own —
+  // see classify_match()'s docstring in artist_resolver.py for why 2, not 0 or 1.
+  if (overlap >= 0.70 && matched >= 2) return true
   return false
 }
 
