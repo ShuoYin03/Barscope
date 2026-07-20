@@ -10,7 +10,6 @@ function firstLetter(name){ for(const ch of Array.from(String(name||'').trim()))
 /** Batch upsert albums, preserving album-level co-creators from crawler imports. */
 exports.main = async event => {
   const albums = event.albums || []
-  const action = event.action || 'upsert'
   if (!albums.length) return { inserted:0, updated:0, skipped:0, errors:0, total:0 }
   const sourceIds = albums.map(a => a.sourceId).filter(Boolean)
   const existing = await db.collection('albums').where({ sourceId: _.in(sourceIds) }).field({ _id:true, sourceId:true, ownershipSource:true }).limit(sourceIds.length).get()
@@ -18,7 +17,7 @@ exports.main = async event => {
   const toInsert = [], toUpdate = []; let skipped = 0
   albums.forEach(a => {
     if (!a.sourceId || !a.title || !a.artist) { skipped++; return }
-    if (existingMap[a.sourceId]) action === 'upsert' ? toUpdate.push(a) : skipped++
+    if (existingMap[a.sourceId]) toUpdate.push(a)
     else toInsert.push(a)
   })
   const insertOps = toInsert.map(a => db.collection('albums').add({ data:Object.assign({ approved:false, titleLetter:firstLetter(a.title), isMultiArtist:Array.isArray(a.artistIds) && a.artistIds.length > 1 }, a) }))

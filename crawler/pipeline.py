@@ -121,7 +121,7 @@ def upload_albums(albums: list, token: str, env: str, batch_size: int = 20) -> d
     for i, batch in enumerate(batches, 1):
         print(f"  [{i:02d}/{n:02d}] {len(batch)} 张...", end=" ", flush=True)
         try:
-            res = invoke_cloud_fn(token, env, "uploadAlbums", {"albums": batch, "action": "upsert"})
+            res = invoke_cloud_fn(token, env, "uploadAlbums", {"albums": batch})
             result["inserted"] += res.get("inserted", 0)
             result["updated"]  += res.get("updated",  0)
             result["skipped"]  += res.get("skipped",  0)
