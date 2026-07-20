@@ -111,6 +111,7 @@ async function upsert(candidates, dryRun) {
   let matchedExisting = 0
   let errors = 0
   const matchedExistingSamples = []
+  const insertedKeys = []
 
   for (const raw of candidates) {
     try {
@@ -148,11 +149,12 @@ async function upsert(candidates, dryRun) {
         })
       }
       inserted += 1
+      insertedKeys.push(sourceKey)
     } catch (e) {
       errors += 1
     }
   }
-  return { success: errors === 0, dryRun: !!dryRun, inserted, skipped, matchedExisting, errors, matchedExistingSamples }
+  return { success: errors === 0, dryRun: !!dryRun, inserted, skipped, matchedExisting, errors, matchedExistingSamples, insertedKeys }
 }
 
 async function list(status) {

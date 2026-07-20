@@ -18,6 +18,7 @@ import requests
 
 from qqmusic_client import QQMusicClient, QQMusicError
 from sync_qq_album_candidates import (
+    BASE_DIR,
     CONFIG_FILE,
     DEFAULT_MATCHES,
     DEFAULT_OUTPUT,
@@ -60,6 +61,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="高速并发同步 QQ 独有专辑到 BarScope 专辑待审核")
     parser.add_argument("--matches", action="append", help="QQ artist match JSON，可重复传入多批文件")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
+    parser.add_argument("--new-candidates-output", default=str(BASE_DIR / "qq_album_would_be_new.json"), help="判定为待审核/新增的候选写入路径，供 verify_qq_new_candidates_by_tracks.py 做曲目复核")
     parser.add_argument("--dry-run", action="store_true", help="只跑本地质量筛选规则，不联网核对是否与库内专辑重复")
     parser.add_argument("--preview", action="store_true", help="联网跑真实的去重判定（跟正式上传一样），但不写入任何数据")
     parser.add_argument("--artist-limit", type=int, default=0, help="仅测试前 N 个 matched 艺人；0=全部")
@@ -190,13 +192,23 @@ def main() -> None:
         raise SystemExit("config.json 缺少 appid / appsecret / env")
 
     token = get_access_token(appid, appsecret)
-    upload_stats = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
+    upload_stats, inserted_items = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
     print(f"\nCrawler stats: {dict(stats)}")
     print(f"Cloud result: {dict(upload_stats)}")
+
+    new_candidates_path = Path(args.new_candidates_output)
+    new_candidates_path.write_text(
+        json.dumps({"schemaVersion": 1, "source": "qq_album_candidate_sync_inserted", "count": len(inserted_items), "results": inserted_items}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"\n判定为「待审核/新增」的候选（{len(inserted_items)} 条）已写入 -> {new_candidates_path}")
+    print("标题匹配可能漏判 QQ 独家专辑的重复（标题/脏标不一样），建议再跑一遍曲目复核：")
+    print(f"  python3 verify_qq_new_candidates_by_tracks.py --new-candidates {new_candidates_path}")
+
     if args.preview:
-        print("预览完成：以上是真实的去重判定结果，没有写入任何数据。确认没问题后去掉 --preview 正式跑。")
+        print("\n预览完成：以上是真实的去重判定结果，没有写入任何数据。确认没问题后去掉 --preview 正式跑。")
     else:
-        print("完成：真正缺失的 QQ 专辑已进入 专辑管理 → 待审核；已存在专辑只补充 QQ identity。")
+        print("\n完成：真正缺失的 QQ 专辑已进入 专辑管理 → 待审核；已存在专辑只补充 QQ identity。")
 
 
 if __name__ == "__main__":
