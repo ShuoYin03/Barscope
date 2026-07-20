@@ -21,7 +21,7 @@
           <text class="feature-heat">🔥 {{item.heatDisplay}} 热度</text>
         </view>
         <view class="feature-actions">
-          <button class="feature-share" open-type="share" data-id="{{item.id}}" data-title="{{item.title}}" catchtap="noop">分享</button>
+          <button class="feature-share" open-type="share" data-id="{{item.id}}" data-title="{{item.title}}" catchtap="noop"><text class="feature-share-icon">↗</text><text>分享</text></button>
           <text class="feature-arrow">{{item.cta}} →</text>
         </view>
       </view>
