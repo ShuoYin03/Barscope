@@ -57,35 +57,43 @@ function sourceKeyOf(item) {
   return String(item.sourceKey || `${platformOf(item)}:${sourceId}`).trim()
 }
 
+// Albums (and album_candidates) can carry a large embedded tracks array plus other bulky fields.
+// Every bulk read elsewhere in this codebase projects down to just the fields it needs (see
+// manageCandidates.js) — these lookups previously fetched full documents, which made the
+// unindexed title-fallback scan below (up to 100 albums) slow enough on prolific artists to blow
+// past the tcb/invokecloudfunction gateway's timeout on otherwise-ordinary batches.
+const CANDIDATE_LOOKUP_FIELDS = { _id: true, sourceKey: true, sourceId: true, source: true }
+const ALBUM_LOOKUP_FIELDS = { _id: true, title: true, sourceKey: true, sourceId: true, source: true, qqAlbumMid: true, qqAlbumId: true, qqArtistMid: true }
+
 async function findExistingCandidate(item) {
   const sourceKey = sourceKeyOf(item)
   if (sourceKey) {
-    const byKey = await db.collection('album_candidates').where({ sourceKey }).limit(1).get()
+    const byKey = await db.collection('album_candidates').where({ sourceKey }).field(CANDIDATE_LOOKUP_FIELDS).limit(1).get()
     if (byKey.data.length) return byKey.data[0]
   }
   const sourceId = String(item.sourceId || '').trim()
   if (!sourceId) return null
   const source = platformOf(item)
-  const legacy = await db.collection('album_candidates').where({ sourceId, source }).limit(1).get()
+  const legacy = await db.collection('album_candidates').where({ sourceId, source }).field(CANDIDATE_LOOKUP_FIELDS).limit(1).get()
   return legacy.data[0] || null
 }
 
 async function findExistingAlbum(item) {
   const sourceKey = sourceKeyOf(item)
   if (sourceKey) {
-    const byKey = await db.collection('albums').where({ sourceKey }).limit(1).get()
+    const byKey = await db.collection('albums').where({ sourceKey }).field(ALBUM_LOOKUP_FIELDS).limit(1).get()
     if (byKey.data.length) return byKey.data[0]
   }
 
   if (platformOf(item) === 'qq' && item.qqAlbumMid) {
-    const byMid = await db.collection('albums').where({ qqAlbumMid: String(item.qqAlbumMid) }).limit(1).get()
+    const byMid = await db.collection('albums').where({ qqAlbumMid: String(item.qqAlbumMid) }).field(ALBUM_LOOKUP_FIELDS).limit(1).get()
     if (byMid.data.length) return byMid.data[0]
   }
 
   const sourceId = String(item.sourceId || '').trim()
   const source = platformOf(item)
   if (sourceId) {
-    const direct = await db.collection('albums').where({ sourceId, source }).limit(1).get()
+    const direct = await db.collection('albums').where({ sourceId, source }).field(ALBUM_LOOKUP_FIELDS).limit(1).get()
     if (direct.data.length) return direct.data[0]
   }
 
@@ -101,6 +109,7 @@ async function findExistingAlbum(item) {
     const query = releaseYear ? { neteaseArtistId, releaseYear } : { neteaseArtistId }
     const candidates = await db.collection('albums')
       .where(query)
+      .field(ALBUM_LOOKUP_FIELDS)
       .limit(100)
       .get()
     const hit = (candidates.data || []).find(album => normalizeTitle(album.title) === normalizedTitle)
