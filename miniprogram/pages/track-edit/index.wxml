@@ -22,7 +22,7 @@
     </view>
 
     <view class="track-list">
-      <view wx:for="{{tracks}}" wx:key="songId" class="track-row" bindtap="onOpenTrack" data-idx="{{index}}">
+      <view wx:for="{{tracks}}" wx:key="clientKey" class="track-row" bindtap="onOpenTrack" data-idx="{{index}}">
         <text class="track-no">{{index < 9 ? '0' + (index + 1) : index + 1}}</text>
         <view class="track-copy">
           <text class="track-name">{{item.name}}</text>
@@ -39,6 +39,15 @@
       </view>
     </view>
 
+    <view class="add-track" bindtap="onAddTrack">
+      <text class="add-track-plus">＋</text>
+      <view class="add-track-copy">
+        <text class="add-track-title">添加曲目</text>
+        <text class="add-track-subtitle">ADD TRACK</text>
+      </view>
+      <text class="add-track-arrow">›</text>
+    </view>
+
     <view class="list-end"><text>— END OF TRACKLIST —</text></view>
   </scroll-view>
 
@@ -50,7 +59,7 @@
   <view wx:if="{{editVisible}}" class="edit-sheet-mask" bindtap="onEditCancel">
     <view class="edit-sheet" catchtap="noop">
       <view class="sheet-handle" />
-      <text class="sheet-title">编辑曲目</text>
+      <text class="sheet-title">{{editIsNew ? '添加曲目' : '编辑曲目'}}</text>
       <text class="sheet-index">TRACK {{editTrackIndex < 9 ? '0' + (editTrackIndex + 1) : editTrackIndex + 1}}</text>
 
       <text class="sheet-label">曲目名称</text>
@@ -69,7 +78,7 @@
 
       <view class="sheet-actions">
         <view class="sheet-cancel" bindtap="onEditCancel"><text>取消</text></view>
-        <view class="sheet-confirm" bindtap="onEditConfirm"><text>保存本首修改</text></view>
+        <view class="sheet-confirm" bindtap="onEditConfirm"><text>{{editIsNew ? '添加到曲目列表' : '保存本首修改'}}</text></view>
       </view>
     </view>
   </view>
