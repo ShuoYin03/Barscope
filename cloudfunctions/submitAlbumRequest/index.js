@@ -3,6 +3,12 @@ const https = require('https')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const QQ_SEARCH_URL = 'https://u.y.qq.com/cgi-bin/musicu.fcg'
+const QQ_LEGACY_SEARCH_URL = 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp'
+const QQ_HEADERS = {
+  'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+  'Referer':'https://y.qq.com/',
+  'Origin':'https://y.qq.com',
+}
 
 exports.main = async event => {
   const { OPENID } = cloud.getWXContext()
@@ -52,14 +58,17 @@ async function searchAndSubmit(event, openId) {
 async function searchQQAndSubmit(event, openId) {
   const keyword = String(event.name || '').trim()
   if (keyword.length < 1 || keyword.length > 80) return { success:false, error:'请输入有效的专辑名称' }
-  const search = await postJson(QQ_SEARCH_URL, {
-    comm:{ct:'19',cv:'1859',uin:'0'},
-    req:{module:'music.search.SearchCgiService',method:'DoSearchForQQMusicDesktop',param:{query:keyword,search_type:2,num_per_page:20,page_num:1}},
-  }, {'User-Agent':'Mozilla/5.0','Referer':'https://y.qq.com/','Origin':'https://y.qq.com'})
-  const rows = ((((((search || {}).req || {}).data || {}).body || {}).album || {}).list) || []
-  const albums = rows.map(row => normalizeQQAlbum(row && (row.album || row))).filter(Boolean)
+
+  let albums = await searchQQMusicu(keyword)
+  let provider = 'musicu'
+  if (!albums.length) {
+    albums = await searchQQLegacy(keyword)
+    provider = 'legacy'
+  }
+
   const exact = albums.filter(a => normalize(a.title) === normalize(keyword))
-  if (!exact.length) return { success:true, needsManual:true, searchedName:keyword, qqResults:albums.slice(0,10) }
+  if (!exact.length) return { success:true, needsManual:true, searchedName:keyword, qqResults:albums.slice(0,10), provider }
+
   const picked = exact[0]
   const sourceId = picked.albumMid
   const duplicate = await findDuplicate(sourceId, 'qq')
@@ -73,11 +82,29 @@ async function searchQQAndSubmit(event, openId) {
     releaseDate:'',releaseYear:0,coverUrl:`https://y.qq.com/music/photo_new/T002R800x800M000${sourceId}.jpg`,company:'',tracks:[],
     avgScore:0,reviewCount:0,genres:[],status:'pending',decision:null,
     reportReason:duplicate && duplicate.kind === 'deleted_candidate' ? '用户申请重新收录已删除专辑（QQ音乐匹配）' : '用户提交新专辑（QQ音乐匹配）',
-    reportSource:'discover-submit',requestSource:'discover-submit',requesterOpenId:openId,requestedName:keyword,foundFrom:'用户提交 · QQ音乐',
+    reportSource:'discover-submit',requestSource:'discover-submit',requesterOpenId:openId,requestedName:keyword,foundFrom:`用户提交 · QQ音乐 · ${provider}`,
     reSubmittedAfterDeletion:!!(duplicate && duplicate.kind === 'deleted_candidate'),addedAt:db.serverDate(),decidedAt:null,decidedBy:null,
   }
   const result = await saveCandidate(payload, duplicate)
-  return {...result, qqAlbumMid:sourceId, qqArtistNames:artistNames, exactMatchCount:exact.length}
+  return {...result, qqAlbumMid:sourceId, qqArtistNames:artistNames, exactMatchCount:exact.length, provider}
+}
+
+async function searchQQMusicu(keyword) {
+  const search = await postJson(QQ_SEARCH_URL, {
+    comm:{ct:'19',cv:'1859',uin:'0'},
+    req:{module:'music.search.SearchCgiService',method:'DoSearchForQQMusicDesktop',param:{query:keyword,search_type:2,num_per_page:20,page_num:1}},
+  }, QQ_HEADERS)
+  const rows = ((((((search || {}).req || {}).data || {}).body || {}).album || {}).list) || []
+  return rows.map(row => normalizeQQAlbum(row && (row.album || row))).filter(Boolean)
+}
+
+async function searchQQLegacy(keyword) {
+  const url = `${QQ_LEGACY_SEARCH_URL}?${new URLSearchParams({
+    ct:'24',qqmusic_ver:'1298',new_json:'1',remoteplace:'txt.yqq.album',searchid:String(Date.now()),t:'8',aggr:'1',cr:'1',catZhida:'1',lossless:'0',flag_qc:'0',p:'1',n:'20',w:keyword,g_tk:'5381',loginUin:'0',hostUin:'0',format:'json',inCharset:'utf8',outCharset:'utf-8',notice:'0',platform:'yqq.json',needNewCode:'0'
+  }).toString()}`
+  const raw = await getJsonFlexible(url, QQ_HEADERS)
+  const rows = (((raw || {}).data || {}).album || {}).list || []
+  return rows.map(normalizeLegacyQQAlbum).filter(Boolean)
 }
 
 async function saveCandidate(payload, duplicate) {
@@ -99,6 +126,25 @@ function normalizeQQAlbum(album) {
     name:String((s && (s.name || s.singerName || s.singer_name)) || '').trim(),
     mid:String((s && (s.mid || s.singerMID || s.singer_mid)) || '').trim(),
   })).filter(s => s.name || s.mid)
+  return {title,albumMid,albumId:String(album.albumID || album.album_id || album.id || '').trim(),singers}
+}
+
+function normalizeLegacyQQAlbum(album) {
+  if (!album || typeof album !== 'object') return null
+  const title = String(album.albumName || album.album_name || album.name || '').replace(/<[^>]+>/g,'').trim()
+  const albumMid = String(album.albumMID || album.album_mid || album.mid || '').trim()
+  if (!title || !albumMid) return null
+  let singerRows = album.singer || album.singerList || album.singer_list || []
+  if (!Array.isArray(singerRows)) singerRows = [singerRows]
+  let singers = singerRows.map(s => ({
+    name:String((s && (s.name || s.singerName || s.singer_name)) || '').replace(/<[^>]+>/g,'').trim(),
+    mid:String((s && (s.mid || s.singerMID || s.singer_mid)) || '').trim(),
+  })).filter(s => s.name || s.mid)
+  if (!singers.length) {
+    const name = String(album.singerName || album.singer_name || '').trim()
+    const mid = String(album.singerMID || album.singer_mid || '').trim()
+    if (name || mid) singers = [{name,mid}]
+  }
   return {title,albumMid,albumId:String(album.albumID || album.album_id || album.id || '').trim(),singers}
 }
 
@@ -137,4 +183,5 @@ async function findDuplicate(sourceId, sourcePlatform='') {
 
 function normalize(value){return String(value||'').trim().toLowerCase().replace(/explicit/gi,'').replace(/[\s\-_·•.。'"“”‘’()（）\[\]【】/\\?!！？，,:：]+/g,'')}
 function getJson(url){return new Promise((resolve,reject)=>{const req=https.get(url,{headers:{'User-Agent':'Mozilla/5.0',Referer:'https://music.163.com/'}},res=>{let body='';res.on('data',c=>body+=c);res.on('end',()=>{try{resolve(JSON.parse(body))}catch(e){resolve(null)}})});req.on('error',reject);req.setTimeout(10000,()=>{req.destroy();reject(new Error('网易云请求超时'))})})}
-function postJson(url,body,headers={}){return new Promise((resolve,reject)=>{const data=Buffer.from(JSON.stringify(body));const target=new URL(url);const req=https.request({protocol:target.protocol,hostname:target.hostname,path:target.pathname+target.search,method:'POST',headers:{'Content-Type':'application/json','Content-Length':data.length,...headers}},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>{try{resolve(JSON.parse(text))}catch(e){reject(new Error('QQ音乐返回格式异常'))}})});req.on('error',reject);req.setTimeout(15000,()=>{req.destroy();reject(new Error('QQ音乐请求超时'))});req.write(data);req.end()})}
+function postJson(url,body,headers={}){return new Promise((resolve,reject)=>{const data=Buffer.from(JSON.stringify(body));const target=new URL(url);const req=https.request({protocol:target.protocol,hostname:target.hostname,path:target.pathname+target.search,method:'POST',headers:{'Content-Type':'application/json','Content-Length':data.length,...headers}},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>{try{resolve(JSON.parse(text))}catch(e){reject(new Error('QQ音乐主搜索接口返回格式异常'))}})});req.on('error',reject);req.setTimeout(15000,()=>{req.destroy();reject(new Error('QQ音乐请求超时'))});req.write(data);req.end()})}
+function getJsonFlexible(url,headers={}){return new Promise((resolve,reject)=>{const req=https.get(url,{headers},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>{const trimmed=text.trim();const jsonText=trimmed.startsWith('{')?trimmed:trimmed.replace(/^[^(]*\(/,'').replace(/\)\s*;?$/,'');try{resolve(JSON.parse(jsonText))}catch(e){reject(new Error('QQ音乐备用搜索接口返回格式异常'))}})});req.on('error',reject);req.setTimeout(15000,()=>{req.destroy();reject(new Error('QQ音乐备用接口请求超时'))})})}
