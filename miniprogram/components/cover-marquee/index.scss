@@ -16,6 +16,10 @@
   animation-iteration-count: infinite;
 }
 
+.cover-marquee-inner.is-paused {
+  animation-play-state: paused;
+}
+
 .cover-marquee-item {
   position: relative;
   width: 200rpx;

@@ -15,6 +15,7 @@ Component({
   },
   data: {
     duration: '24s',
+    paused: false,
   },
   observers: {
     'list, secondsPerItem'(list: any[], secondsPerItem: number) {
@@ -27,6 +28,12 @@ Component({
     onCoverTap(e: WechatMiniprogram.TouchEvent) {
       const id = (e.currentTarget.dataset as any).id
       if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+    },
+    onTouchStart() {
+      this.setData({ paused: true })
+    },
+    onTouchEnd() {
+      this.setData({ paused: false })
     },
   },
 })
