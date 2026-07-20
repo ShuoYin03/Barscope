@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from artist_identity import normalise_artist_name
@@ -19,6 +21,16 @@ from qqmusic_client import QQMusicClient, QQMusicError
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTISTS = BASE_DIR / "rappers.json"
 DEFAULT_OUTPUT = BASE_DIR / "qq_artist_candidates.json"
+
+_thread_local = threading.local()
+
+
+def _get_client() -> QQMusicClient:
+    client = getattr(_thread_local, "qq_client", None)
+    if client is None:
+        client = QQMusicClient()
+        _thread_local.qq_client = client
+    return client
 
 
 def load_artists(path: Path) -> list[dict]:
@@ -40,6 +52,37 @@ def candidate_name_score(source_name: str, candidate_name: str) -> float:
     return round(len(set(left) & set(right)) / len(union), 4) if union else 0.0
 
 
+def _search_one(index: int, artist: dict, limit: int) -> tuple[int, dict | None]:
+    name = str(artist.get("name") or artist.get("displayName") or "").strip()
+    barscope_id = str(artist.get("barscopeArtistId") or "").strip()
+    if not name or not barscope_id:
+        return index, None
+
+    try:
+        candidates = _get_client().search_artists(name, limit=limit)
+        candidate_rows = []
+        for candidate in candidates:
+            row = candidate.to_dict()
+            row["nameScore"] = candidate_name_score(name, candidate.name)
+            candidate_rows.append(row)
+
+        return index, {
+            "barscopeArtistId": barscope_id,
+            "displayName": name,
+            "neteaseArtistId": artist.get("platforms", {}).get("netease", {}).get("artistId"),
+            "status": "candidates_found" if candidate_rows else "no_candidate",
+            "candidates": candidate_rows,
+        }
+    except (QQMusicError, OSError, ValueError) as exc:
+        return index, {
+            "barscopeArtistId": barscope_id,
+            "displayName": name,
+            "status": "error",
+            "error": str(exc),
+            "candidates": [],
+        }
+
+
 def crawl(
     artists: list[dict],
     *,
@@ -47,50 +90,32 @@ def crawl(
     sleep_seconds: float,
     start: int = 0,
     count: int | None = None,
+    workers: int = 1,
 ) -> dict:
-    client = QQMusicClient()
     selected = artists[start : start + count if count is not None else None]
-    rows: list[dict] = []
+    results: dict[int, dict] = {}
 
-    for index, artist in enumerate(selected, start=start + 1):
-        name = str(artist.get("name") or artist.get("displayName") or "").strip()
-        barscope_id = str(artist.get("barscopeArtistId") or "").strip()
-        if not name or not barscope_id:
-            continue
+    if workers <= 1:
+        for index, artist in enumerate(selected, start=start + 1):
+            i, row = _search_one(index, artist, limit)
+            if row:
+                print(f"[{index}/{len(artists)}] {row['displayName']}" + (f"  ERROR: {row['error']}" if row.get("error") else ""))
+                results[i] = row
+            if sleep_seconds > 0:
+                time.sleep(sleep_seconds)
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [executor.submit(_search_one, index, artist, limit) for index, artist in enumerate(selected, start=start + 1)]
+            completed = 0
+            for future in as_completed(futures):
+                i, row = future.result()
+                completed += 1
+                if row:
+                    results[i] = row
+                    if completed % 25 == 0 or row.get("error"):
+                        print(f"[{completed}/{len(selected)}] {row['displayName']}" + (f"  ERROR: {row['error']}" if row.get("error") else ""))
 
-        print(f"[{index}/{len(artists)}] {name}")
-        try:
-            candidates = client.search_artists(name, limit=limit)
-            candidate_rows = []
-            for candidate in candidates:
-                row = candidate.to_dict()
-                row["nameScore"] = candidate_name_score(name, candidate.name)
-                candidate_rows.append(row)
-
-            rows.append(
-                {
-                    "barscopeArtistId": barscope_id,
-                    "displayName": name,
-                    "neteaseArtistId": artist.get("platforms", {}).get("netease", {}).get("artistId"),
-                    "status": "candidates_found" if candidate_rows else "no_candidate",
-                    "candidates": candidate_rows,
-                }
-            )
-        except (QQMusicError, OSError, ValueError) as exc:
-            print(f"  ERROR: {exc}")
-            rows.append(
-                {
-                    "barscopeArtistId": barscope_id,
-                    "displayName": name,
-                    "status": "error",
-                    "error": str(exc),
-                    "candidates": [],
-                }
-            )
-
-        if sleep_seconds > 0:
-            time.sleep(sleep_seconds)
-
+    rows = [results[i] for i in sorted(results)]
     return {
         "schemaVersion": 1,
         "source": "qqmusic_artist_search",
@@ -107,6 +132,7 @@ def main() -> None:
     parser.add_argument("--sleep", type=float, default=0.35, help="delay between artist searches")
     parser.add_argument("--start", type=int, default=0, help="zero-based start offset")
     parser.add_argument("--count", type=int, default=None, help="number of artists to process")
+    parser.add_argument("--workers", type=int, default=1, help="并发请求数；1=原有串行行为，建议批量运行时用 10-20")
     args = parser.parse_args()
 
     artists = load_artists(Path(args.artists))
@@ -116,6 +142,7 @@ def main() -> None:
         sleep_seconds=max(0.0, args.sleep),
         start=max(0, args.start),
         count=args.count if args.count is None else max(0, args.count),
+        workers=max(1, min(args.workers, 40)),
     )
 
     output = Path(args.output)
