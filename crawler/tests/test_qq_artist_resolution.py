@@ -14,13 +14,15 @@ from artist_resolver import resolve_artist_match
 
 class ArtistResolutionTests(unittest.TestCase):
     def test_clear_catalogue_match(self):
+        # 3 matched tracks at 75% overlap clears the matched>=2 + overlap>=0.70 bar
+        # (loosened from matched>=3 + name_similarity>=0.50 — see classify_match()).
         result = resolve_artist_match(
             ["Track A", "Track B", "Track C", "Track D"],
             ["Track A", "Track B", "Track C", "Other"],
             "Artist",
             "Artist",
         )
-        self.assertEqual(result.status, "review")
+        self.assertEqual(result.status, "matched")
         self.assertEqual(result.matched_tracks, 3)
         self.assertAlmostEqual(result.track_overlap, 0.75)
 
