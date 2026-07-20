@@ -11,6 +11,15 @@
         <text class="feature-title">{{item.title}}</text>
         <text class="feature-subtitle">{{item.subtitle}}</text>
         <view class="feature-meta"><text>{{item.status}}</text></view>
+        <view class="feature-stats">
+          <text class="feature-stat">{{item.viewDisplay}} 浏览</text>
+          <text class="feature-dot">·</text>
+          <text class="feature-stat">{{item.participantDisplay}} {{item.participantLabel}}</text>
+          <text class="feature-dot">·</text>
+          <text class="feature-stat">{{item.shareDisplay}} 分享</text>
+          <text class="feature-dot">·</text>
+          <text class="feature-heat">🔥 {{item.heatDisplay}} 热度</text>
+        </view>
         <text class="feature-arrow">{{item.cta}} →</text>
       </view>
     </view>
