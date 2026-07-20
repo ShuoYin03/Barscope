@@ -1,0 +1,34 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="padding-top:{{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <view class="titles">
+      <text class="title">QQ ALBUM SYNC</text>
+      <text class="sub">QQ音乐同步中心</text>
+    </view>
+  </view>
+  <scroll-view class="content" scroll-y>
+    <view class="search-box">
+      <input class="input" value="{{keyword}}" bindinput="onInput" placeholder="搜索缓存专辑或艺人" placeholder-class="ph" />
+      <view class="search-btn" bindtap="onSearch">搜索</view>
+    </view>
+    <view class="toolbar">
+      <text class="summary">待送审 {{list.length}} 张 · 已选 {{selectedCount}} 张</text>
+      <text class="select-all" bindtap="onSelectAll">全选 / 取消</text>
+    </view>
+    <view wx:if="{{loading}}" class="empty">正在加载 QQ 专辑缓存…</view>
+    <view wx:elif="{{!list.length}}" class="empty">暂无待送审 QQ 专辑。先在电脑端运行同步脚本。</view>
+    <view wx:for="{{list}}" wx:key="_id" class="album-card" bindtap="onToggle" data-id="{{item._id}}">
+      <image class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
+      <view class="meta">
+        <text class="album-title">{{item.title}}</text>
+        <text class="artist">{{item.artist}}</text>
+        <text class="mid">MID · {{item.qqAlbumMid}}</text>
+      </view>
+      <view class="check">{{item.selected ? '✓' : '○'}}</view>
+    </view>
+    <view class="bottom-space"></view>
+  </scroll-view>
+  <view class="footer">
+    <view class="promote" bindtap="onPromote">同步到审核区 · {{selectedCount}}</view>
+  </view>
+</view>
