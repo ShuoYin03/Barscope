@@ -1,6 +1,0 @@
-{
-  "component": true,
-  "renderer": "skyline",
-  "styleIsolation": "apply-shared",
-  "usingComponents": {}
-}
