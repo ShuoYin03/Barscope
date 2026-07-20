@@ -39,10 +39,7 @@ function parseDate(value) {
   }
   const text = String(value).trim()
   if (!text) return null
-  const normalized = text
-    .replace(/[./年]/g, '-')
-    .replace(/月/g, '-')
-    .replace(/日/g, '')
+  const normalized = text.replace(/[./年]/g, '-').replace(/月/g, '-').replace(/日/g, '')
   const match = normalized.match(/((?:19|20)\d{2})-(\d{1,2})-(\d{1,2})/)
   if (match) {
     const d = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
@@ -74,16 +71,22 @@ async function queryIn(collection, field, values, projection) {
 async function getAllArtistAlbums(artistId) {
   const rows = []
   for (let offset = 0; ; offset += 100) {
-    const r = await db.collection('albums')
-      .where({ neteaseArtistId: artistId })
-      .field(ALBUM_FIELDS)
-      .skip(offset)
-      .limit(100)
-      .get()
+    const r = await db.collection('albums').where({ neteaseArtistId: artistId }).field(ALBUM_FIELDS).skip(offset).limit(100).get()
     rows.push(...(r.data || []))
     if (!r.data || r.data.length < 100) break
   }
   return rows
+}
+
+async function catalogPage(event) {
+  const offset = Math.max(0, Number(event.offset || 0))
+  const limit = Math.max(1, Math.min(100, Number(event.limit || 100)))
+  const r = await db.collection('albums')
+    .field({ _id: true, title: true, releaseDate: true, releaseYear: true, neteaseArtistId: true, artist: true, primaryArtist: true })
+    .skip(offset)
+    .limit(limit)
+    .get()
+  return { success: true, offset, limit, rows: r.data || [], hasMore: (r.data || []).length === limit }
 }
 
 async function compareBatch(rawItems) {
@@ -157,15 +160,11 @@ async function compareBatch(rawItems) {
       if (album) matchType = 'normalized_title'
     }
 
-    // Cross-platform titles can differ substantially. For candidates that still have not matched,
-    // use the mapped NetEase artist + release date as a second identity signal. NetEase is the
-    // benchmark catalogue; QQ dates within +/- 3 calendar days are treated as the same release.
     if (!album && item.releaseDate) {
       const dateHits = sameArtistAlbums
         .map(a => ({ album: a, diff: dayDiff(item.releaseDate, a.releaseDate) }))
         .filter(x => x.diff !== null && x.diff <= 3)
         .sort((a, b) => a.diff - b.diff)
-
       if (dateHits.length) {
         album = dateHits[0].album
         matchType = 'release_date_3d'
@@ -204,6 +203,7 @@ async function compareBatch(rawItems) {
 
 exports.main = async event => {
   try {
+    if (event.action === 'catalogPage') return await catalogPage(event)
     return await compareBatch(event.candidates || [])
   } catch (e) {
     console.error('fastCompareQQAlbums failed', e)
