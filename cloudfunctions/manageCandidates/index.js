@@ -268,6 +268,22 @@ async function upsertCandidates(candidates) {
 // existing neteaseArtistId — the same collection/key syncApprovedArtist already upserts avatar/hero
 // data into. Once linked, future QQ scans for that artist can skip the search+disambiguation step
 // entirely and go straight to fetching their QQ discography.
+// Mirrors artist_resolver.py's resolve_artist_match() "matched" thresholds exactly — the server
+// re-derives the verdict from the raw evidence (matchedTracks/trackOverlap/nameSimilarity) instead
+// of trusting whatever resolutionStatus label the caller attaches. link_qq_artists has no admin
+// auth (it's driven by an unattended local pipeline via the WeChat open-platform token, not a
+// logged-in session), so this is the one thing actually stopping a bad/weak pairing — accidental or
+// otherwise — from getting written as a permanent cross-platform identity link.
+function isStrongArtistMatch(l) {
+  const matched = Number(l.matchedTracks || 0)
+  const overlap = Number(l.trackOverlap || 0)
+  const nameSim = Number(l.nameSimilarity || 0)
+  if (matched >= 15) return true
+  if (matched >= 8 && nameSim >= 0.65) return true
+  if (overlap >= 0.70 && matched >= 3 && nameSim >= 0.50) return true
+  return false
+}
+
 async function linkQQArtists(links) {
   const clean = (Array.isArray(links) ? links : [])
     .map(l => ({
@@ -275,17 +291,28 @@ async function linkQQArtists(links) {
       qqArtistMid: String(l.qqArtistMid || '').trim(),
       qqArtistId: String(l.qqArtistId || '').trim(),
       qqArtistName: String(l.qqArtistName || '').trim(),
+      matchedTracks: Number(l.matchedTracks || 0),
+      trackOverlap: Number(l.trackOverlap || 0),
+      nameSimilarity: Number(l.nameSimilarity || 0),
+      score: Number(l.score || 0),
     }))
     .filter(l => l.neteaseArtistId && l.qqArtistMid)
     .slice(0, 500)
   if (!clean.length) return { success: false, error: 'no valid links' }
 
-  const results = await mapWithConcurrency(clean, 8, async link => {
+  const strong = clean.filter(isStrongArtistMatch)
+  const rejected = clean.length - strong.length
+
+  const results = await mapWithConcurrency(strong, 8, async link => {
     try {
       const patch = {
         qqArtistMid: link.qqArtistMid,
         qqArtistId: link.qqArtistId,
         qqArtistName: link.qqArtistName,
+        qqLinkMatchedTracks: link.matchedTracks,
+        qqLinkTrackOverlap: link.trackOverlap,
+        qqLinkNameSimilarity: link.nameSimilarity,
+        qqLinkScore: link.score,
         qqLinkedAt: db.serverDate(),
       }
       const exist = await db.collection('artists').where({ neteaseArtistId: link.neteaseArtistId }).field({ _id: true }).limit(1).get()
@@ -305,7 +332,7 @@ async function linkQQArtists(links) {
   const updated = results.filter(r => r === 'updated').length
   const inserted = results.filter(r => r === 'inserted').length
   const errors = results.filter(r => r === 'error').length
-  return { success: true, updated, inserted, errors, total: clean.length }
+  return { success: true, updated, inserted, errors, rejected, total: clean.length }
 }
 
 // Lets a future scan skip re-searching+re-disambiguating an artist that's already confirmed

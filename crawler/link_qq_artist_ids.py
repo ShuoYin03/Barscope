@@ -35,6 +35,7 @@ def load_links(paths: list[Path]) -> list[dict]:
             if row.get("resolutionStatus") != "matched":
                 continue
             best = row.get("bestCandidate") or {}
+            match = best.get("match") or {}
             netease_id = str(row.get("neteaseArtistId") or "").strip()
             qq_mid = str(best.get("mid") or "").strip()
             if not netease_id or not qq_mid or netease_id in seen:
@@ -45,6 +46,12 @@ def load_links(paths: list[Path]) -> list[dict]:
                 "qqArtistMid": qq_mid,
                 "qqArtistId": str(best.get("artist_id") or ""),
                 "qqArtistName": str(best.get("name") or row.get("displayName") or ""),
+                # Evidence backing the "matched" verdict — the cloud function re-checks this
+                # floor itself rather than trusting resolutionStatus alone.
+                "matchedTracks": int(match.get("matched_tracks") or 0),
+                "trackOverlap": float(match.get("track_overlap") or 0),
+                "nameSimilarity": float(match.get("name_similarity") or 0),
+                "score": float(match.get("score") or 0),
             })
     return links
 
@@ -82,15 +89,21 @@ def main() -> None:
 
     token = get_access_token(appid, appsecret)
     batches = [links[i:i + args.batch_size] for i in range(0, len(links), args.batch_size)]
-    updated = inserted = errors = 0
+    updated = inserted = errors = rejected = 0
     for index, batch in enumerate(batches, start=1):
         result = invoke_cloud_fn(token, env, "manageCandidates", {"action": "link_qq_artists", "links": batch})
         updated += int(result.get("updated", 0))
         inserted += int(result.get("inserted", 0))
         errors += int(result.get("errors", 0))
-        print(f"  [{index}/{len(batches)}] 更新 {result.get('updated', 0)}  新建 {result.get('inserted', 0)}  错误 {result.get('errors', 0)}")
+        rejected += int(result.get("rejected", 0))
+        print(
+            f"  [{index}/{len(batches)}] 更新 {result.get('updated', 0)}  新建 {result.get('inserted', 0)}  "
+            f"错误 {result.get('errors', 0)}  服务端复核不通过 {result.get('rejected', 0)}"
+        )
 
     print(f"\n完成：更新 {updated}，新建 {inserted}，错误 {errors}，共 {len(links)} 位艺人已关联QQ音乐ID。")
+    if rejected:
+        print(f"[!] 有 {rejected} 条虽然本地标记为 matched，但服务端按曲目重合度复核没通过，没有写入——这批不该出现，出现了说明两边判定逻辑不一致，需要检查。")
     print("以后同步 QQ 独家专辑时，这些艺人不用再重新搜索匹配，可以直接用已存的 qqArtistMid。")
 
 
