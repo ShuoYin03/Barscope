@@ -44,15 +44,17 @@ Page({
     if(!name){wx.showToast({title:'请输入专辑名称',icon:'none'});return}
     if(this.data.searching)return
     this.setData({searching:true,searchingPlatform:platform})
-    wx.cloud.callFunction({name:'submitAlbumRequest',data:{action:platform==='qq'?'qq-search':'search',name},success:(res:any)=>{
+    const functionName=platform==='qq'?'submitQQAlbumRequest':'submitAlbumRequest'
+    const data=platform==='qq'?{name}:{action:'search',name}
+    wx.cloud.callFunction({name:functionName,data,success:(res:any)=>{
       const r=res.result||{}
       this.setData({searching:false,searchingPlatform:''})
       if(!r.success){wx.showToast({title:r.error||'查询失败',icon:'none'});return}
-      if(r.needsManual){wx.showToast({title:platform==='qq'?'QQ音乐未找到精确匹配':'网易云未找到，请尝试QQ音乐',icon:'none'});return}
+      if(r.needsManual){wx.showToast({title:platform==='qq'?'QQ音乐未找到匹配':'网易云未找到，请尝试QQ音乐',icon:'none'});return}
       if(r.existed){wx.showToast({title:r.status==='approved'?'该专辑已收录':r.status==='pending'?'该专辑审核中':'已有记录',icon:'none'});return}
       wx.showToast({title:`已从${platform==='qq'?'QQ音乐':'网易云'}提交`,icon:'success'})
       setTimeout(()=>wx.navigateBack(),700)
-    },fail:()=>{this.setData({searching:false,searchingPlatform:''});wx.showToast({title:'查询失败',icon:'none'})}} as any)
+    },fail:(err:any)=>{console.error(`[${functionName}] fail`,err);this.setData({searching:false,searchingPlatform:''});wx.showToast({title:String(err&&err.errMsg||'查询失败').slice(0,28),icon:'none'})}} as any)
   },
   onSearch(){this.searchPlatform('netease')},
   onSearchNetEase(){this.searchPlatform('netease')},
