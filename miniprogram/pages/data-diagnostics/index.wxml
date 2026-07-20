@@ -1,0 +1,52 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <view class="back" bindtap="onBack">←</view>
+    <view><text class="title">DATA DIAGNOSTICS</text><text class="sub">数据诊断</text></view>
+    <view class="scan" bindtap="onScan">{{loading?'扫描中…':'重新扫描'}}</view>
+  </view>
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="health-card">
+      <text class="kicker">BARSCOPE DATA HEALTH</text>
+      <text class="health-score">{{summary.healthScore}}%</text>
+      <view class="health-meta"><text>{{summary.albumCount}} Albums</text><text>{{summary.artistCount}} Artists</text></view>
+    </view>
+
+    <view class="grid">
+      <view class="metric"><text class="metric-num">{{summary.missingArtists}}</text><text class="metric-label">归属艺人未入库</text></view>
+      <view class="metric"><text class="metric-num">{{summary.missingOwnership}}</text><text class="metric-label">专辑归属缺失</text></view>
+      <view class="metric"><text class="metric-num">{{summary.missingDescription}}</text><text class="metric-label">缺少简介</text></view>
+      <view class="metric"><text class="metric-num">{{summary.missingReleaseDate}}</text><text class="metric-label">缺发行日期</text></view>
+    </view>
+
+    <view class="tabs">
+      <view class="tab {{activeTab==='artists'?'active':''}}" data-tab="artists" bindtap="onTabTap">归属艺人未入库 {{summary.missingArtists}}</view>
+      <view class="tab {{activeTab==='ownership'?'active':''}}" data-tab="ownership" bindtap="onTabTap">归属信息缺失 {{summary.missingOwnership}}</view>
+    </view>
+
+    <block wx:if="{{activeTab==='artists'}}">
+      <view wx:if="{{missingArtists.length}}" class="bulk-bar"><view bindtap="onSelectAll">{{selectedCount===missingArtists.length?'取消全选':'全选'}} · 已选 {{selectedCount}}</view><view class="bulk-btn" bindtap="onSendSelected">送入艺人审核</view></view>
+      <view wx:if="{{!loading && !missingArtists.length}}" class="empty">✓ 没有发现归属艺人缺失</view>
+      <view wx:for="{{missingArtists}}" wx:key="artistId" class="issue-card {{item.selected?'selected':''}}">
+        <view class="check" data-id="{{item.artistId}}" bindtap="onToggleArtist">{{item.selected?'✓':''}}</view>
+        <view class="issue-main">
+          <text class="issue-title">{{item.artistName}}</text>
+          <text class="issue-id">NETEASE ARTIST ID · {{item.artistId}}</text>
+          <text class="issue-desc">关联 {{item.albumCount}} 张已入库专辑</text>
+          <view class="album-chips"><text wx:for="{{item.albums}}" wx:key="albumId" class="chip" data-id="{{item.albumId}}" catchtap="onAlbumTap">《{{item.title}}》</text></view>
+        </view>
+        <view class="send-one" data-id="{{item.artistId}}" bindtap="onSendOne">送审 →</view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view wx:if="{{!loading && !missingOwnership.length}}" class="empty">✓ 没有发现专辑归属缺失</view>
+      <view wx:for="{{missingOwnership}}" wx:key="albumId" class="issue-card album-issue" data-id="{{item.albumId}}" bindtap="onAlbumTap">
+        <image wx:if="{{item.coverUrl}}" class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
+        <view class="issue-main"><text class="issue-title">{{item.title}}</text><text class="issue-desc">当前艺人字段：{{item.artist||'空'}}</text><text class="issue-id">SOURCE ID · {{item.sourceId||'—'}}</text></view>
+        <text class="send-one">修正归属 →</text>
+      </view>
+    </block>
+
+    <view class="footer-note">Phase 1 · Album Ownership Audit / Data Health</view>
+  </scroll-view>
+</view>
