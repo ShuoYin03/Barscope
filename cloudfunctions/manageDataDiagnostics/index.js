@@ -11,6 +11,10 @@ async function checkAdmin(openId) {
   } catch (e) { return false }
 }
 
+function normalizeName(v) {
+  return String(v || '').trim().toLowerCase().replace(/[\s._\-·'’()（）\[\]【】]/g, '')
+}
+
 function ownerPairs(album) {
   if (Array.isArray(album.ownerArtists) && album.ownerArtists.length) {
     return album.ownerArtists
@@ -37,39 +41,72 @@ async function scanMeta() {
 }
 
 async function findExistingOwners(owners) {
-  const ids = [...new Set(owners.map(o => String(o.id || '')).filter(Boolean))].slice(0, 100)
-  const names = [...new Set(owners.map(o => String(o.name || '').trim().toLowerCase()).filter(Boolean))]
+  const ids = [...new Set(owners.map(o => String(o.id || '')).filter(Boolean))]
+  const rawNames = [...new Set(owners.map(o => String(o.name || '').trim()).filter(Boolean))]
   const existingIds = new Set()
-  const existingNames = new Set()
+  const exactNameMap = new Map()
+  const normalizedNameMap = new Map()
 
-  if (ids.length) {
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100)
     try {
-      const r = await db.collection('artist_candidates').where({ status: 'approved', artistId: _.in(ids) }).field({ artistId: true, artistName: true }).limit(100).get()
+      const r = await db.collection('artist_candidates').where({ status: 'approved', artistId: _.in(chunk) }).field({ _id:true, artistId:true, artistName:true }).limit(100).get()
       r.data.forEach(a => {
         if (a.artistId) existingIds.add(String(a.artistId))
-        if (a.artistName) existingNames.add(String(a.artistName).trim().toLowerCase())
+        const raw = String(a.artistName || '').trim()
+        if (raw) {
+          exactNameMap.set(raw.toLowerCase(), a)
+          normalizedNameMap.set(normalizeName(raw), a)
+        }
       })
     } catch (e) {}
     try {
-      const r = await db.collection('artists').where({ artistId: _.in(ids) }).field({ artistId: true, neteaseArtistId: true, name: true, artistName: true }).limit(100).get()
+      const r = await db.collection('artists').where({ artistId: _.in(chunk) }).field({ _id:true, artistId:true, neteaseArtistId:true, name:true, artistName:true }).limit(100).get()
       r.data.forEach(a => {
         const id = String(a.artistId || a.neteaseArtistId || '')
-        const name = String(a.artistName || a.name || '').trim().toLowerCase()
+        const raw = String(a.artistName || a.name || '').trim()
         if (id) existingIds.add(id)
-        if (name) existingNames.add(name)
+        if (raw) {
+          exactNameMap.set(raw.toLowerCase(), a)
+          normalizedNameMap.set(normalizeName(raw), a)
+        }
       })
     } catch (e) {}
   }
 
-  // A small batch can safely use exact name lookups as a fallback for old data without IDs.
-  for (const name of names.slice(0, 20)) {
-    if (existingNames.has(name)) continue
+  // Query every owner name, not just the first 20. The old 20-name cap caused large false-positive batches.
+  for (let i = 0; i < rawNames.length; i += 100) {
+    const chunk = rawNames.slice(i, i + 100)
     try {
-      const r = await db.collection('artist_candidates').where({ status: 'approved', artistName: db.RegExp({ regexp: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, options: 'i' }) }).field({ artistName: true }).limit(1).get()
-      if (r.data.length) existingNames.add(name)
+      const r = await db.collection('artist_candidates').where({ status: 'approved', artistName: _.in(chunk) }).field({ _id:true, artistId:true, artistName:true }).limit(100).get()
+      r.data.forEach(a => {
+        const raw = String(a.artistName || '').trim()
+        if (!raw) return
+        exactNameMap.set(raw.toLowerCase(), a)
+        normalizedNameMap.set(normalizeName(raw), a)
+      })
     } catch (e) {}
   }
-  return { existingIds, existingNames }
+
+  return { existingIds, exactNameMap, normalizedNameMap }
+}
+
+function addIssue(map, owner, album, extra = {}) {
+  const key = owner.id || `name:${normalizeName(owner.name)}`
+  if (!map.has(key)) {
+    map.set(key, {
+      artistId: owner.id || '',
+      artistName: owner.name || '未知艺人',
+      albumCount: 0,
+      albumIds: [],
+      albums: [],
+      ...extra,
+    })
+  }
+  const row = map.get(key)
+  row.albumCount++
+  row.albumIds.push(album._id)
+  if (row.albums.length < 8) row.albums.push({ albumId: album._id, title: album.title || '', coverUrl: album.coverUrl || album.cover || '' })
 }
 
 async function scanPage(skip, limit) {
@@ -79,10 +116,12 @@ async function scanPage(skip, limit) {
   const albums = (r.data || []).filter(a => a.approved !== false)
   const allOwners = []
   albums.forEach(a => allOwners.push(...ownerPairs(a)))
-  const { existingIds, existingNames } = await findExistingOwners(allOwners)
+  const { existingIds, exactNameMap, normalizedNameMap } = await findExistingOwners(allOwners)
 
   const missingOwnership = []
   const missingArtistMap = new Map()
+  const idMismatchMap = new Map()
+  const suspectedMatchMap = new Map()
   let missingDescription = 0
   let missingCover = 0
   let missingReleaseDate = 0
@@ -105,23 +144,34 @@ async function scanPage(skip, limit) {
     }
 
     owners.forEach(owner => {
-      const normalizedName = String(owner.name || '').trim().toLowerCase()
-      const exists = (owner.id && existingIds.has(String(owner.id))) || (normalizedName && existingNames.has(normalizedName))
-      if (exists || (!owner.id && !normalizedName)) return
-      const key = owner.id || `name:${normalizedName}`
-      if (!missingArtistMap.has(key)) {
-        missingArtistMap.set(key, {
-          artistId: owner.id || '',
-          artistName: owner.name || '未知艺人',
-          albumCount: 0,
-          albumIds: [],
-          albums: [],
+      const id = String(owner.id || '')
+      const rawLower = String(owner.name || '').trim().toLowerCase()
+      const normalized = normalizeName(owner.name)
+
+      if (id && existingIds.has(id)) return
+
+      const exact = rawLower ? exactNameMap.get(rawLower) : null
+      if (exact) {
+        addIssue(idMismatchMap, owner, album, {
+          matchedArtistId: String(exact.artistId || exact.neteaseArtistId || ''),
+          matchedArtistName: String(exact.artistName || exact.name || owner.name || ''),
+          matchedArtistDocId: String(exact._id || ''),
         })
+        return
       }
-      const row = missingArtistMap.get(key)
-      row.albumCount++
-      row.albumIds.push(album._id)
-      if (row.albums.length < 8) row.albums.push({ albumId: album._id, title: album.title || '', coverUrl: album.coverUrl || album.cover || '' })
+
+      const suspected = normalized ? normalizedNameMap.get(normalized) : null
+      if (suspected) {
+        addIssue(suspectedMatchMap, owner, album, {
+          matchedArtistId: String(suspected.artistId || suspected.neteaseArtistId || ''),
+          matchedArtistName: String(suspected.artistName || suspected.name || ''),
+          matchedArtistDocId: String(suspected._id || ''),
+        })
+        return
+      }
+
+      if (!id && !normalized) return
+      addIssue(missingArtistMap, owner, album)
     })
   }
 
@@ -136,6 +186,8 @@ async function scanPage(skip, limit) {
     missingReleaseDate,
     missingOwnership,
     missingArtists: Array.from(missingArtistMap.values()),
+    idMismatches: Array.from(idMismatchMap.values()),
+    suspectedMatches: Array.from(suspectedMatchMap.values()),
   }
 }
 
