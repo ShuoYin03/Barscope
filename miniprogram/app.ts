@@ -2,7 +2,7 @@ import { initAuth } from './utils/auth'
 import { applyStoredTheme } from './utils/theme'
 import { BEBAS_NEUE_B64 } from './assets/fonts/bebas-b64'
 
-function installAlbumCoverCorrectionPatch() {
+function installAlbumCorrectionEntryPatch() {
   const originalShowActionSheet = wx.showActionSheet.bind(wx)
 
   ;(wx as any).showActionSheet = (options: WechatMiniprogram.ShowActionSheetOption) => {
@@ -12,20 +12,18 @@ function installAlbumCoverCorrectionPatch() {
       originalItems.includes('修改专辑归属') &&
       originalItems.includes('类型纠错')
 
-    if (!isAlbumCorrectionSheet || originalItems.includes('修改封面')) {
-      return originalShowActionSheet(options)
-    }
+    if (!isAlbumCorrectionSheet) return originalShowActionSheet(options)
 
-    const insertAt = originalItems.indexOf('类型纠错') + 1
-    const itemList = originalItems.slice()
-    itemList.splice(insertAt, 0, '修改封面')
+    const itemList = ['修改封面 / 信息']
+    if (originalItems.includes('重新同步 Tracks')) itemList.push('重新同步 Tracks')
+    if (originalItems.includes('移入专辑候选区')) itemList.push('移入专辑候选区')
 
     return originalShowActionSheet({
       ...options,
       itemList,
       success: (res) => {
         const picked = itemList[res.tapIndex]
-        if (picked === '修改封面') {
+        if (picked === '修改封面 / 信息') {
           const pages = getCurrentPages() as any[]
           const page = pages[pages.length - 1]
           const album = page && page.data && page.data.album
@@ -33,50 +31,8 @@ function installAlbumCoverCorrectionPatch() {
             wx.showToast({ title: '未找到专辑信息', icon: 'none' })
             return
           }
-
-          wx.chooseMedia({
-            count: 1,
-            mediaType: ['image'],
-            sourceType: ['album', 'camera'],
-            success: (chooseRes: any) => {
-              const filePath = chooseRes.tempFiles && chooseRes.tempFiles[0] && chooseRes.tempFiles[0].tempFilePath
-              if (!filePath) return
-
-              wx.showLoading({ title: '上传封面…', mask: true })
-              const ext = (filePath.split('.').pop() || 'jpg').toLowerCase()
-              const cloudPath = `album-covers/manual/${album.id}_${Date.now()}.${ext}`
-
-              wx.cloud.uploadFile({
-                cloudPath,
-                filePath,
-                success: (uploadRes: any) => {
-                  wx.cloud.callFunction({
-                    name: 'updateAlbumCover',
-                    data: { albumId: album.id, coverUrl: uploadRes.fileID },
-                    success: (callRes: any) => {
-                      wx.hideLoading()
-                      const result = callRes.result || {}
-                      if (!result.success) {
-                        wx.showToast({ title: result.error || '修改失败', icon: 'none' })
-                        return
-                      }
-                      if (page && typeof page.setData === 'function') {
-                        page.setData({ 'album.coverUrl': uploadRes.fileID })
-                      }
-                      wx.showToast({ title: '封面已更新', icon: 'success' })
-                    },
-                    fail: () => {
-                      wx.hideLoading()
-                      wx.showToast({ title: '修改失败', icon: 'none' })
-                    },
-                  } as any)
-                },
-                fail: () => {
-                  wx.hideLoading()
-                  wx.showToast({ title: '封面上传失败', icon: 'none' })
-                },
-              })
-            },
+          wx.navigateTo({
+            url: `/pages/album-edit/index?albumId=${encodeURIComponent(album.id)}&title=${encodeURIComponent(album.title || '')}`,
           })
           return
         }
@@ -111,7 +67,7 @@ App<IAppOption>({
       traceUser: true,
     })
 
-    installAlbumCoverCorrectionPatch()
+    installAlbumCorrectionEntryPatch()
 
     // Bebas Neue bundled as base64 — no network needed, loads synchronously before first render.
     wx.loadFontFace({
