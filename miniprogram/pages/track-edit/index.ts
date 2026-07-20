@@ -1,7 +1,7 @@
 import { getThemeClass } from '../../utils/theme'
 
 interface TrackGuest { id:number; name:string }
-interface EditTrack { songId:string; name:string; guests:TrackGuest[] }
+interface EditTrack { songId:string; name:string; guests:TrackGuest[]; clientKey:string }
 interface GuestPick { artistId:string; artistName:string; picUrl:string; selected?:boolean }
 
 let _pickerSearchTimer:any = null
@@ -19,6 +19,7 @@ Page({
     editVisible:false,
     editTrackIndex:-1,
     editName:'',
+    editIsNew:false,
     pickerVisible:false,
     pickerTrackIndex:-1,
     pickerKeyword:'',
@@ -49,10 +50,11 @@ Page({
       success:(res:any)=>{
         const r=res.result||{}
         const album=r.success?r.album:null
-        const tracks:EditTrack[]=((album&&album.tracks)||[]).map((t:any)=>({
+        const tracks:EditTrack[]=((album&&album.tracks)||[]).map((t:any,index:number)=>({
           songId:String(t.songId||''),
           name:t.name||'',
           guests:(t.guests||[]).map((g:any)=>({id:Number(g.id||0),name:g.name||''})),
+          clientKey:`existing-${String(t.songId||index)}-${index}`,
         }))
         this.setData({tracks,loading:false})
       },
@@ -67,7 +69,25 @@ Page({
     const idx=Number((e.currentTarget.dataset as any).idx)
     const track=this.data.tracks[idx]
     if(!track)return
-    this.setData({editVisible:true,editTrackIndex:idx,editName:track.name})
+    this.setData({editVisible:true,editTrackIndex:idx,editName:track.name,editIsNew:false})
+  },
+
+  onAddTrack(){
+    const tracks=this.data.tracks.slice()
+    const idx=tracks.length
+    tracks.push({
+      songId:'',
+      name:'',
+      guests:[],
+      clientKey:`new-${Date.now()}-${idx}`,
+    })
+    this.setData({
+      tracks,
+      editVisible:true,
+      editTrackIndex:idx,
+      editName:'',
+      editIsNew:true,
+    })
   },
 
   onEditNameInput(e:WechatMiniprogram.Input){
@@ -75,7 +95,12 @@ Page({
   },
 
   onEditCancel(){
-    this.setData({editVisible:false,editTrackIndex:-1,editName:''})
+    if(this.data.editIsNew&&this.data.editTrackIndex>=0){
+      const tracks=this.data.tracks.slice()
+      tracks.splice(this.data.editTrackIndex,1)
+      this.setData({tracks})
+    }
+    this.setData({editVisible:false,editTrackIndex:-1,editName:'',editIsNew:false})
   },
 
   onEditConfirm(){
@@ -85,7 +110,7 @@ Page({
     if(!name){wx.showToast({title:'曲目名称不能为空',icon:'none'});return}
     const tracks=this.data.tracks.slice()
     tracks[idx]={...tracks[idx],name}
-    this.setData({tracks,editVisible:false,editTrackIndex:-1,editName:''})
+    this.setData({tracks,editVisible:false,editTrackIndex:-1,editName:'',editIsNew:false})
   },
 
   onMoveUp(e:WechatMiniprogram.TouchEvent){
