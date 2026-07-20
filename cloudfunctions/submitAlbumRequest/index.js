@@ -29,7 +29,7 @@ async function searchAndSubmit(event, openId) {
   if (!sourceId) return { success:true, needsManual:true, searchedName:keyword }
 
   const duplicate = await findDuplicate(sourceId)
-  if (duplicate) return duplicate
+  if (duplicate && duplicate.kind !== 'deleted_candidate') return duplicate
 
   const artists = Array.isArray(picked.artists) ? picked.artists : []
   const artistNames = artists.map(a => a && a.name).filter(Boolean)
@@ -39,7 +39,7 @@ async function searchAndSubmit(event, openId) {
   const releaseDate = published ? `${published.getUTCFullYear()}-${String(published.getUTCMonth()+1).padStart(2,'0')}-${String(published.getUTCDate()).padStart(2,'0')}` : ''
   const releaseYear = published ? published.getUTCFullYear() : 0
 
-  await db.collection('album_candidates').add({ data:{
+  const payload = {
     sourceId,
     submissionMode:'netease',
     title:String(picked.name || keyword),
@@ -56,16 +56,28 @@ async function searchAndSubmit(event, openId) {
     reviewCount:0,
     genres:[],
     status:'pending',
-    reportReason:'用户提交新专辑（网易云匹配）',
+    decision:null,
+    reportReason:duplicate && duplicate.kind === 'deleted_candidate' ? '用户申请重新收录已删除专辑（网易云匹配）' : '用户提交新专辑（网易云匹配）',
     reportSource:'discover-submit',
     requestSource:'discover-submit',
     requesterOpenId:openId,
     requestedName:keyword,
     foundFrom:'用户提交',
+    reSubmittedAfterDeletion:!!(duplicate && duplicate.kind === 'deleted_candidate'),
     addedAt:db.serverDate(),
     decidedAt:null,
-  } })
-  return { success:true, existed:false, albumTitle:String(picked.name || keyword), sourceId, submissionMode:'netease' }
+    decidedBy:null,
+  }
+
+  // A deleted album is a tombstone for all automated imports. A deliberate user submission is the
+  // one exception: reopen the existing tombstone as pending instead of creating a duplicate record.
+  if (duplicate && duplicate.kind === 'deleted_candidate') {
+    await db.collection('album_candidates').doc(duplicate.id).update({ data:payload })
+    return { success:true, existed:false, reopened:true, albumTitle:payload.title, sourceId, submissionMode:'netease' }
+  }
+
+  await db.collection('album_candidates').add({ data:payload })
+  return { success:true, existed:false, albumTitle:payload.title, sourceId, submissionMode:'netease' }
 }
 
 function sanitizeArtistRef(a) {
@@ -156,8 +168,12 @@ async function findDuplicate(sourceId) {
     db.collection('albums').where({ sourceId }).limit(1).get(),
     db.collection('album_candidates').where({ sourceId }).limit(1).get(),
   ])
-  if (existingAlbum.data.length) return { success:true, existed:true, status:'approved', albumTitle:existingAlbum.data[0].title || '' }
-  if (existingCandidate.data.length) return { success:true, existed:true, status:existingCandidate.data[0].status || 'pending', albumTitle:existingCandidate.data[0].title || '' }
+  if (existingAlbum.data.length) return { success:true, existed:true, status:'approved', albumTitle:existingAlbum.data[0].title || '', kind:'album' }
+  if (existingCandidate.data.length) {
+    const row = existingCandidate.data[0]
+    if (row.status === 'deleted') return { kind:'deleted_candidate', id:row._id, row }
+    return { success:true, existed:true, status:row.status || 'pending', albumTitle:row.title || '', kind:'candidate' }
+  }
   return null
 }
 
