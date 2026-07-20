@@ -86,31 +86,62 @@ function normalizeTrack(song, position) {
   }
 }
 
-// Best-effort link from a playlist's NetEase creator name to a registered Barscope account —
-// there's no real foreign key between the two (Barscope users sign in via WeChat, not NetEase),
-// so this is a nickname match. Only meaningful for critics who use the same handle on both
-// (e.g. 乐评人 playlists imported under their known name), not a guarantee.
-async function matchBarscopeCreator(name) {
+async function resolveCloudAvatarUrl(avatarUrl) {
+  const url = String(avatarUrl || '')
+  if (!url.startsWith('cloud://')) return url
+  try {
+    const r = await cloud.getTempFileURL({ fileList: [url] })
+    const hit = (r.fileList || [])[0]
+    return (hit && hit.status === 0 && hit.tempFileURL) || url
+  } catch (e) {
+    return url
+  }
+}
+
+function pickBestUserDoc(rows) {
+  return rows.reduce((acc, doc) => (!acc || (!acc.avatarUrl && doc.avatarUrl)) ? doc : acc, null)
+}
+
+// Directly link to the account that actually submitted this playlist, when we know it — a
+// community submission (submit_public) records the logged-in user's own openId at submit time,
+// so that's an exact, guaranteed-correct identity, not a guess.
+async function findBarscopeCreatorBySubmitter(openId) {
+  if (!openId) return null
+  try {
+    const res = await db.collection('users').where({ openId }).limit(5).get()
+    const rows = res.data || []
+    if (!rows.length) return null
+    const best = pickBestUserDoc(rows)
+    const avatarUrl = await resolveCloudAvatarUrl(best.avatarUrl)
+    return { openId, nickName: best.nickName || '', avatarUrl, matchType: 'submitter' }
+  } catch (e) {
+    return null
+  }
+}
+
+// Fallback for playlists with no known submitter (e.g. admin-imported 乐评人 lists, where
+// importedBy is the admin's own account, not necessarily the critic's) — best-effort nickname
+// match against the NetEase creator name. Only meaningful for critics using the same handle on
+// both platforms; there's no real foreign key between a NetEase identity and a WeChat-authenticated
+// Barscope account, so this is a guess, not a guarantee.
+async function findBarscopeCreatorByName(name) {
   const trimmed = String(name || '').trim()
   if (!trimmed) return null
   try {
     const res = await db.collection('users').where({ nickName: trimmed }).limit(5).get()
     const rows = res.data || []
     if (!rows.length) return null
-    const best = rows.reduce((acc, doc) => (!acc || (!acc.avatarUrl && doc.avatarUrl)) ? doc : acc, null)
-    let avatarUrl = String(best.avatarUrl || '')
-    if (avatarUrl.startsWith('cloud://')) {
-      try {
-        const r = await cloud.getTempFileURL({ fileList: [avatarUrl] })
-        const hit = (r.fileList || [])[0]
-        if (hit && hit.status === 0 && hit.tempFileURL) avatarUrl = hit.tempFileURL
-      } catch (e) { /* keep the cloud:// id if resolution fails */ }
-    }
+    const best = pickBestUserDoc(rows)
     if (!best.openId) return null
-    return { openId: best.openId, nickName: best.nickName || trimmed, avatarUrl }
+    const avatarUrl = await resolveCloudAvatarUrl(best.avatarUrl)
+    return { openId: best.openId, nickName: best.nickName || trimmed, avatarUrl, matchType: 'nickname' }
   } catch (e) {
     return null
   }
+}
+
+async function resolveBarscopeCreator(item) {
+  return (await findBarscopeCreatorBySubmitter(item.submittedBy)) || (await findBarscopeCreatorByName(item.creatorName))
 }
 
 async function fetchAlbumArtists(albumId) {
@@ -466,7 +497,7 @@ async function getPublicDetail(id) {
     },
   })
 
-  const barscopeCreator = await matchBarscopeCreator(item.creatorName)
+  const barscopeCreator = await resolveBarscopeCreator(item)
 
   return {
     success: true,
