@@ -139,6 +139,8 @@ exports.main = async (event, context) => {
   // ── 不需要鉴权的动作 ───────────────────────────────────────────────────────
   if (action === 'upsert_candidates') return await upsertCandidates(event.candidates || [])
   if (action === 'get_decisions')     return await getDecisions()
+  if (action === 'link_qq_artists')   return await linkQQArtists(event.links || [])
+  if (action === 'get_qq_artist_links') return await getQQArtistLinks()
   if (action === 'check_admin')       return { isAdmin: await checkAdmin(openId) }
 
   // ── 需要 admin 鉴权的动作 ──────────────────────────────────────────────────
@@ -258,6 +260,72 @@ async function upsertCandidates(candidates) {
     skipped:  existSet.size,
     errors:   totalErrors,
   }
+}
+
+// ── link_qq_artists ───────────────────────────────────────────────────────────
+// Persists a confirmed NetEase<->QQ artist identity link (from resolve_qq_artist_candidates.py's
+// track-overlap disambiguation, never a name guess) onto the artists collection, keyed by the
+// existing neteaseArtistId — the same collection/key syncApprovedArtist already upserts avatar/hero
+// data into. Once linked, future QQ scans for that artist can skip the search+disambiguation step
+// entirely and go straight to fetching their QQ discography.
+async function linkQQArtists(links) {
+  const clean = (Array.isArray(links) ? links : [])
+    .map(l => ({
+      neteaseArtistId: String(l.neteaseArtistId || '').trim(),
+      qqArtistMid: String(l.qqArtistMid || '').trim(),
+      qqArtistId: String(l.qqArtistId || '').trim(),
+      qqArtistName: String(l.qqArtistName || '').trim(),
+    }))
+    .filter(l => l.neteaseArtistId && l.qqArtistMid)
+    .slice(0, 500)
+  if (!clean.length) return { success: false, error: 'no valid links' }
+
+  const results = await mapWithConcurrency(clean, 8, async link => {
+    try {
+      const patch = {
+        qqArtistMid: link.qqArtistMid,
+        qqArtistId: link.qqArtistId,
+        qqArtistName: link.qqArtistName,
+        qqLinkedAt: db.serverDate(),
+      }
+      const exist = await db.collection('artists').where({ neteaseArtistId: link.neteaseArtistId }).field({ _id: true }).limit(1).get()
+      if (exist.data.length) {
+        await db.collection('artists').doc(exist.data[0]._id).update({ data: patch })
+        return 'updated'
+      }
+      await db.collection('artists').add({
+        data: { neteaseArtistId: link.neteaseArtistId, artistId: Number(link.neteaseArtistId) || 0, ...patch },
+      })
+      return 'inserted'
+    } catch (e) {
+      return 'error'
+    }
+  })
+
+  const updated = results.filter(r => r === 'updated').length
+  const inserted = results.filter(r => r === 'inserted').length
+  const errors = results.filter(r => r === 'error').length
+  return { success: true, updated, inserted, errors, total: clean.length }
+}
+
+// Lets a future scan skip re-searching+re-disambiguating an artist that's already confirmed
+// linked — pull the whole link table once and only run crawl_qq_artist_candidates.py /
+// resolve_qq_artist_candidates.py against the artists missing from it.
+async function getQQArtistLinks() {
+  const rows = []
+  let skip = 0
+  const pageSize = 500
+  while (true) {
+    const r = await db.collection('artists')
+      .where({ qqArtistMid: _.exists(true) })
+      .skip(skip).limit(pageSize)
+      .field({ neteaseArtistId: true, qqArtistMid: true, qqArtistId: true, qqArtistName: true, qqLinkedAt: true })
+      .get()
+    rows.push(...r.data)
+    if (r.data.length < pageSize) break
+    skip += pageSize
+  }
+  return { success: true, count: rows.length, links: rows }
 }
 
 // ── list ──────────────────────────────────────────────────────────────────────
