@@ -192,7 +192,7 @@ def main() -> None:
         raise SystemExit("config.json 缺少 appid / appsecret / env")
 
     token = get_access_token(appid, appsecret)
-    upload_stats, inserted_items = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
+    upload_stats, inserted_items, failed_items = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
     print(f"\nCrawler stats: {dict(stats)}")
     print(f"Cloud result: {dict(upload_stats)}")
 
@@ -204,6 +204,15 @@ def main() -> None:
     print(f"\n判定为「待审核/新增」的候选（{len(inserted_items)} 条）已写入 -> {new_candidates_path}")
     print("标题匹配可能漏判 QQ 独家专辑的重复（标题/脏标不一样），建议再跑一遍曲目复核：")
     print(f"  python3 verify_qq_new_candidates_by_tracks.py --new-candidates {new_candidates_path}")
+
+    if failed_items:
+        failed_path = Path(args.output).with_name(Path(args.output).stem + "_failed_batches.json")
+        failed_path.write_text(
+            json.dumps({"schemaVersion": 1, "count": len(failed_items), "results": failed_items}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(f"\n[!] 有 {len(failed_items)} 条因为网络问题彻底失败，没有处理，已保存到 -> {failed_path}")
+        print("  建议网络恢复后原样重跑一次本命令；已经成功处理过的候选，服务端会按 sourceKey 自动识别跳过，不会重复。")
 
     if args.preview:
         print("\n预览完成：以上是真实的去重判定结果，没有写入任何数据。确认没问题后去掉 --preview 正式跑。")

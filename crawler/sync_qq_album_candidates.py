@@ -182,30 +182,50 @@ def get_access_token(appid: str, appsecret: str) -> str:
     return str(token)
 
 
-def invoke_cloud_fn(token: str, env: str, name: str, body: dict) -> dict:
-    response = requests.post(
-        "https://api.weixin.qq.com/tcb/invokecloudfunction",
-        params={"access_token": token, "env": env, "name": name},
-        json=body,
-        timeout=90,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    if payload.get("errcode", 0) != 0:
-        raise RuntimeError(f"云函数调用失败: {payload}")
-    return json.loads(payload.get("resp_data", "{}"))
+def invoke_cloud_fn(token: str, env: str, name: str, body: dict, max_retries: int = 4) -> dict:
+    # Transient network blips (connect timeouts, DNS hiccups) shouldn't kill a run that's
+    # hundreds of batches in — retry with exponential backoff before giving up.
+    backoff = 2.0
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.post(
+                "https://api.weixin.qq.com/tcb/invokecloudfunction",
+                params={"access_token": token, "env": env, "name": name},
+                json=body,
+                timeout=90,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("errcode", 0) != 0:
+                raise RuntimeError(f"云函数调用失败: {payload}")
+            return json.loads(payload.get("resp_data", "{}"))
+        except (requests.exceptions.RequestException, RuntimeError) as exc:
+            last_exc = exc
+            if attempt >= max_retries:
+                break
+            print(f"  [!] 调用失败（第 {attempt + 1}/{max_retries} 次重试前）: {exc}")
+            time.sleep(backoff)
+            backoff *= 2
+    raise last_exc  # type: ignore[misc]
 
 
 def upload_candidates(
     candidates: list[dict], token: str, env: str, batch_size: int = 20, dry_run: bool = False
-) -> tuple[Counter, list[dict]]:
+) -> tuple[Counter, list[dict], list[dict]]:
     totals: Counter = Counter()
     samples: list[dict] = []
     inserted_items: list[dict] = []
+    failed_items: list[dict] = []
     batches = [candidates[i:i + batch_size] for i in range(0, len(candidates), batch_size)]
     verb = "预览" if dry_run else "upload"
     for index, batch in enumerate(batches, start=1):
-        result = invoke_cloud_fn(token, env, "manageAlbumCandidates", {"action": "upsert", "candidates": batch, "dryRun": dry_run})
+        try:
+            result = invoke_cloud_fn(token, env, "manageAlbumCandidates", {"action": "upsert", "candidates": batch, "dryRun": dry_run})
+        except Exception as exc:  # noqa: BLE001 - one permanently-failing batch must not lose all prior progress
+            print(f"  {verb} [{index}/{len(batches)}] 彻底失败，跳过这批（{len(batch)}条），保留其余批次的结果: {exc}")
+            failed_items.extend(batch)
+            continue
         totals.update({
             "inserted": int(result.get("inserted", 0)),
             "skipped": int(result.get("skipped", 0)),
@@ -228,7 +248,7 @@ def upload_candidates(
         print("\n服务端判定为「已存在，会绑定不新建」的样例（最多显示30条）：")
         for s in samples[:30]:
             print(f"  QQ「{s.get('title')}」({s.get('artist')})  ==  已有专辑「{s.get('existingTitle')}」[{s.get('existingAlbumId')}]")
-    return totals, inserted_items
+    return totals, inserted_items, failed_items
 
 
 def main() -> None:
@@ -333,7 +353,7 @@ def main() -> None:
         raise SystemExit("config.json 缺少 appid / appsecret / env")
 
     token = get_access_token(appid, appsecret)
-    upload_stats, inserted_items = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
+    upload_stats, inserted_items, failed_items = upload_candidates(deduped, token, env, batch_size=max(1, args.batch_size), dry_run=args.preview)
     print(f"\nCrawler stats: {dict(stats)}")
     print(f"Cloud result: {dict(upload_stats)}")
 
@@ -345,6 +365,15 @@ def main() -> None:
     print(f"\n判定为「待审核/新增」的候选（{len(inserted_items)} 条）已写入 -> {new_candidates_path}")
     print("标题匹配可能漏判 QQ 独家专辑的重复（标题/脏标不一样），建议再跑一遍曲目复核：")
     print(f"  python3 verify_qq_new_candidates_by_tracks.py --new-candidates {new_candidates_path}")
+
+    if failed_items:
+        failed_path = Path(args.output).with_name(Path(args.output).stem + "_failed_batches.json")
+        failed_path.write_text(
+            json.dumps({"schemaVersion": 1, "count": len(failed_items), "results": failed_items}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(f"\n[!] 有 {len(failed_items)} 条因为网络问题彻底失败，没有处理，已保存到 -> {failed_path}")
+        print("  建议网络恢复后原样重跑一次本命令；已经成功处理过的候选，服务端会按 sourceKey 自动识别跳过，不会重复。")
 
     if args.preview:
         print("\n预览完成：以上是真实的去重判定结果，没有写入任何数据。确认没问题后去掉 --preview 正式跑。")
