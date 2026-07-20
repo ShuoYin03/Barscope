@@ -1,98 +1,32 @@
 <view class="page {{themeClass}}">
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
     <view class="topbar-back" bindtap="onBack"><text class="back-arrow">←</text></view>
-    <view class="topbar-titles">
-      <text class="topbar-title">ALBUMS</text>
-      <text class="topbar-sub">ADMIN</text>
-    </view>
+    <view class="topbar-titles"><text class="topbar-title">ALBUMS</text><text class="topbar-sub">ADMIN</text></view>
   </view>
-
-  <view class="section-tabs">
-    <view class="section-tab active" bindtap="onSectionTap" data-section="library">
-      <text class="section-tab-label">专辑库</text>
-    </view>
-    <view class="section-tab" bindtap="onSectionTap" data-section="pending">
-      <text class="section-tab-label">待审核</text>
-      <view wx:if="{{pendingCount > 0}}" class="tab-badge"><text>{{pendingCount}}</text></view>
-    </view>
-    <view class="section-tab" bindtap="onSectionTap" data-section="ownership">
-      <text class="section-tab-label">归属纠错</text>
-      <view wx:if="{{ownershipCount > 0}}" class="tab-badge"><text>{{ownershipCount}}</text></view>
-    </view>
-    <view class="section-tab" bindtap="onSectionTap" data-section="hidden">
-      <text class="section-tab-label">隐藏专辑</text>
-      <view wx:if="{{hiddenCount > 0}}" class="tab-badge"><text>{{hiddenCount}}</text></view>
-    </view>
-    <view class="section-tab" bindtap="onSectionTap" data-section="type">
-      <text class="section-tab-label">类型纠错</text>
-      <view wx:if="{{typeCount > 0}}" class="tab-badge"><text>{{typeCount}}</text></view>
-    </view>
-  </view>
-
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="intro">
       <text class="intro-kicker">ALBUM CONTROL DESK</text>
       <text class="intro-title">专辑管理</text>
-      <text class="intro-copy">统一处理专辑入库、候选审核与艺人归属纠错。</text>
+      <text class="intro-copy">统一处理专辑入库、QQ同步、候选审核与艺人归属纠错。</text>
     </view>
-
     <view class="admin-card" bindtap="onSectionTap" data-section="library">
-      <view class="card-icon">◉</view>
-      <view class="card-body">
-        <text class="card-title">专辑库</text>
-        <text class="card-desc">按艺人检索专辑，管理显示状态与重复记录。</text>
-      </view>
-      <text class="card-arrow">→</text>
+      <view class="card-icon">◉</view><view class="card-body"><text class="card-title">专辑库</text><text class="card-desc">按艺人检索专辑，管理显示状态与重复记录。</text></view><text class="card-arrow">→</text>
     </view>
-
+    <view class="admin-card" bindtap="onSectionTap" data-section="qqsync">
+      <view class="card-icon">Q</view><view class="card-body"><view class="card-title-row"><text class="card-title">QQ音乐同步</text><view wx:if="{{qqReadyCount > 0}}" class="count-chip"><text>{{qqReadyCount}}</text></view></view><text class="card-desc">查看电脑端 crawler 已同步的 QQ 专辑，并批量送入审核区。</text></view><text class="card-arrow">→</text>
+    </view>
     <view class="admin-card" bindtap="onSectionTap" data-section="pending">
-      <view class="card-icon">⚑</view>
-      <view class="card-body">
-        <view class="card-title-row">
-          <text class="card-title">待审核</text>
-          <view wx:if="{{pendingCount > 0}}" class="count-chip"><text>{{pendingCount}}</text></view>
-        </view>
-        <text class="card-desc">审核新抓取或用户提交的专辑候选。</text>
-      </view>
-      <text class="card-arrow">→</text>
+      <view class="card-icon">⚑</view><view class="card-body"><view class="card-title-row"><text class="card-title">待审核</text><view wx:if="{{pendingCount > 0}}" class="count-chip"><text>{{pendingCount}}</text></view></view><text class="card-desc">审核新抓取或用户提交的专辑候选。</text></view><text class="card-arrow">→</text>
     </view>
-
     <view class="admin-card" bindtap="onSectionTap" data-section="ownership">
-      <view class="card-icon">⇄</view>
-      <view class="card-body">
-        <view class="card-title-row">
-          <text class="card-title">归属纠错</text>
-          <view wx:if="{{ownershipCount > 0}}" class="count-chip"><text>{{ownershipCount}}</text></view>
-        </view>
-        <text class="card-desc">处理专辑与艺人之间的错误归属申请。</text>
-      </view>
-      <text class="card-arrow">→</text>
+      <view class="card-icon">⇄</view><view class="card-body"><view class="card-title-row"><text class="card-title">归属纠错</text><view wx:if="{{ownershipCount > 0}}" class="count-chip"><text>{{ownershipCount}}</text></view></view><text class="card-desc">处理专辑与艺人之间的错误归属申请。</text></view><text class="card-arrow">→</text>
     </view>
-
     <view class="admin-card" bindtap="onSectionTap" data-section="hidden">
-      <view class="card-icon">◌</view>
-      <view class="card-body">
-        <view class="card-title-row">
-          <text class="card-title">隐藏专辑</text>
-          <view wx:if="{{hiddenCount > 0}}" class="count-chip"><text>{{hiddenCount}}</text></view>
-        </view>
-        <text class="card-desc">管理员手动隐藏或历史未显示的专辑，可恢复或删除。</text>
-      </view>
-      <text class="card-arrow">→</text>
+      <view class="card-icon">◌</view><view class="card-body"><view class="card-title-row"><text class="card-title">隐藏专辑</text><view wx:if="{{hiddenCount > 0}}" class="count-chip"><text>{{hiddenCount}}</text></view></view><text class="card-desc">管理员手动隐藏或历史未显示的专辑，可恢复或删除。</text></view><text class="card-arrow">→</text>
     </view>
-
     <view class="admin-card" bindtap="onSectionTap" data-section="type">
-      <view class="card-icon">▤</view>
-      <view class="card-body">
-        <view class="card-title-row">
-          <text class="card-title">类型纠错</text>
-          <view wx:if="{{typeCount > 0}}" class="count-chip"><text>{{typeCount}}</text></view>
-        </view>
-        <text class="card-desc">处理用户提交的专辑类型（LP/Mixtape/Live/Beat Tape）修改申请。</text>
-      </view>
-      <text class="card-arrow">→</text>
+      <view class="card-icon">▤</view><view class="card-body"><view class="card-title-row"><text class="card-title">类型纠错</text><view wx:if="{{typeCount > 0}}" class="count-chip"><text>{{typeCount}}</text></view></view><text class="card-desc">处理用户提交的专辑类型修改申请。</text></view><text class="card-arrow">→</text>
     </view>
-
     <view wx:if="{{loading}}" class="loading-row"><text>同步待处理数量中…</text></view>
   </scroll-view>
 </view>
