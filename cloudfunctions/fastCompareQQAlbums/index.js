@@ -85,6 +85,10 @@ async function catalogPage(event) {
     .field({
       _id: true,
       title: true,
+      sourceId: true,
+      sourceKey: true,
+      source: true,
+      qqAlbumMid: true,
       releaseDate: true,
       releaseYear: true,
       neteaseArtistId: true,
@@ -92,6 +96,10 @@ async function catalogPage(event) {
       primaryArtist: true,
       trackCount: true,
       tracks: true,
+      description: true,
+      coverUrl: true,
+      cover: true,
+      picUrl: true,
     })
     .skip(offset)
     .limit(limit)
