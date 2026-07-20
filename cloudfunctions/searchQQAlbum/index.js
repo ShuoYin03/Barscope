@@ -19,8 +19,8 @@ exports.main = async event => {
       },
     }
     const raw = await postJson(MUSICU_URL, payload)
-    const list = ((((raw || {}).req || {}).data || {}).body || {}
-    const albumRows = (((list.album || {}).list) || [])
+    const list = (((raw || {}).req || {}).data || {}).body || {}
+    const albumRows = ((list.album || {}).list) || []
     const results = albumRows.map(row => normalizeAlbum(row && (row.album || row))).filter(Boolean)
     const wanted = normalize(keyword)
     const exact = results.filter(item => normalize(item.title) === wanted)
