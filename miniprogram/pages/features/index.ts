@@ -83,7 +83,7 @@ Page({
   },
   _loadFeatureMetrics(){
     const featureIds=BASE_FEATURES.map(x=>x.id)
-    const statsCall=wx.cloud.callFunction({name:'manageFeatureStats',data:{action:'get_many',featureIds}}).catch(()=>({result:{success:false,list:[]}}))
+    const statsCall=wx.cloud.callFunction({name:'manageFeatureStats',data:{action:'get_many',featureIds}}).catch((err:any)=>{console.error('[features] load stats failed',err);return{result:{success:false,list:[]}}})
     const playlistCall=wx.cloud.callFunction({name:'manageFeaturePlaylists',data:{action:'list_public'}}).catch(()=>({result:{success:false}}))
     Promise.all([statsCall,playlistCall]).then((results:any[])=>{
       const statsResult=results[0]?.result||{}
@@ -107,15 +107,20 @@ Page({
       this.setData({allFeatures,features:activeFilter==='全部'?allFeatures:allFeatures.filter((x:any)=>x.category===activeFilter)})
     })
   },
-  _track(featureId:string,action:'track_view'|'track_share'){
+  _trackShare(featureId:string){
     if(!featureId)return
-    wx.cloud.callFunction({name:'manageFeatureStats',data:{action,featureId},complete:()=>this._loadFeatureMetrics()} as any)
+    wx.cloud.callFunction({
+      name:'manageFeatureStats',
+      data:{action:'track_share',featureId},
+      success:(res:any)=>{if(!(res.result||{}).success)console.error('[features] track share failed',res.result)},
+      fail:(err:any)=>console.error('[features] track share call failed',err),
+      complete:()=>this._loadFeatureMetrics(),
+    } as any)
   },
   onFilterTap(e:WechatMiniprogram.TouchEvent){ const value=String((e.currentTarget.dataset as any).value||'全部'); const allFeatures=this.data.allFeatures as any[]; const features=value==='全部'?allFeatures:allFeatures.filter(x=>x.category===value); this.setData({activeFilter:value,features}) },
   onFeatureTap(e:WechatMiniprogram.TouchEvent){
     const id=String((e.currentTarget.dataset as any).id||'')
     if(!id)return
-    this._track(id,'track_view')
     if(id==='2026-h1-top-50-tracks'){wx.navigateTo({url:'/pages/h1-top50/index'});return}
     if(id==='2026-top-reviewers'){wx.navigateTo({url:'/pages/annual-reviewers/index'});return}
     if(id==='rapper-interview'){wx.navigateTo({url:'/pages/interviews/index'});return}
@@ -125,7 +130,7 @@ Page({
     const ds=(options.target&&options.target.dataset)||{}
     const id=String(ds.id||'')
     const title=String(ds.title||'BarScope 专题')
-    if(id)this._track(id,'track_share')
+    if(id)this._trackShare(id)
     const path=id==='2026-h1-top-50-tracks'?'/pages/h1-top50/index':id==='2026-top-reviewers'?'/pages/annual-reviewers/index':id==='rapper-interview'?'/pages/interviews/index':`/pages/feature-detail/index?id=${id}`
     return {title,path}
   },
