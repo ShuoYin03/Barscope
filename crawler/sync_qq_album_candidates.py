@@ -196,23 +196,30 @@ def invoke_cloud_fn(token: str, env: str, name: str, body: dict) -> dict:
     return json.loads(payload.get("resp_data", "{}"))
 
 
-def upload_candidates(candidates: list[dict], token: str, env: str, batch_size: int = 20) -> Counter:
+def upload_candidates(candidates: list[dict], token: str, env: str, batch_size: int = 20, dry_run: bool = False) -> Counter:
     totals: Counter = Counter()
+    samples: list[dict] = []
     batches = [candidates[i:i + batch_size] for i in range(0, len(candidates), batch_size)]
+    verb = "预览" if dry_run else "upload"
     for index, batch in enumerate(batches, start=1):
-        result = invoke_cloud_fn(token, env, "manageAlbumCandidates", {"action": "upsert", "candidates": batch})
+        result = invoke_cloud_fn(token, env, "manageAlbumCandidates", {"action": "upsert", "candidates": batch, "dryRun": dry_run})
         totals.update({
             "inserted": int(result.get("inserted", 0)),
             "skipped": int(result.get("skipped", 0)),
             "matchedExisting": int(result.get("matchedExisting", 0)),
             "errors": int(result.get("errors", 0)),
         })
+        samples.extend(result.get("matchedExistingSamples", []) or [])
         print(
-            f"  upload [{index}/{len(batches)}] "
+            f"  {verb} [{index}/{len(batches)}] "
             f"待审核 +{result.get('inserted', 0)}  "
             f"已绑定现有 {result.get('matchedExisting', 0)}  "
             f"跳过 {result.get('skipped', 0)}  错误 {result.get('errors', 0)}"
         )
+    if dry_run and samples:
+        print("\n服务端判定为「已存在，会绑定不新建」的样例（最多显示30条）：")
+        for s in samples[:30]:
+            print(f"  QQ「{s.get('title')}」({s.get('artist')})  ==  已有专辑「{s.get('existingTitle')}」[{s.get('existingAlbumId')}]")
     return totals
 
 
@@ -220,7 +227,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="同步 QQ 独有专辑到 BarScope 专辑待审核")
     parser.add_argument("--matches", action="append", help="QQ artist match JSON，可重复传入多批文件")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="只跑本地质量筛选规则，不联网核对是否与库内专辑重复")
+    parser.add_argument("--preview", action="store_true", help="联网跑真实的去重判定（跟正式上传一样），但不写入任何数据")
     parser.add_argument("--artist-limit", type=int, default=0, help="仅测试前 N 个 matched 艺人；0=全部")
     parser.add_argument("--sleep", type=float, default=0.2)
     parser.add_argument("--debug-filter-limit", type=int, default=12, help="最多打印 N 条被过滤专辑样本")
@@ -315,10 +323,13 @@ def main() -> None:
         raise SystemExit("config.json 缺少 appid / appsecret / env")
 
     token = get_access_token(appid, appsecret)
-    upload_stats = upload_candidates(deduped, token, env)
+    upload_stats = upload_candidates(deduped, token, env, dry_run=args.preview)
     print(f"\nCrawler stats: {dict(stats)}")
     print(f"Cloud result: {dict(upload_stats)}")
-    print("完成：真正缺失的 QQ 专辑已进入 专辑管理 → 待审核；已存在专辑只补充 QQ identity。")
+    if args.preview:
+        print("预览完成：以上是真实的去重判定结果，没有写入任何数据。确认没问题后去掉 --preview 正式跑。")
+    else:
+        print("完成：真正缺失的 QQ 专辑已进入 专辑管理 → 待审核；已存在专辑只补充 QQ identity。")
 
 
 if __name__ == "__main__":

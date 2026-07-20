@@ -6,7 +6,7 @@ const _ = db.command
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const action = event.action || 'list'
-  if (action === 'upsert') return upsert(event.candidates || [])
+  if (action === 'upsert') return upsert(event.candidates || [], !!event.dryRun)
   if (!(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
   if (action === 'list') return list(event.status || 'pending')
   if (action === 'listHidden') return listHidden()
@@ -73,14 +73,18 @@ async function findExistingAlbum(item) {
     if (direct.data.length) return direct.data[0]
   }
 
-  // Cross-platform album identity: same normalized title + mapped NetEase artist + release year.
-  // This catches QQ copies of albums already present from NetEase without creating a review duplicate.
+  // Cross-platform album identity: same normalized title + mapped NetEase artist, release year
+  // permitting when both sides have one. QQ's album endpoints frequently omit release dates
+  // entirely (see build_candidate() in sync_qq_album_candidates.py) — requiring an exact year match
+  // would silently skip this check for exactly those albums and let real duplicates through as
+  // "new" pending candidates instead of being recognized as already in the catalog.
   const normalizedTitle = normalizeTitle(item.title)
   const neteaseArtistId = String(item.neteaseArtistId || '').trim()
   const releaseYear = Number(item.releaseYear || 0)
-  if (normalizedTitle && neteaseArtistId && releaseYear) {
+  if (normalizedTitle && neteaseArtistId) {
+    const query = releaseYear ? { neteaseArtistId, releaseYear } : { neteaseArtistId }
     const candidates = await db.collection('albums')
-      .where({ neteaseArtistId, releaseYear })
+      .where(query)
       .limit(100)
       .get()
     const hit = (candidates.data || []).find(album => normalizeTitle(album.title) === normalizedTitle)
@@ -98,11 +102,15 @@ async function attachQQIdentity(album, item) {
   if (Object.keys(patch).length) await db.collection('albums').doc(album._id).update({ data: patch })
 }
 
-async function upsert(candidates) {
+// dryRun runs the exact same existing-candidate/existing-album lookups upsert would use to
+// decide insert-vs-skip-vs-attach, without writing anything — lets a caller preview real
+// server-side dedup counts (not just the crawler's own pre-dedup rule filter) before committing.
+async function upsert(candidates, dryRun) {
   let inserted = 0
   let skipped = 0
   let matchedExisting = 0
   let errors = 0
+  const matchedExistingSamples = []
 
   for (const raw of candidates) {
     try {
@@ -123,25 +131,28 @@ async function upsert(candidates) {
 
       const album = await findExistingAlbum(item)
       if (album) {
-        await attachQQIdentity(album, item)
+        if (!dryRun) await attachQQIdentity(album, item)
         matchedExisting += 1
+        if (matchedExistingSamples.length < 30) matchedExistingSamples.push({ title: item.title, artist: item.artist, existingAlbumId: album._id, existingTitle: album.title })
         continue
       }
 
-      await db.collection('album_candidates').add({
-        data: {
-          ...item,
-          status: 'pending',
-          addedAt: db.serverDate(),
-          decidedAt: null,
-        },
-      })
+      if (!dryRun) {
+        await db.collection('album_candidates').add({
+          data: {
+            ...item,
+            status: 'pending',
+            addedAt: db.serverDate(),
+            decidedAt: null,
+          },
+        })
+      }
       inserted += 1
     } catch (e) {
       errors += 1
     }
   }
-  return { success: errors === 0, inserted, skipped, matchedExisting, errors }
+  return { success: errors === 0, dryRun: !!dryRun, inserted, skipped, matchedExisting, errors, matchedExistingSamples }
 }
 
 async function list(status) {

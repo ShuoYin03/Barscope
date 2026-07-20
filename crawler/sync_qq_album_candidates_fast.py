@@ -60,7 +60,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="高速并发同步 QQ 独有专辑到 BarScope 专辑待审核")
     parser.add_argument("--matches", action="append", help="QQ artist match JSON，可重复传入多批文件")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="只跑本地质量筛选规则，不联网核对是否与库内专辑重复")
+    parser.add_argument("--preview", action="store_true", help="联网跑真实的去重判定（跟正式上传一样），但不写入任何数据")
     parser.add_argument("--artist-limit", type=int, default=0, help="仅测试前 N 个 matched 艺人；0=全部")
     parser.add_argument("--workers", type=int, default=20, help="并发请求数，默认 20")
     parser.add_argument("--debug-filter-limit", type=int, default=12, help="最多打印 N 条被过滤专辑样本")
@@ -188,10 +189,13 @@ def main() -> None:
         raise SystemExit("config.json 缺少 appid / appsecret / env")
 
     token = get_access_token(appid, appsecret)
-    upload_stats = upload_candidates(deduped, token, env)
+    upload_stats = upload_candidates(deduped, token, env, dry_run=args.preview)
     print(f"\nCrawler stats: {dict(stats)}")
     print(f"Cloud result: {dict(upload_stats)}")
-    print("完成：真正缺失的 QQ 专辑已进入 专辑管理 → 待审核；已存在专辑只补充 QQ identity。")
+    if args.preview:
+        print("预览完成：以上是真实的去重判定结果，没有写入任何数据。确认没问题后去掉 --preview 正式跑。")
+    else:
+        print("完成：真正缺失的 QQ 专辑已进入 专辑管理 → 待审核；已存在专辑只补充 QQ identity。")
 
 
 if __name__ == "__main__":
