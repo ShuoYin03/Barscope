@@ -140,22 +140,30 @@ Page({
     const item=this.data.missingArtists.find(x=>x.artistId===id&&x.artistName===name)
     if(item)this._send([item])
   },
-  _send(items:ArtistIssue[]){
+  async _send(items:ArtistIssue[]){
     if(this.data.sending)return
     this.setData({sending:true})
-    wx.showLoading({title:'送入审核中…',mask:true})
-    wx.cloud.callFunction({
-      name:'manageDataDiagnostics',
-      data:{action:'send_artists_to_review',items},
-      success:(res:any)=>{
-        const r=res.result||{}
-        if(!r.success){wx.showToast({title:r.error||'操作失败',icon:'none'});return}
-        wx.showToast({title:`新增 ${r.inserted||0} 位候选`,icon:'success'})
-        this.onScan()
-      },
-      fail:()=>wx.showToast({title:'操作失败',icon:'none'}),
-      complete:()=>{wx.hideLoading();this.setData({sending:false})},
-    } as any)
+    const batchSize=40
+    let inserted=0,skipped=0,failed=0
+    try{
+      for(let i=0;i<items.length;i+=batchSize){
+        const batch=items.slice(i,i+batchSize)
+        wx.showLoading({title:`送审 ${Math.min(i+batch.length,items.length)}/${items.length}`,mask:true})
+        const r=await this._call({action:'send_artists_to_review',items:batch})
+        if(!r.success)throw new Error(r.detail||r.error||'操作失败')
+        inserted+=Number(r.inserted||0)
+        skipped+=Number(r.skipped||0)
+        failed+=Number(r.failed||0)
+      }
+      wx.hideLoading()
+      wx.showToast({title:failed?`新增${inserted}，失败${failed}`:`新增 ${inserted} 位候选`,icon:'none',duration:2200})
+      await this.onScan()
+    }catch(err:any){
+      wx.hideLoading()
+      wx.showToast({title:String(err&&err.message||'操作失败').slice(0,20),icon:'none'})
+    }finally{
+      this.setData({sending:false})
+    }
   },
   onAlbumTap(e:WechatMiniprogram.TouchEvent){const id=String((e.currentTarget.dataset as any).id||'');if(id)wx.navigateTo({url:`/pages/album-detail/index?id=${id}`})},
 })
