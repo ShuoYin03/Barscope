@@ -22,7 +22,6 @@ exports.main = async event => {
     const albumArtists = (Array.isArray(album.artists) && album.artists.length) ? album.artists : (album.artist ? [album.artist] : [])
     const neArtistNames = [...new Set(albumArtists.map(a => String(a && a.name || '').trim()).filter(Boolean))]
     const neArtistIds = [...new Set(albumArtists.map(a => String(a && a.id || '')).filter(Boolean))]
-    // Owner set drives Feat classification: pinned for corrected albums, else NetEase album-level artists.
     const { ownerIds, ownerNames, ownerArtists } = resolveOwners(albumDoc, albumArtists)
     const primaryArtist = String((album.artist || {}).name || neArtistNames[0] || albumDoc.primaryArtist || '').trim()
     const neteaseArtistId = String((album.artist || {}).id || neArtistIds[0] || albumDoc.neteaseArtistId || '')
@@ -30,9 +29,11 @@ exports.main = async event => {
     const tracks = songs.map((song, idx) => normalizeTrack(song, idx, ownerIds, ownerNames))
     const featuringGuests = collectGuests(tracks)
     const releaseMeta = extractReleaseMeta(album, detail, albumDoc)
+    const description = extractDescription(detail, album, albumDoc)
+    const company = album.company || albumDoc.company || ''
     const patch = {
-      description:extractDescription(detail, album, albumDoc),
-      company:album.company || albumDoc.company || '',
+      description,
+      company,
       trackCount:tracks.length || album.size || albumDoc.trackCount || 0,
       tracks,
       featuringGuests,
@@ -40,14 +41,7 @@ exports.main = async event => {
       releaseYear: releaseMeta.releaseYear,
       trackSyncedAt:db.serverDate(),
     }
-    // Preserve manual ownership corrections: never let a NetEase re-sync overwrite artist attribution
-    // that an admin deliberately fixed. Track/description/company/date backfill still proceeds.
     if (albumDoc.ownershipSource !== 'user-admin-correction') {
-      // Union with the album's existing artistIds instead of overwriting: NetEase's album-detail
-      // endpoint (re-fetched here) is sometimes narrower than whatever originally populated artistIds
-      // (e.g. a group release's artist-discography listing credits every member, but the per-album
-      // detail endpoint only credits the group) — blindly replacing would silently drop already-known
-      // collaborators every time this runs.
       const existingIds = Array.isArray(albumDoc.artistIds) ? albumDoc.artistIds.map(String) : []
       const existingNameById = buildNameById(albumDoc)
       const neNameById = {}
@@ -55,13 +49,11 @@ exports.main = async event => {
       const mergedIds = existingIds.concat(neArtistIds.filter(id => !existingIds.includes(id)))
       const mergedNames = mergedIds.map(id => existingNameById[id] || neNameById[id]).filter(Boolean)
       patch.artist = mergedNames.join(' / ') || artistDisplay
-      patch.primaryArtist = primaryArtist; patch.neteaseArtistId = neteaseArtistId
-      // ownerArtistIds must stay the true-owner subset (drives which artist pages list this album) —
-      // artistIds/isMultiArtist intentionally stay the full owners+guests participant set (drives the
-      // "+N" hero tag). These previously both pointed at mergedIds, so any track-level guest ended up
-      // owning the album too — e.g. a single-artist LP with one featured track wrongly cross-listed
-      // onto the guest's own artist page.
-      patch.artistIds = mergedIds; patch.ownerArtistIds = [...ownerIds]; patch.isMultiArtist = mergedIds.length > 1
+      patch.primaryArtist = primaryArtist
+      patch.neteaseArtistId = neteaseArtistId
+      patch.artistIds = mergedIds
+      patch.ownerArtistIds = [...ownerIds]
+      patch.isMultiArtist = mergedIds.length > 1
       patch.ownerArtists = ownerArtists
     }
     await db.collection('albums').doc(albumDoc._id).update({ data:patch })
@@ -69,10 +61,13 @@ exports.main = async event => {
       success:true,
       albumId:albumDoc._id,
       sourceId:neteaseAlbumId,
-      trackCount:tracks.length,
+      description,
+      company,
+      trackCount:patch.trackCount,
       guestCount:featuringGuests.length,
       artist:patch.artist || artistDisplay,
       primaryArtist,
+      neteaseArtistId:patch.neteaseArtistId || neteaseArtistId,
       artistIds:patch.artistIds || neArtistIds,
       ownerArtists:patch.ownerArtists || albumDoc.ownerArtists || [],
       featureArtistIds:featureIds(patch.artistIds || albumDoc.artistIds || [], ownerIds),
@@ -98,9 +93,8 @@ function extractReleaseMeta(album, detail, albumDoc) {
       return { releaseDate: `${y}-${m}-${day}`, releaseYear: y }
     }
   }
-  const existing = String(albumDoc.releaseDate || '').trim()
-  const year = Number(albumDoc.releaseYear || 0)
-  return { releaseDate: existing, releaseYear: year }
+  const existingDate = String(albumDoc.releaseDate || '').trim()
+  return { releaseDate: existingDate, releaseYear: Number(albumDoc.releaseYear || (existingDate ? existingDate.slice(0,4) : 0) || 0) }
 }
 async function fetchAlbumDetail(id){for(const url of [`https://music.163.com/api/v1/album/${id}`,`https://music.163.com/api/album/${id}`]){try{const j=await httpsGetJson(url);if(j&&(j.code===200||j.album||j.data?.album))return j}catch(e){}}return null}
 function httpsGetJson(url){return new Promise((resolve,reject)=>{const req=https.get(url,{headers:{'User-Agent':'Mozilla/5.0',Referer:'https://music.163.com/',Accept:'application/json,text/plain,*/*'}},res=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>{try{resolve(JSON.parse(b))}catch(e){reject(e)}})});req.on('error',reject);req.setTimeout(12000,()=>{req.destroy();reject(new Error('timeout'))})})}
