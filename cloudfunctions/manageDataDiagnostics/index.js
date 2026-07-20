@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const https = require('https')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
@@ -114,8 +115,6 @@ async function findExistingOwners(owners) {
   ]
   artistRows.forEach(a => collectArtist(existingIds, exactNameMap, normalizedNameMap, a))
 
-  // Exact-name fallback is intentionally independent of ID so historical records with a wrong
-  // NetEase id are classified as "ID 待关联" instead of "真正未入库".
   for (let i = 0; i < rawNames.length; i += 100) {
     const chunk = rawNames.slice(i, i + 100)
     try {
@@ -234,32 +233,100 @@ function candidateArtistId(item) {
   return -Math.abs(hashString(name.toLowerCase().replace(/\s/g, ''))) || -Date.now()
 }
 
+function getJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://music.163.com/' } }, res => {
+      let body = ''
+      res.on('data', c => { body += c })
+      res.on('end', () => { try { resolve(JSON.parse(body)) } catch (e) { resolve(null) } })
+    })
+    req.on('error', reject)
+    req.setTimeout(2200, () => { req.destroy(); reject(new Error('网易云请求超时')) })
+  })
+}
+
+async function fetchNeteaseArtist(item) {
+  const artistId = candidateArtistId(item)
+  const requestedName = String(item.artistName || '').trim()
+  if (!(artistId > 0)) return null
+  try {
+    const data = await getJson(`https://music.163.com/api/artist/albums/${artistId}?offset=0&limit=1`)
+    const artist = data && data.artist
+    if (artist && artist.id) {
+      const avatar = artist.picUrl || artist.img1v1Url || ''
+      return {
+        artistId: Number(artist.id),
+        artistName: String(artist.name || requestedName),
+        picUrl: avatar,
+        avatarUrl: avatar,
+        coverUrl: avatar,
+        backgroundUrl: avatar,
+        heroImageUrl: avatar,
+        albumSize: Number(artist.albumSize || item.albumCount || 0),
+        musicSize: Number(artist.musicSize || 0),
+        fansSize: Number(artist.fansCnt || 0),
+        neteaseLinked: true,
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const search = await getJson(`https://music.163.com/api/search/get/web?csrf_token=&s=${encodeURIComponent(requestedName)}&type=100&offset=0&total=true&limit=10`)
+    const artists = (search && search.result && search.result.artists) || []
+    const normalized = normalizeName(requestedName)
+    const exact = artists.find(a => normalizeName(a && a.name) === normalized && Number(a && a.id) === artistId)
+      || artists.find(a => Number(a && a.id) === artistId)
+      || artists.find(a => normalizeName(a && a.name) === normalized)
+    if (exact && exact.id) {
+      const avatar = exact.picUrl || exact.img1v1Url || ''
+      return {
+        artistId: Number(exact.id),
+        artistName: String(exact.name || requestedName),
+        picUrl: avatar,
+        avatarUrl: avatar,
+        coverUrl: avatar,
+        backgroundUrl: avatar,
+        heroImageUrl: avatar,
+        albumSize: Number(exact.albumSize || item.albumCount || 0),
+        musicSize: Number(exact.musicSize || 0),
+        fansSize: 0,
+        neteaseLinked: true,
+      }
+    }
+  } catch (e) {}
+  return null
+}
+
 async function sendArtistsToReview(items, openId) {
-  const validItems = (items || []).filter(x => x && String(x.artistName || '').trim()).slice(0, 50)
-  if (!validItems.length) return { success: true, inserted: 0, skipped: 0, failed: 0 }
+  const validItems = (items || []).filter(x => x && String(x.artistName || '').trim()).slice(0, 12)
+  if (!validItems.length) return { success: true, inserted: 0, skipped: 0, failed: 0, enriched: 0 }
 
   const targetIds = validItems.map(candidateArtistId)
   const variants = idVariants(targetIds)
   const existingRows = await queryByIdVariants('artist_candidates', 'artistId', variants)
   const existingIds = new Set(existingRows.map(x => normalizeArtistId(x.artistId)).filter(Boolean))
-
   const toInsert = validItems.filter(item => !existingIds.has(normalizeArtistId(candidateArtistId(item))))
+
+  const enrichments = await Promise.all(toInsert.map(item => fetchNeteaseArtist(item).catch(() => null)))
   const now = db.serverDate()
-  const ops = toInsert.map(item => {
-    const artistId = candidateArtistId(item)
+  const ops = toInsert.map((item, index) => {
+    const requestedId = candidateArtistId(item)
+    const enriched = enrichments[index]
+    const artistId = enriched && enriched.artistId ? enriched.artistId : requestedId
     const hasRealNeteaseId = artistId > 0
-    const name = String(item.artistName || '未知艺人').trim()
+    const name = String((enriched && enriched.artistName) || item.artistName || '未知艺人').trim()
+    const avatar = String((enriched && (enriched.avatarUrl || enriched.picUrl)) || '')
     return db.collection('artist_candidates').add({ data: {
       artistId,
       artistName: name,
-      picUrl: '',
-      avatarUrl: '',
-      coverUrl: '',
-      backgroundUrl: '',
-      heroImageUrl: '',
-      albumSize: Number(item.albumCount || 0),
-      musicSize: 0,
-      fansSize: 0,
+      picUrl: avatar,
+      avatarUrl: avatar,
+      coverUrl: String((enriched && enriched.coverUrl) || avatar),
+      backgroundUrl: String((enriched && enriched.backgroundUrl) || avatar),
+      heroImageUrl: String((enriched && enriched.heroImageUrl) || avatar),
+      albumSize: Number((enriched && enriched.albumSize) || item.albumCount || 0),
+      musicSize: Number((enriched && enriched.musicSize) || 0),
+      fansSize: Number((enriched && enriched.fansSize) || 0),
       roles: ['rapper'],
       foundFrom: 'data_diagnostics',
       fromAlbum: (item.albums && item.albums[0] && item.albums[0].title) || '',
@@ -267,9 +334,10 @@ async function sendArtistsToReview(items, openId) {
       status: 'pending',
       requestSource: hasRealNeteaseId ? 'data-diagnostics-owner' : 'data-diagnostics-manual',
       requesterOpenId: openId,
-      requestedName: name,
+      requestedName: String(item.artistName || name),
       manualEntry: !hasRealNeteaseId,
-      needsProfileCompletion: true,
+      needsProfileCompletion: !avatar,
+      neteaseLinked: !!(enriched && enriched.neteaseLinked),
       linkedAlbumIds: Array.isArray(item.albumIds) ? item.albumIds.slice(0, 100) : [],
       addedAt: now,
       decidedAt: null,
@@ -279,7 +347,8 @@ async function sendArtistsToReview(items, openId) {
   const results = await Promise.allSettled(ops)
   const inserted = results.filter(r => r.status === 'fulfilled').length
   const failed = results.filter(r => r.status === 'rejected').length
-  return { success: true, inserted, skipped: validItems.length - toInsert.length, failed }
+  const enriched = enrichments.filter(Boolean).length
+  return { success: true, inserted, skipped: validItems.length - toInsert.length, failed, enriched }
 }
 
 exports.main = async event => {
