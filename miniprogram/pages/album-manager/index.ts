@@ -38,6 +38,14 @@ interface OwnershipAuditItem {
   liveArtistNamesText: string
 }
 
+interface HiddenAuditItem {
+  id: string
+  title: string
+  artist: string
+  avgScore: number
+  reviewCount: number
+}
+
 interface OwnerPick { artistId: string; artistName: string; picUrl: string; selected?: boolean }
 
 interface DuplicateSample {
@@ -66,7 +74,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     view: 'artists' as 'artists' | 'albums',
-    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' | 'ownership-audit',
+    searchMode: 'artist' as 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' | 'ownership-audit' | 'hidden-audit',
     artistList: [] as Artist[],
     artistLoading: false,
     artistHasMore: false,
@@ -111,6 +119,12 @@ Page({
     ownershipAuditScanDone: 0,
     ownershipAuditApplying: false,
     ownershipAuditApplyDone: 0,
+
+    hiddenAuditList: [] as HiddenAuditItem[],
+    hiddenAuditScanning: false,
+    hiddenAuditScanDone: 0,
+    hiddenAuditApplying: false,
+    hiddenAuditApplyDone: 0,
 
     multiList: [] as Album[],
     multiLoading: false,
@@ -203,7 +217,7 @@ Page({
   },
 
   onSearchModeTap(e: WechatMiniprogram.TouchEvent) {
-    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' | 'ownership-audit' }).mode
+    const mode = (e.currentTarget.dataset as { mode: 'artist' | 'title' | 'all' | 'multi' | 'uncategorized' | 'ownership-audit' | 'hidden-audit' }).mode
     if (mode === this.data.searchMode) return
     this.setData({ searchMode: mode })
     if (mode === 'all' && !this.data.allLetters.length) this._loadLetterCounts()
@@ -869,6 +883,92 @@ Page({
         this._runApplyOwnershipAuditFixStep(ids, offset + batchSize)
       },
       fail: () => { this.setData({ ownershipAuditApplying: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onScanWronglyHiddenAlbums() {
+    if (this.data.hiddenAuditScanning) return
+    wx.showModal({
+      title: '开始排查误隐藏',
+      content: '会找出已经有评分、但目前处于隐藏状态、且没有管理员手动隐藏/用户举报等明确标记的专辑（很可能是艺人审核拒绝时按名字误连坐隐藏的）。只标记疑似问题，不会自动修改任何数据，确认继续？',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ hiddenAuditScanning: true, hiddenAuditScanDone: 0, hiddenAuditList: [] })
+        this._runHiddenAuditStep(0)
+      },
+    })
+  },
+
+  _runHiddenAuditStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'audit_wrongly_hidden_albums', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ hiddenAuditScanning: false }); wx.showToast({ title: r.error || '排查失败', icon: 'none' }); return }
+        const incoming = ((r.list || []) as any[]).map((item) => ({
+          id: item.id,
+          title: item.title || '',
+          artist: item.artist || '',
+          avgScore: item.avgScore || 0,
+          reviewCount: item.reviewCount || 0,
+        }))
+        this.setData({
+          hiddenAuditScanDone: r.processed || 0,
+          hiddenAuditList: this.data.hiddenAuditList.concat(incoming),
+        })
+        if (r.done) {
+          this.setData({ hiddenAuditScanning: false })
+          wx.showToast({ title: `排查完成，${this.data.hiddenAuditList.length} 张疑似被误隐藏`, icon: 'none' })
+          return
+        }
+        this._runHiddenAuditStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ hiddenAuditScanning: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onHiddenAuditCardTap(e: WechatMiniprogram.TouchEvent) {
+    const { id } = e.currentTarget.dataset as { id: string }
+    if (id) wx.navigateTo({ url: `/pages/album-detail/index?id=${id}` })
+  },
+
+  onRestoreWronglyHiddenAlbums() {
+    if (this.data.hiddenAuditApplying || !this.data.hiddenAuditList.length) return
+    const total = this.data.hiddenAuditList.length
+    wx.showModal({
+      title: '一键恢复显示',
+      content: `会把这 ${total} 张专辑重新设为显示状态，确认继续？`,
+      confirmText: '确认恢复',
+      confirmColor: '#C94E25',
+      success: (res) => {
+        if (!res.confirm) return
+        const ids = this.data.hiddenAuditList.map((item) => item.id)
+        this.setData({ hiddenAuditApplying: true, hiddenAuditApplyDone: 0 })
+        this._runRestoreHiddenAlbumsStep(ids, 0)
+      },
+    })
+  },
+
+  _runRestoreHiddenAlbumsStep(ids: string[], offset: number) {
+    const batchSize = 40
+    const batch = ids.slice(offset, offset + batchSize)
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'restore_wrongly_hidden_albums', ids: batch },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ hiddenAuditApplying: false }); wx.showToast({ title: r.error || '恢复失败', icon: 'none' }); return }
+        const done = Math.min(offset + batch.length, ids.length)
+        this.setData({ hiddenAuditApplyDone: done })
+        if (done >= ids.length) {
+          this.setData({ hiddenAuditApplying: false, hiddenAuditList: [], hiddenAuditScanDone: 0 })
+          wx.showToast({ title: '恢复完成', icon: 'success' })
+          return
+        }
+        this._runRestoreHiddenAlbumsStep(ids, offset + batchSize)
+      },
+      fail: () => { this.setData({ hiddenAuditApplying: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     })
   },
 

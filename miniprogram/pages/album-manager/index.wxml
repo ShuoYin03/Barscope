@@ -20,6 +20,7 @@
       <view class="mode-tab {{searchMode === 'multi' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="multi"><text>多人合作</text></view>
       <view class="mode-tab {{searchMode === 'uncategorized' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="uncategorized"><text>未分类</text></view>
       <view class="mode-tab {{searchMode === 'ownership-audit' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="ownership-audit"><text>排查</text></view>
+      <view class="mode-tab {{searchMode === 'hidden-audit' ? 'active' : ''}}" bindtap="onSearchModeTap" data-mode="hidden-audit"><text>误隐藏排查</text></view>
     </view>
 
     <view class="search-bar" wx:if="{{searchMode === 'artist' || searchMode === 'title' || searchMode === 'all'}}">
@@ -463,6 +464,46 @@
           </view>
           <view wx:elif="{{ownershipAuditList.length > 0}}" class="list-end">
             <text class="list-end-text">── 共检查 {{ownershipAuditScanDone}} 张，{{ownershipAuditList.length}} 张疑似有问题，点击专辑去核实/修改归属 ──</text>
+          </view>
+        </block>
+      </scroll-view>
+    </block>
+
+    <!-- ── 误隐藏排查：找出已有评分但当前处于隐藏状态、且没有任何明确隐藏标记的专辑（很可能是艺人审核拒绝时按名字误连坐隐藏的） ── -->
+    <block wx:elif="{{searchMode === 'hidden-audit'}}">
+      <view class="all-action-bar">
+        <view class="all-action-btn ghost {{hiddenAuditScanning ? 'btn-disabled' : ''}}" bindtap="onScanWronglyHiddenAlbums">
+          <text>{{hiddenAuditScanning ? ('排查中 ' + hiddenAuditScanDone) : '开始排查'}}</text>
+        </view>
+        <view wx:if="{{hiddenAuditList.length > 0}}" class="all-action-btn accent {{hiddenAuditApplying ? 'btn-disabled' : ''}}" bindtap="onRestoreWronglyHiddenAlbums">
+          <text>{{hiddenAuditApplying ? ('恢复中 ' + hiddenAuditApplyDone + '/' + hiddenAuditList.length) : ('一键恢复显示 ' + hiddenAuditList.length)}}</text>
+        </view>
+      </view>
+      <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+        <view wx:if="{{!hiddenAuditScanning && hiddenAuditList.length === 0 && !hiddenAuditScanDone}}" class="empty-state">
+          <text class="empty-icon">○</text>
+          <text class="empty-text">点击"开始排查"，会找出已经有评分、但目前处于隐藏状态、且没有管理员手动隐藏/用户举报等明确标记的专辑</text>
+        </view>
+
+        <view wx:elif="{{!hiddenAuditScanning && hiddenAuditList.length === 0 && hiddenAuditScanDone}}" class="empty-state">
+          <text class="empty-icon">○</text>
+          <text class="empty-text">排查完成，已检查 {{hiddenAuditScanDone}} 张，没有发现疑似被误隐藏的专辑</text>
+        </view>
+
+        <block wx:else>
+          <view wx:for="{{hiddenAuditList}}" wx:key="id" class="album-row" bindtap="onHiddenAuditCardTap" data-id="{{item.id}}">
+            <view class="album-info">
+              <text class="album-title">{{item.title}}</text>
+              <text class="album-artist">{{item.artist}}</text>
+              <text class="album-meta" style="color:#d45124;">共 {{item.reviewCount}} 人打分 {{item.avgScore}}，但当前隐藏</text>
+            </view>
+          </view>
+
+          <view wx:if="{{hiddenAuditScanning}}" class="load-more">
+            <text class="load-more-text">排查中，已检查 {{hiddenAuditScanDone}} 张，发现 {{hiddenAuditList.length}} 张疑似被误隐藏…</text>
+          </view>
+          <view wx:elif="{{hiddenAuditList.length > 0}}" class="list-end">
+            <text class="list-end-text">── 共检查 {{hiddenAuditScanDone}} 张，{{hiddenAuditList.length}} 张疑似被误隐藏 ──</text>
           </view>
         </block>
       </scroll-view>

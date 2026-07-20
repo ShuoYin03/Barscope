@@ -171,6 +171,8 @@ exports.main = async (event, context) => {
   if (action === 'audit_ownership_mismatches') return await auditOwnershipMismatches(event.skip || 0)
   if (action === 'apply_ownership_audit_fix') return await applyOwnershipAuditFix(event.ids || [])
   if (action === 'auto_clean_duplicate_candidates') return await autoCleanDuplicateCandidates()
+  if (action === 'audit_wrongly_hidden_albums') return await auditWronglyHiddenAlbums(event.skip || 0)
+  if (action === 'restore_wrongly_hidden_albums') return await restoreWronglyHiddenAlbums(event.ids || [])
   if (action === 'purge_declined')        return await purgeDeclinedCandidates()
 
   return { success: false, error: 'unknown action' }
@@ -800,6 +802,49 @@ async function autoCleanDuplicateCandidates() {
   }
 }
 
+// ── audit_wrongly_hidden_albums ──────────────────────────────────────────────
+// decide()'s name-fallback used to un-approve every album sharing a candidate's display name
+// string with no artistId scoping (fixed above) — so a same-named duplicate candidate getting
+// declined could silently hide a different, already-rated album belonging to someone else.
+// An album that already has reviews but is now approved:false, with none of the legitimate
+// hide markers set (hiddenByAdmin / movedToCandidate / deletedByAdmin), is a strong signal it was
+// a real, live, rated album that got caught by that bug rather than one deliberately hidden.
+// Read-only: flags for admin review, never writes.
+async function auditWronglyHiddenAlbums(skip) {
+  try {
+    const pageSize = 300
+    const result = await db.collection('albums')
+      .where({
+        approved: false,
+        reviewCount: _.gt(0),
+        hiddenByAdmin: _.neq(true),
+        movedToCandidate: _.neq(true),
+        deletedByAdmin: _.neq(true),
+      })
+      .skip(skip).limit(pageSize)
+      .field({ _id: true, title: true, artist: true, avgScore: true, reviewCount: true })
+      .get()
+    const docs = result.data || []
+    return {
+      success: true,
+      done: docs.length < pageSize,
+      processed: skip + docs.length,
+      nextSkip: skip + docs.length,
+      list: docs.map(d => ({ id: d._id, title: d.title, artist: d.artist, avgScore: d.avgScore, reviewCount: d.reviewCount })),
+    }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function restoreWronglyHiddenAlbums(ids) {
+  const cleanIds = (Array.isArray(ids) ? ids : []).map(String).filter(Boolean).slice(0, 200)
+  if (!cleanIds.length) return { success: false, error: 'no ids' }
+  const results = await Promise.allSettled(cleanIds.map(id => db.collection('albums').doc(id).update({ data: { approved: true } })))
+  const succeeded = results.filter(r => r.status === 'fulfilled').length
+  return { success: true, succeeded, failed: cleanIds.length - succeeded }
+}
+
 // ── decide ────────────────────────────────────────────────────────────────────
 // decisions: [{id: _id, decision: 'approved'|'declined'}]
 async function decide(decisions) {
@@ -826,11 +871,17 @@ async function decide(decisions) {
     const { artistName, artistId } = fetch.value.data
     const isApproved = d.decision === 'approved'
 
-    // Update approved flag on existing albums — by artistId (reliable) + name fallback for legacy docs
+    // Update approved flag on existing albums — by artistId (reliable) + name fallback for legacy
+    // docs that never got a neteaseArtistId written. The name-fallback queries are scoped to only
+    // touch albums with no neteaseArtistId (or one matching this same artist): two different people
+    // can share the exact same NetEase display name (the "jody" duplicate-match bug), and an
+    // unscoped name match here would silently un-approve a different, correctly-approved artist's
+    // albums just because a same-named duplicate candidate got declined.
+    const notOtherArtist = _.or([{ neteaseArtistId: _.exists(false) }, { neteaseArtistId: '' }, { neteaseArtistId: String(artistId) }])
     await Promise.allSettled([
       db.collection('albums').where({ neteaseArtistId: String(artistId) }).update({ data: { approved: isApproved } }),
-      db.collection('albums').where({ primaryArtist: artistName }).update({ data: { approved: isApproved } }),
-      db.collection('albums').where({ artist: artistName }).update({ data: { approved: isApproved } }),
+      db.collection('albums').where(_.and([{ primaryArtist: artistName }, notOtherArtist])).update({ data: { approved: isApproved } }),
+      db.collection('albums').where(_.and([{ artist: artistName }, notOtherArtist])).update({ data: { approved: isApproved } }),
     ])
 
     // On approval: fetch & insert the full discography from Netease,
