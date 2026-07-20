@@ -168,6 +168,19 @@ Page({
       this._loadMyMixtapeBallot()
       this._loadMixtapeStats()
     }
+    this._trackView(featureId)
+  },
+
+  _trackView(featureId: string) {
+    wx.cloud.callFunction({
+      name: 'manageFeatureStats',
+      data: { action: 'track_view', featureId },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) console.error('[feature-detail] track view failed', r)
+      },
+      fail: (err: any) => console.error('[feature-detail] track view call failed', err),
+    } as any)
   },
 
   onShow() {

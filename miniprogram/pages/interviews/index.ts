@@ -44,6 +44,19 @@ Page({
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
     this._loadList(1)
+    this._trackView()
+  },
+
+  _trackView() {
+    wx.cloud.callFunction({
+      name: 'manageFeatureStats',
+      data: { action: 'track_view', featureId: 'rapper-interview' },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) console.error('[interviews] track view failed', r)
+      },
+      fail: (err: any) => console.error('[interviews] track view call failed', err),
+    } as any)
   },
 
   onShow() {
