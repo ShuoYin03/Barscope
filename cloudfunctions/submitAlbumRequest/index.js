@@ -2,8 +2,10 @@ const cloud = require('wx-server-sdk')
 const https = require('https')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+
 const QQ_SEARCH_URL = 'https://u.y.qq.com/cgi-bin/musicu.fcg'
 const QQ_LEGACY_SEARCH_URL = 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp'
+const QQ_ALBUM_INFO_URL = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_album_info_cp.fcg'
 const QQ_HEADERS = {
   'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
   'Referer':'https://y.qq.com/',
@@ -20,7 +22,7 @@ exports.main = async event => {
     return searchAndSubmit(event, OPENID)
   } catch (e) {
     console.error('submitAlbumRequest failed:', e)
-    return { success:false, error:e.message }
+    return { success:false, error:e && e.message ? e.message : '提交失败' }
   }
 }
 
@@ -46,7 +48,7 @@ async function searchAndSubmit(event, openId) {
     sourceId,sourceKey:`netease:${sourceId}`,source:'netease',sourcePlatform:'netease',submissionMode:'netease',
     title:String(picked.name || keyword),artist:artistNames.join(' / '),primaryArtist:artistNames[0] || '',
     neteaseArtistId:artistIds[0] || '',artistIds,releaseDate,releaseYear:published ? published.getUTCFullYear() : 0,
-    coverUrl:String(picked.picUrl || picked.blurPicUrl || ''),company:String(picked.company || ''),tracks:[],
+    coverUrl:String(picked.picUrl || picked.blurPicUrl || ''),company:String(picked.company || ''),tracks:[],trackCount:0,
     avgScore:0,reviewCount:0,genres:[],status:'pending',decision:null,
     reportReason:duplicate && duplicate.kind === 'deleted_candidate' ? '用户申请重新收录已删除专辑（网易云匹配）' : '用户提交新专辑（网易云匹配）',
     reportSource:'discover-submit',requestSource:'discover-submit',requesterOpenId:openId,requestedName:keyword,foundFrom:'用户提交 · 网易云',
@@ -66,47 +68,66 @@ async function searchQQAndSubmit(event, openId) {
     provider = 'legacy'
   }
 
-  console.log('[QQ SEARCH DEBUG]', {
-    keyword,
-    normalizedKeyword: normalize(keyword),
-    provider,
-    count: albums.length,
-    albums: albums.map(a => ({
-      title: a.title,
-      normalizedTitle: normalize(a.title),
-      albumMid: a.albumMid,
-      albumId: a.albumId,
-      singers: a.singers,
-    })),
-  })
-
   const exact = albums.filter(a => normalize(a.title) === normalize(keyword))
-  console.log('[QQ SEARCH MATCH]', {
-    keyword,
-    provider,
-    exactMatchCount: exact.length,
-    exactMatches: exact.map(a => ({ title:a.title, albumMid:a.albumMid, singers:a.singers })),
-  })
+  console.log('[QQ SEARCH]', { keyword, provider, count:albums.length, exactMatchCount:exact.length })
   if (!exact.length) return { success:true, needsManual:true, searchedName:keyword, qqResults:albums.slice(0,10), provider }
 
   const picked = exact[0]
   const sourceId = picked.albumMid
   const duplicate = await findDuplicate(sourceId, 'qq')
   if (duplicate && duplicate.kind !== 'deleted_candidate') return duplicate
-  const artistNames = picked.singers.map(s => s.name).filter(Boolean)
-  const qqArtistMids = picked.singers.map(s => s.mid).filter(Boolean)
+
+  // QQ 搜索接口只返回“搜索卡片”数据。这里继续拉取专辑详情和完整曲目，
+  // 让用户从 QQ 提交的专辑与批量 crawler 入库的 QQ 专辑字段保持一致。
+  const [detail, tracks] = await Promise.all([
+    fetchQQAlbumDetail(sourceId).catch(err => { console.warn('[QQ DETAIL] failed', err && err.message); return {} }),
+    fetchQQAlbumTracks(sourceId).catch(err => { console.warn('[QQ TRACKS] failed', err && err.message); return [] }),
+  ])
+
+  const detailSingers = extractSingers(detail)
+  const singers = detailSingers.length ? detailSingers : picked.singers
+  const artistNames = singers.map(s => s.name).filter(Boolean)
+  const qqArtistMids = singers.map(s => s.mid).filter(Boolean)
+  const releaseDate = normalizeReleaseDate(findFirstField(detail, ['pub_time','publish_date','publishDate','publicTime','publictime','release_date','releaseDate','time_public']))
+  const releaseYear = releaseDate ? Number((releaseDate.match(/(?:19|20)\d{2}/) || [0])[0]) : 0
+  const company = String(findFirstField(detail, ['company','company_name','companyName','label','record_company','recordCompany']) || '').trim()
+  const description = cleanText(findFirstField(detail, ['desc','description','album_desc','albumDesc','intro']) || '')
+  const genre = String(findFirstField(detail, ['genre','genre_name','genreName','album_type','albumType']) || '').trim()
+  const primaryNames = new Set(artistNames.map(normalize))
+  const normalizedTracks = tracks.map((track, index) => {
+    const songArtists = (track.singers || []).map(s => ({ id:0, name:s.name })).filter(a => a.name)
+    const guests = songArtists.filter(a => !primaryNames.has(normalize(a.name)))
+    return {
+      no:index + 1,
+      name:track.name,
+      artists:songArtists.length ? songArtists : artistNames.map(name => ({id:0,name})),
+      guests,
+      hasFeaturing:guests.length > 0,
+      duration:track.duration || 0,
+      durationMs:track.durationMs || 0,
+      qqSongMid:track.mid || '',
+    }
+  })
+
   const payload = {
     sourceId,sourceKey:`qq:${sourceId}`,source:'qq',sourcePlatform:'qq',submissionMode:'qq',qqAlbumMid:sourceId,qqAlbumId:picked.albumId,
     qqAlbumUrl:`https://y.qq.com/n/ryqq_v2/albumDetail/${sourceId}`,qqArtistMid:qqArtistMids[0] || '',qqArtistMids,
-    title:picked.title,artist:artistNames.join(' / '),primaryArtist:artistNames[0] || '',artistIds:[],ownerArtistIds:[],ownerArtists:[],
-    releaseDate:'',releaseYear:0,coverUrl:`https://y.qq.com/music/photo_new/T002R800x800M000${sourceId}.jpg`,company:'',tracks:[],
-    avgScore:0,reviewCount:0,genres:[],status:'pending',decision:null,
-    reportReason:duplicate && duplicate.kind === 'deleted_candidate' ? '用户申请重新收录已删除专辑（QQ音乐匹配）' : '用户提交新专辑（QQ音乐匹配）',
+    title:String(findFirstField(detail, ['album_name','albumName','name','title']) || picked.title),
+    artist:artistNames.join(' / '),primaryArtist:artistNames[0] || '',artistIds:[],ownerArtistIds:[],ownerArtists:[],
+    releaseDate,releaseYear,
+    coverUrl:`https://y.qq.com/music/photo_new/T002R800x800M000${sourceId}.jpg`,
+    company,description,
+    tracks:normalizedTracks,trackCount:normalizedTracks.length,
+    featuringGuests:collectGuests(normalizedTracks),
+    avgScore:0,reviewCount:0,genres:genre ? [genre] : [],status:'pending',decision:null,
+    reportReason:duplicate && duplicate.kind === 'deleted_candidate' ? '用户申请重新收录已删除专辑（QQ音乐完整匹配）' : '用户提交新专辑（QQ音乐完整匹配）',
     reportSource:'discover-submit',requestSource:'discover-submit',requesterOpenId:openId,requestedName:keyword,foundFrom:`用户提交 · QQ音乐 · ${provider}`,
+    metadataCompleteness:{ releaseDate:!!releaseDate, company:!!company, description:!!description, tracks:normalizedTracks.length },
     reSubmittedAfterDeletion:!!(duplicate && duplicate.kind === 'deleted_candidate'),addedAt:db.serverDate(),decidedAt:null,decidedBy:null,
   }
+  console.log('[QQ ENRICHED]', { title:payload.title, releaseDate, company, trackCount:payload.trackCount, description:!!description })
   const result = await saveCandidate(payload, duplicate)
-  return {...result, qqAlbumMid:sourceId, qqArtistNames:artistNames, exactMatchCount:exact.length, provider}
+  return {...result, qqAlbumMid:sourceId, qqArtistNames:artistNames, exactMatchCount:exact.length, provider, trackCount:payload.trackCount, releaseDate}
 }
 
 async function searchQQMusicu(keyword) {
@@ -125,6 +146,95 @@ async function searchQQLegacy(keyword) {
   const raw = await getJsonFlexible(url, QQ_HEADERS)
   const rows = (((raw || {}).data || {}).album || {}).list || []
   return rows.map(normalizeLegacyQQAlbum).filter(Boolean)
+}
+
+async function fetchQQAlbumDetail(albumMid) {
+  const url = `${QQ_ALBUM_INFO_URL}?${new URLSearchParams({albummid:albumMid,format:'json',platform:'yqq',newsong:'1'}).toString()}`
+  return getJsonFlexible(url, QQ_HEADERS)
+}
+
+async function fetchQQAlbumTracks(albumMid) {
+  const raw = await postJson(QQ_SEARCH_URL, {
+    comm:{ct:24,cv:0},
+    albumSongList:{module:'music.musichallAlbum.AlbumSongList',method:'GetAlbumSongList',param:{albumMid,begin:0,num:500,order:2}},
+  }, QQ_HEADERS)
+  const body = (((raw || {}).albumSongList || {}).data || {})
+  const rows = body.songList || body.list || body.songs || []
+  const tracks = extractTrackRows(rows)
+  if (tracks.length) return tracks
+  const legacy = await fetchQQAlbumDetail(albumMid)
+  const data = (legacy && legacy.data) || {}
+  return extractTrackRows(data.list || data.songlist || data.songList || data.songs || [])
+}
+
+function extractTrackRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map(row => {
+    const song = row && (row.songInfo || row.songinfo || row.musicData || row.data || row)
+    if (!song || typeof song !== 'object') return null
+    const name = String(song.title || song.songname || song.songName || song.name || '').trim()
+    if (!name) return null
+    const singerRows = song.singer || song.singerList || song.singer_list || []
+    const singers = (Array.isArray(singerRows) ? singerRows : [singerRows]).map(s => ({
+      name:String((s && (s.name || s.singerName || s.singer_name)) || '').trim(),
+      mid:String((s && (s.mid || s.singerMID || s.singer_mid)) || '').trim(),
+    })).filter(s => s.name || s.mid)
+    const seconds = Number(song.interval || song.duration || 0) || 0
+    return { name, mid:String(song.mid || song.songmid || song.songMid || ''), singers, duration:seconds, durationMs:seconds*1000 }
+  }).filter(Boolean)
+}
+
+function extractSingers(payload) {
+  const candidates = []
+  walk(payload, (key, value) => {
+    if (!['singer','singerList','singer_list'].includes(key)) return
+    const rows = Array.isArray(value) ? value : [value]
+    rows.forEach(s => {
+      if (!s || typeof s !== 'object') return
+      const name = String(s.name || s.singerName || s.singer_name || '').trim()
+      const mid = String(s.mid || s.singerMID || s.singer_mid || '').trim()
+      if (name || mid) candidates.push({name,mid})
+    })
+  })
+  const seen = new Set()
+  return candidates.filter(s => { const key=`${s.mid}|${s.name}`; if(seen.has(key))return false; seen.add(key); return true }).slice(0,20)
+}
+
+function walk(value, visitor) {
+  if (Array.isArray(value)) return value.forEach(v => walk(v, visitor))
+  if (!value || typeof value !== 'object') return
+  Object.entries(value).forEach(([key, child]) => { visitor(key, child); walk(child, visitor) })
+}
+
+function findFirstField(value, keys) {
+  if (!value || typeof value !== 'object') return ''
+  if (!Array.isArray(value)) {
+    for (const key of keys) {
+      const raw = value[key]
+      if (raw !== undefined && raw !== null && typeof raw !== 'object' && String(raw).trim()) return raw
+    }
+    for (const child of Object.values(value)) {
+      const found = findFirstField(child, keys)
+      if (found !== '') return found
+    }
+  } else {
+    for (const child of value) {
+      const found = findFirstField(child, keys)
+      if (found !== '') return found
+    }
+  }
+  return ''
+}
+
+function normalizeReleaseDate(value) {
+  const text = String(value || '').trim()
+  const m = text.match(/((?:19|20)\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})/)
+  if (m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`
+  const year = text.match(/(?:19|20)\d{2}/)
+  return year ? year[0] : ''
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/<br\s*\/?\s*>/gi,'\n').replace(/<[^>]+>/g,'').replace(/&nbsp;/gi,' ').trim()
 }
 
 async function saveCandidate(payload, duplicate) {
@@ -204,4 +314,4 @@ async function findDuplicate(sourceId, sourcePlatform='') {
 function normalize(value){return String(value||'').trim().toLowerCase().replace(/explicit/gi,'').replace(/[\s\-_·•.。'"“”‘’()（）\[\]【】/\\?!！？，,:：]+/g,'')}
 function getJson(url){return new Promise((resolve,reject)=>{const req=https.get(url,{headers:{'User-Agent':'Mozilla/5.0',Referer:'https://music.163.com/'}},res=>{let body='';res.on('data',c=>body+=c);res.on('end',()=>{try{resolve(JSON.parse(body))}catch(e){resolve(null)}})});req.on('error',reject);req.setTimeout(10000,()=>{req.destroy();reject(new Error('网易云请求超时'))})})}
 function postJson(url,body,headers={}){return new Promise((resolve,reject)=>{const data=Buffer.from(JSON.stringify(body));const target=new URL(url);const req=https.request({protocol:target.protocol,hostname:target.hostname,path:target.pathname+target.search,method:'POST',headers:{'Content-Type':'application/json','Content-Length':data.length,...headers}},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>{try{resolve(JSON.parse(text))}catch(e){reject(new Error('QQ音乐主搜索接口返回格式异常'))}})});req.on('error',reject);req.setTimeout(15000,()=>{req.destroy();reject(new Error('QQ音乐请求超时'))});req.write(data);req.end()})}
-function getJsonFlexible(url,headers={}){return new Promise((resolve,reject)=>{const req=https.get(url,{headers},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>{const trimmed=text.trim();const jsonText=trimmed.startsWith('{')?trimmed:trimmed.replace(/^[^(]*\(/,'').replace(/\)\s*;?$/,'');try{resolve(JSON.parse(jsonText))}catch(e){reject(new Error('QQ音乐备用搜索接口返回格式异常'))}})});req.on('error',reject);req.setTimeout(15000,()=>{req.destroy();reject(new Error('QQ音乐备用接口请求超时'))})})}
+function getJsonFlexible(url,headers={}){return new Promise((resolve,reject)=>{const req=https.get(url,{headers},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>{const trimmed=text.trim();const jsonText=trimmed.startsWith('{')?trimmed:trimmed.replace(/^[^(]*\(/,'').replace(/\)\s*;?$/,'');try{resolve(JSON.parse(jsonText))}catch(e){reject(new Error('QQ音乐接口返回格式异常'))}})});req.on('error',reject);req.setTimeout(15000,()=>{req.destroy();reject(new Error('QQ音乐接口请求超时'))})})}
