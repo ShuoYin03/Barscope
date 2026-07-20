@@ -19,6 +19,11 @@ type FeatureItem = {
   recentHeatScore?: number
 }
 
+// Adding a new row here does NOT get it view/share metrics for free — the destination page (see
+// onFeatureTap below) must call trackFeatureView(id)/trackFeatureShare(id) from
+// utils/featureStats.ts in its own onLoad/onShareAppMessage. New entries that reuse
+// feature-detail's ARTICLES map already get this automatically (feature-detail tracks whatever id
+// it's opened with); a bespoke new page does not, and needs the one-line call added explicitly.
 const BASE_FEATURES: FeatureItem[] = [
   { id:'2026-h1-top-50-tracks', category:'榜单', title:'2026 上半年中文说唱 Top50 单曲', subtitle:'歌单征集中', status:'汇集中文说唱博主的上半年歌单，共同选出 2026 H1 最值得听的 50 首作品', accent:'01', hero:true, cta:'查看', manualPriority:100, viewCount:0, participantCount:0, participantLabel:'份歌单', shareCount:0, heatScore:0, recentHeatScore:0 },
   { id:'2026-top-10', category:'年度企划', title:'2026 中文说唱十大专辑', subtitle:'开放投票中', status:'选出你的十张，写下理由，公开你的榜单', accent:'02', cta:'投票', manualPriority:90, viewCount:0, participantCount:0, participantLabel:'人参与', shareCount:0, heatScore:0, recentHeatScore:0 },

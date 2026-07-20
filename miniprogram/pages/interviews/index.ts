@@ -1,4 +1,5 @@
 import { getThemeClass } from '../../utils/theme'
+import { trackFeatureView } from '../../utils/featureStats'
 
 interface InterviewCard { _id: string; title: string; intervieweeName: string; intro: string; coverUrl: string; submitterName: string; publishedAtDisplay: string }
 interface MyInterview { _id: string; title: string; status: 'pending' | 'published' | 'rejected'; reviewNote: string; createdAtDisplay: string }
@@ -44,19 +45,7 @@ Page({
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
     this._loadList(1)
-    this._trackView()
-  },
-
-  _trackView() {
-    wx.cloud.callFunction({
-      name: 'manageFeatureStats',
-      data: { action: 'track_view', featureId: 'rapper-interview' },
-      success: (res: any) => {
-        const r = res.result || {}
-        if (!r.success) console.error('[interviews] track view failed', r)
-      },
-      fail: (err: any) => console.error('[interviews] track view call failed', err),
-    } as any)
+    trackFeatureView('rapper-interview')
   },
 
   onShow() {

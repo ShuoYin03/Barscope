@@ -1,4 +1,5 @@
 import { getThemeClass } from '../../utils/theme'
+import { trackFeatureView, trackFeatureShare } from '../../utils/featureStats'
 
 interface PlaylistCard {
   _id: string
@@ -33,7 +34,7 @@ Page({
   onLoad() {
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
-    this._trackView()
+    trackFeatureView(FEATURE_ID)
     this._loadPlaylists()
   },
 
@@ -42,20 +43,8 @@ Page({
   onUrlInput(e: WechatMiniprogram.Input) { this.setData({ playlistUrl: e.detail.value || '' }) },
   onToggleOwnPlaylist() { this.setData({ isOwnPlaylist: !this.data.isOwnPlaylist }) },
 
-  _trackView() {
-    wx.cloud.callFunction({
-      name: 'manageFeatureStats',
-      data: { action: 'track_view', featureId: FEATURE_ID },
-      success: (res: any) => {
-        const r = res.result || {}
-        if (!r.success) console.error('[h1-top50] track view failed', r)
-      },
-      fail: (err: any) => console.error('[h1-top50] track view call failed', err),
-    } as any)
-  },
-
   onShareAppMessage() {
-    wx.cloud.callFunction({ name: 'manageFeatureStats', data: { action: 'track_share', featureId: FEATURE_ID } } as any)
+    trackFeatureShare(FEATURE_ID)
     return { title: '2026 上半年中文说唱 Top50 单曲', path: '/pages/h1-top50/index' }
   },
 

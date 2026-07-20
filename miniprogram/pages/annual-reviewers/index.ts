@@ -1,13 +1,11 @@
 import { getThemeClass } from '../../utils/theme'
+import { trackFeatureView } from '../../utils/featureStats'
 
 interface ReviewerRow { openId:string; nickName:string; avatarUrl:string; reviewCount:number; albumCount:number; avgRating:number; likesReceived:number; wordCount:number }
 
 Page({
   data:{ statusBarHeight:20,topbarHeight:64,themeClass:'',loading:true,year:2026,totalReviews:0,totalReviewers:0,list:[] as ReviewerRow[] },
-  onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight}); this.loadData(); this._trackView() },
-  _trackView(){
-    wx.cloud.callFunction({name:'manageFeatureStats',data:{action:'track_view',featureId:'2026-top-reviewers'},success:(res:any)=>{if(!(res.result||{}).success)console.error('[annual-reviewers] track view failed',res.result)},fail:(err:any)=>console.error('[annual-reviewers] track view call failed',err)} as any)
-  },
+  onLoad(){ const app=getApp<IAppOption>(); this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight}); this.loadData(); trackFeatureView('2026-top-reviewers') },
   onShow(){ this.setData({themeClass:getThemeClass()}) },
   loadData(){
     this.setData({loading:true})
