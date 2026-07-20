@@ -8,6 +8,7 @@ selected rows into the normal album review queue.
 Usage:
   python3 push_qq_album_cache.py
   python3 push_qq_album_cache.py --input qq_album_import_ready.json
+  python3 push_qq_album_cache.py --batch-size 5
 """
 
 from __future__ import annotations
@@ -57,9 +58,37 @@ def invoke_seed(token: str, env: str, albums: list[dict[str, Any]]) -> dict[str,
     return json.loads(payload.get("resp_data", "{}"))
 
 
+def invoke_seed_with_retry(
+    token: str,
+    env: str,
+    albums: list[dict[str, Any]],
+    *,
+    max_retries: int = 3,
+) -> dict[str, Any]:
+    last_error: Exception | None = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return invoke_seed(token, env, albums)
+        except Exception as exc:
+            last_error = exc
+            if attempt >= max_retries:
+                break
+            wait_seconds = attempt * 1.5
+            print(f"    第 {attempt} 次推送失败，{wait_seconds:.1f}s 后重试：{exc}")
+            time.sleep(wait_seconds)
+    assert last_error is not None
+    raise last_error
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="把本地 QQ 专辑解析结果推送到小程序 QQ 专辑缓存")
     parser.add_argument("--input", default=str(DEFAULT_INPUT))
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=5,
+        help="每次调用云函数推送的专辑数。免费环境 3 秒超时，默认使用 5 张小批次。",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -79,18 +108,21 @@ def main() -> None:
     if not env:
         raise SystemExit("config.json 缺少 env")
 
+    batch_size = max(1, min(int(args.batch_size or 5), 10))
     totals = {"inserted": 0, "updated": 0, "skipped": 0}
     print(f"准备推送 {len(albums)} 张 QQ 专辑到 qq_album_cache …")
-    for start in range(0, len(albums), 40):
-        batch = albums[start:start + 40]
-        result = invoke_seed(token, env, batch)
+    print(f"批次大小: {batch_size}（避免云函数 3 秒超时）")
+
+    for start in range(0, len(albums), batch_size):
+        batch = albums[start:start + batch_size]
+        result = invoke_seed_with_retry(token, env, batch)
         for key in totals:
             totals[key] += int(result.get(key, 0) or 0)
         print(
             f"  {start + 1}-{start + len(batch)}/{len(albums)}: "
             f"新增 {result.get('inserted', 0)}，更新 {result.get('updated', 0)}，跳过 {result.get('skipped', 0)}"
         )
-        time.sleep(0.2)
+        time.sleep(0.25)
 
     print("\nQQ 专辑缓存同步完成")
     print(f"  新增: {totals['inserted']}")
