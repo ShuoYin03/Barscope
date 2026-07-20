@@ -92,7 +92,7 @@ Page({
           return
         }
         this.setData({ playlistUrl: '', activePlaylistTab: 'community' })
-        wx.showToast({ title: r.duplicate ? '该歌单已收录' : '歌单已提交', icon: 'success' })
+        wx.showToast({ title: r.duplicate ? '已重新排查一遍缺失的艺人/专辑' : '歌单已提交', icon: 'success', duration: 2200 })
         this._loadPlaylists()
       },
       fail: () => wx.showToast({ title: '网络错误，请重试', icon: 'none' }),

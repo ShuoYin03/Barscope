@@ -344,12 +344,14 @@ async function submitPublicPlaylist(event, openId) {
     .limit(1)
     .get()
 
-  if (existing.data.length) {
-    return { success: true, duplicate: true, playlist: publicMeta(existing.data[0]) }
-  }
-
   const playlist = await fetchPlaylist(playlistId)
-  const creatorName = String(playlist.creator?.nickname || '网易云用户').trim()
+  const priorDoc = existing.data[0]
+  const creatorName = priorDoc ? priorDoc.creatorName : String(playlist.creator?.nickname || '网易云用户').trim()
+  // Pasting a link that's already tracked re-runs the missing-artist/album check instead of just
+  // no-op'ing — approvals that landed since the first submission narrow the pending list, and
+  // this is the only way a plain community re-paste (not the admin re-import flow) can pick that
+  // up. sourceType/editorialPriority are intentionally preserved rather than reset, so re-scanning
+  // never silently undoes an admin's 乐评人/社区 reclassification.
   const reconciliation = await reconcileTracks(playlist.tracks, `${creatorName} · ${playlist.title}`)
   const now = new Date()
   const payload = {
@@ -369,14 +371,18 @@ async function submitPublicPlaylist(event, openId) {
       pendingArtists: reconciliation.pendingArtists,
       syncedAt: now,
     },
-    sourceType: 'community',
-    editorialPriority: 0,
-    submittedBy: openId || '',
+    sourceType: priorDoc ? priorDoc.sourceType : 'community',
+    editorialPriority: priorDoc ? priorDoc.editorialPriority : 0,
+    submittedBy: priorDoc ? priorDoc.submittedBy : (openId || ''),
     updatedAt: now,
-    createdAt: now,
   }
 
-  const result = await db.collection('feature_playlist_submissions').add({ data: payload })
+  if (priorDoc) {
+    await db.collection('feature_playlist_submissions').doc(priorDoc._id).update({ data: payload })
+    return { success: true, duplicate: true, rescanned: true, submissionId: priorDoc._id, playlist: publicMeta({ _id: priorDoc._id, ...payload }) }
+  }
+
+  const result = await db.collection('feature_playlist_submissions').add({ data: { ...payload, createdAt: now } })
   return { success: true, duplicate: false, submissionId: result._id, playlist: publicMeta({ _id: result._id, ...payload }) }
 }
 
