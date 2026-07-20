@@ -16,31 +16,35 @@
         <text class="scan-title">{{loading?'正在分批扫描数据库':(scanError?'扫描没有完成':(hasScanned?'扫描已完成':'开始数据库体检'))}}</text>
         <text class="scan-desc" wx:if="{{loading}}">已处理 {{scanCurrent}} / {{scanTotal}} · {{scanProgress}}%</text>
         <text class="scan-desc" wx:elif="{{scanError}}">{{scanError}}</text>
-        <text class="scan-desc" wx:elif="{{hasScanned}}">已检查已入库专辑与 Artists 数据归属关系</text>
-        <text class="scan-desc" wx:else>扫描后会在下方直接列出具体缺失艺人与相关专辑</text>
+        <text class="scan-desc" wx:elif="{{hasScanned}}">已按正式 Artists 数据源重新核对专辑归属</text>
+        <text class="scan-desc" wx:else>真正未入库、ID 待关联和疑似同一艺人会分开显示</text>
         <view wx:if="{{loading}}" class="progress-track"><view class="progress-fill" style="width: {{scanProgress}}%"></view></view>
       </view>
       <view class="primary-scan-btn {{loading?'disabled':''}}" bindtap="onScan">{{loading?scanProgress+'%':(scanError?'重新扫描':'扫描数据库')}}</view>
     </view>
 
     <view class="grid">
-      <view class="metric"><text class="metric-num">{{summary.missingArtists}}</text><text class="metric-label">归属艺人未入库</text></view>
+      <view class="metric"><text class="metric-num">{{summary.missingArtists}}</text><text class="metric-label">真正未入库</text></view>
+      <view class="metric"><text class="metric-num">{{summary.idMismatches}}</text><text class="metric-label">ID 待关联</text></view>
+      <view class="metric"><text class="metric-num">{{summary.suspectedMatches}}</text><text class="metric-label">疑似同一艺人</text></view>
       <view class="metric"><text class="metric-num">{{summary.missingOwnership}}</text><text class="metric-label">专辑归属缺失</text></view>
-      <view class="metric"><text class="metric-num">{{summary.missingDescription}}</text><text class="metric-label">缺少简介</text></view>
-      <view class="metric"><text class="metric-num">{{summary.missingReleaseDate}}</text><text class="metric-label">缺发行日期</text></view>
     </view>
 
-    <view class="tabs">
-      <view class="tab {{activeTab==='artists'?'active':''}}" data-tab="artists" bindtap="onTabTap">归属艺人未入库 {{summary.missingArtists}}</view>
-      <view class="tab {{activeTab==='ownership'?'active':''}}" data-tab="ownership" bindtap="onTabTap">归属信息缺失 {{summary.missingOwnership}}</view>
-    </view>
+    <scroll-view class="tabs" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="tabs-inner">
+        <view class="tab {{activeTab==='artists'?'active':''}}" data-tab="artists" bindtap="onTabTap">真正未入库 {{summary.missingArtists}}</view>
+        <view class="tab {{activeTab==='idMismatch'?'active':''}}" data-tab="idMismatch" bindtap="onTabTap">ID 待关联 {{summary.idMismatches}}</view>
+        <view class="tab {{activeTab==='suspected'?'active':''}}" data-tab="suspected" bindtap="onTabTap">疑似匹配 {{summary.suspectedMatches}}</view>
+        <view class="tab {{activeTab==='ownership'?'active':''}}" data-tab="ownership" bindtap="onTabTap">归属缺失 {{summary.missingOwnership}}</view>
+      </view>
+    </scroll-view>
 
     <block wx:if="{{activeTab==='artists'}}">
       <view wx:if="{{hasScanned && missingArtists.length}}" class="bulk-bar">
         <view class="select-all" bindtap="onSelectAll">{{selectedCount===missingArtists.length?'取消全选':'全选'}} · 已选 {{selectedCount}}</view>
         <view class="bulk-actions"><view class="bulk-btn secondary" bindtap="onSendSelected">送审已选</view><view class="bulk-btn" bindtap="onSendAll">一键全部送审</view></view>
       </view>
-      <view wx:if="{{hasScanned && !loading && !missingArtists.length}}" class="empty">✓ 没有发现归属艺人缺失</view>
+      <view wx:if="{{hasScanned && !loading && !missingArtists.length}}" class="empty">✓ 没有发现真正未入库艺人</view>
       <view wx:if="{{!hasScanned && !loading}}" class="empty muted">扫描成功后，具体问题会显示在这里</view>
       <view wx:for="{{missingArtists}}" wx:key="index" class="issue-card {{item.selected?'selected':''}}">
         <view class="check" data-id="{{item.artistId}}" data-name="{{item.artistName}}" bindtap="onToggleArtist">{{item.selected?'✓':''}}</view>
@@ -51,6 +55,32 @@
           <view class="album-chips"><text wx:for="{{item.albums}}" wx:key="albumId" class="chip" data-id="{{item.albumId}}" catchtap="onAlbumTap">《{{item.title}}》</text></view>
         </view>
         <view class="send-one" data-id="{{item.artistId}}" data-name="{{item.artistName}}" bindtap="onSendOne">送审 →</view>
+      </view>
+    </block>
+
+    <block wx:elif="{{activeTab==='idMismatch'}}">
+      <view wx:if="{{hasScanned && !loading && !idMismatches.length}}" class="empty">✓ 没有发现 ID 待关联艺人</view>
+      <view wx:for="{{idMismatches}}" wx:key="index" class="issue-card">
+        <view class="issue-main">
+          <text class="issue-title">{{item.artistName}}</text>
+          <text class="issue-id">专辑 OWNER ID · {{item.artistId||'缺失'}}</text>
+          <text class="issue-desc">库内已存在：{{item.matchedArtistName}} · ID {{item.matchedArtistId||'未绑定'}}</text>
+          <text class="issue-desc">关联 {{item.albumCount}} 张已入库专辑</text>
+          <view class="album-chips"><text wx:for="{{item.albums}}" wx:key="albumId" class="chip" data-id="{{item.albumId}}" catchtap="onAlbumTap">《{{item.title}}》</text></view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:elif="{{activeTab==='suspected'}}">
+      <view wx:if="{{hasScanned && !loading && !suspectedMatches.length}}" class="empty">✓ 没有发现疑似同一艺人</view>
+      <view wx:for="{{suspectedMatches}}" wx:key="index" class="issue-card">
+        <view class="issue-main">
+          <text class="issue-title">{{item.artistName}}</text>
+          <text class="issue-id">NETEASE ARTIST ID · {{item.artistId||'缺失'}}</text>
+          <text class="issue-desc">疑似匹配：{{item.matchedArtistName}} · {{item.matchedArtistId||'ID 未绑定'}}</text>
+          <text class="issue-desc">关联 {{item.albumCount}} 张已入库专辑</text>
+          <view class="album-chips"><text wx:for="{{item.albums}}" wx:key="albumId" class="chip" data-id="{{item.albumId}}" catchtap="onAlbumTap">《{{item.title}}》</text></view>
+        </view>
       </view>
     </block>
 
