@@ -21,7 +21,12 @@
 
     <view class="playlist-block">
       <text class="playlist-title">{{playlist.playlistTitle}}</text>
-      <text class="playlist-creator">BY {{playlist.creatorName}}</text>
+      <view class="playlist-creator-row" bindtap="onCreatorTap">
+        <image wx:if="{{creatorAvatarUrl}}" class="playlist-creator-avatar" src="{{creatorAvatarUrl}}" mode="aspectFill" />
+        <view wx:else class="playlist-creator-avatar playlist-creator-avatar-fallback"><text>{{playlist.creatorName[0]}}</text></view>
+        <text class="playlist-creator">BY {{playlist.creatorName}}</text>
+        <text wx:if="{{playlist.barscopeCreator}}" class="playlist-creator-arrow">›</text>
+      </view>
       <view class="stats-row">
         <text class="stat-num">{{playlist.trackCount}}</text><text class="stat-unit">TRACKS</text>
         <view class="stat-sep" />

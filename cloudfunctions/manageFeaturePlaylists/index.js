@@ -86,6 +86,33 @@ function normalizeTrack(song, position) {
   }
 }
 
+// Best-effort link from a playlist's NetEase creator name to a registered Barscope account —
+// there's no real foreign key between the two (Barscope users sign in via WeChat, not NetEase),
+// so this is a nickname match. Only meaningful for critics who use the same handle on both
+// (e.g. 乐评人 playlists imported under their known name), not a guarantee.
+async function matchBarscopeCreator(name) {
+  const trimmed = String(name || '').trim()
+  if (!trimmed) return null
+  try {
+    const res = await db.collection('users').where({ nickName: trimmed }).limit(5).get()
+    const rows = res.data || []
+    if (!rows.length) return null
+    const best = rows.reduce((acc, doc) => (!acc || (!acc.avatarUrl && doc.avatarUrl)) ? doc : acc, null)
+    let avatarUrl = String(best.avatarUrl || '')
+    if (avatarUrl.startsWith('cloud://')) {
+      try {
+        const r = await cloud.getTempFileURL({ fileList: [avatarUrl] })
+        const hit = (r.fileList || [])[0]
+        if (hit && hit.status === 0 && hit.tempFileURL) avatarUrl = hit.tempFileURL
+      } catch (e) { /* keep the cloud:// id if resolution fails */ }
+    }
+    if (!best.openId) return null
+    return { openId: best.openId, nickName: best.nickName || trimmed, avatarUrl }
+  } catch (e) {
+    return null
+  }
+}
+
 async function fetchAlbumArtists(albumId) {
   try {
     const data = await httpsGet(`https://music.163.com/api/v1/album/${albumId}`)
@@ -439,11 +466,14 @@ async function getPublicDetail(id) {
     },
   })
 
+  const barscopeCreator = await matchBarscopeCreator(item.creatorName)
+
   return {
     success: true,
     playlist: {
       ...publicMeta(item),
       playlistDescription: item.playlistDescription || '',
+      barscopeCreator,
       tracks: reconciliation.tracks,
       catalogSync: {
         linkedAlbums: reconciliation.linkedAlbums,

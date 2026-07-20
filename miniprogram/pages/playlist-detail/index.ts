@@ -21,6 +21,7 @@ Page({
     playlist: null as any,
     tracks: [] as PlaylistTrack[],
     sync: null as any,
+    creatorAvatarUrl: '',
   },
 
   onLoad(options: any) {
@@ -42,6 +43,11 @@ Page({
     wx.navigateBack()
   },
 
+  onCreatorTap() {
+    const creator = this.data.playlist && this.data.playlist.barscopeCreator
+    if (creator && creator.openId) wx.navigateTo({ url: `/pages/user/index?openId=${creator.openId}` })
+  },
+
   _load(id: string) {
     this.setData({ loading: true })
     wx.cloud.callFunction({
@@ -58,7 +64,10 @@ Page({
           ...track,
           artistText: (track.artistNames || []).join(' / '),
         }))
-        this.setData({ playlist, tracks, sync: playlist.catalogSync || null })
+        const creatorAvatarUrl = (playlist.barscopeCreator && playlist.barscopeCreator.avatarUrl)
+          || (playlist.neteaseCreator && playlist.neteaseCreator.avatarUrl)
+          || ''
+        this.setData({ playlist, tracks, sync: playlist.catalogSync || null, creatorAvatarUrl })
       },
       fail: () => wx.showToast({ title: '歌单加载失败', icon: 'none' }),
       complete: () => this.setData({ loading: false }),
