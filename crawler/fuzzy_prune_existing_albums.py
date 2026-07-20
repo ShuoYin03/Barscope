@@ -3,17 +3,19 @@
 
 Rules:
 1. Remove when normalized album-title similarity >= 70%.
-2. Also remove when album track count matches an existing album and the track names strongly align,
-   even if the album titles themselves differ.
+2. Remove when track count matches an existing album and the track lists clearly describe the same release,
+   even if the album titles differ.
 
-This pass compares against the full live `albums` collection through fastCompareQQAlbums.catalogPage.
-It overwrites qq_album_need_submit.json and writes all removals to qq_album_fuzzy_overlap.json.
+The track-list pass is deliberately aggressive because this script is the final narrowing pass before manual review.
+It compares tracks independent of order and strips common platform/version noise such as Explicit, Prod., feat.,
+parenthesized translations and punctuation before comparing.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import unicodedata
 from difflib import SequenceMatcher
@@ -35,10 +37,18 @@ PLATFORM_SUFFIX_RE = re.compile(
     r"(?:[\s\-–—_:：]*[\(\[（【]?\s*(?:explicit|deluxe|extended|remaster(?:ed)?|clean)\s*[\)\]）】]?\s*$)",
     re.IGNORECASE,
 )
-TRACK_NOISE_RE = re.compile(
-    r"(?:\(|（|\[|【)\s*(?:explicit|prod\.?[^\)）\]】]*|produced by[^\)）\]】]*|remaster(?:ed)?|clean)\s*(?:\)|）|\]|】)",
+
+# Noise that frequently differs between QQ and NetEase while the underlying song is identical.
+TRACK_BRACKET_NOISE_RE = re.compile(
+    r"(?:\(|（|\[|【)[^\)）\]】]*(?:explicit|prod\.?|producer|produced\s+by|feat\.?|ft\.?|remaster(?:ed)?|clean|version|版)[^\)）\]】]*(?:\)|）|\]|】)",
     re.IGNORECASE,
 )
+TRACK_TRAILING_CREDIT_RE = re.compile(
+    r"(?:\s*[\(（\[【].*?[\)）\]】]\s*)+$",
+    re.IGNORECASE,
+)
+FEATURE_RE = re.compile(r"\b(?:feat\.?|ft\.?)\s+.*$", re.IGNORECASE)
+PROD_RE = re.compile(r"\b(?:prod\.?|produced\s+by)\s*.*$", re.IGNORECASE)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -95,8 +105,12 @@ def normalize_title(value: str) -> str:
 
 def normalize_track(value: str) -> str:
     text = normalize_text(value)
-    text = TRACK_NOISE_RE.sub("", text)
+    text = TRACK_BRACKET_NOISE_RE.sub("", text)
+    text = FEATURE_RE.sub("", text)
+    text = PROD_RE.sub("", text)
     text = re.sub(r"\b(?:explicit|remaster(?:ed)?|clean)\b", "", text, flags=re.IGNORECASE)
+    # Remove trailing parenthetical/bracketed credits/translations. This is intentionally aggressive in final dedupe.
+    text = TRACK_TRAILING_CREDIT_RE.sub("", text).strip()
     return re.sub(r"[\s\-_·•:：()（）\[\]【】<>《》'\"“”‘’.,，。!?！？&＋+／/\\|]+", "", text)
 
 
@@ -107,8 +121,11 @@ def similarity(a: str, b: str) -> float:
         return 1.0
     if a in b or b in a:
         shorter, longer = sorted((len(a), len(b)))
-        if longer and shorter / longer >= 0.70:
-            return max(0.90, shorter / longer)
+        if shorter >= 2:
+            ratio = shorter / longer if longer else 0.0
+            # Song titles often gain an English translation / credit suffix on one platform.
+            if ratio >= 0.45:
+                return max(0.88, ratio)
     return SequenceMatcher(None, a, b).ratio()
 
 
@@ -126,8 +143,7 @@ def fetch_catalog(token: str, env: str) -> list[dict[str, Any]]:
     return rows
 
 
-def extract_candidate_tracks(item: dict[str, Any]) -> list[str]:
-    rows = item.get("tracksDetailed") or item.get("tracks") or []
+def extract_tracks(rows: Any) -> list[str]:
     result: list[str] = []
     for row in rows if isinstance(rows, list) else []:
         if isinstance(row, str):
@@ -142,46 +158,37 @@ def extract_candidate_tracks(item: dict[str, Any]) -> list[str]:
     return result
 
 
+def extract_candidate_tracks(item: dict[str, Any]) -> list[str]:
+    return extract_tracks(item.get("tracksDetailed") or item.get("tracks") or [])
+
+
 def extract_existing_tracks(album: dict[str, Any]) -> list[str]:
-    rows = album.get("tracks") or []
-    result: list[str] = []
-    for row in rows if isinstance(rows, list) else []:
-        if isinstance(row, str):
-            name = row
-        elif isinstance(row, dict):
-            name = row.get("name") or row.get("title") or ""
-        else:
-            name = ""
-        normalized = normalize_track(str(name))
-        if normalized:
-            result.append(normalized)
-    return result
+    return extract_tracks(album.get("tracks") or [])
 
 
-def greedy_track_match(candidate_tracks: list[str], existing_tracks: list[str], per_track_threshold: float) -> tuple[int, float, list[float]]:
-    """Match each candidate track to one unique existing track, independent of ordering."""
+def greedy_track_match(candidate_tracks: list[str], existing_tracks: list[str]) -> tuple[list[float], list[tuple[str, str, float]]]:
+    """One-to-one best matching, independent of track order."""
     if len(candidate_tracks) != len(existing_tracks) or not candidate_tracks:
-        return 0, 0.0, []
+        return [], []
 
     unused = set(range(len(existing_tracks)))
     scores: list[float] = []
-    for candidate in candidate_tracks:
+    pairs: list[tuple[str, str, float]] = []
+    # Match the most distinctive / longest names first to reduce greedy collisions on short generic titles.
+    for candidate in sorted(candidate_tracks, key=len, reverse=True):
         best_idx = None
-        best_score = 0.0
+        best_score = -1.0
         for idx in unused:
             score = similarity(candidate, existing_tracks[idx])
             if score > best_score:
                 best_score = score
                 best_idx = idx
         if best_idx is None:
-            scores.append(0.0)
             continue
         unused.remove(best_idx)
-        scores.append(best_score)
-
-    matched_count = sum(score >= per_track_threshold for score in scores)
-    average = sum(scores) / len(scores) if scores else 0.0
-    return matched_count, average, scores
+        scores.append(max(0.0, best_score))
+        pairs.append((candidate, existing_tracks[best_idx], max(0.0, best_score)))
+    return scores, pairs
 
 
 def best_tracklist_match(
@@ -194,28 +201,60 @@ def best_tracklist_match(
     if not candidate_tracks:
         return None, None
 
-    best_album = None
-    best_evidence = None
     candidate_count = len(candidate_tracks)
+    best_album: dict[str, Any] | None = None
+    best_evidence: dict[str, Any] | None = None
 
     for album, existing_tracks in catalog_with_tracks:
+        # User rule: only compare albums with the same number of tracks.
         if len(existing_tracks) != candidate_count:
             continue
-        matched_count, average, scores = greedy_track_match(candidate_tracks, existing_tracks, per_track_threshold)
-        ratio = matched_count / candidate_count if candidate_count else 0.0
-        if ratio < required_ratio or average < min_average:
+
+        scores, pairs = greedy_track_match(candidate_tracks, existing_tracks)
+        if not scores:
             continue
+        matched_count = sum(score >= per_track_threshold for score in scores)
+        strong_count = sum(score >= 0.85 for score in scores)
+        exactish_count = sum(score >= 0.95 for score in scores)
+        ratio = matched_count / candidate_count
+        average = sum(scores) / candidate_count
+
+        # Aggressive final-pass rule:
+        # A) normal threshold: most tracks align; OR
+        # B) at least half are very strong matches and overall similarity is still healthy; OR
+        # C) for tiny 3-4 track releases, all but at most one track clearly match.
+        required_matches = max(2, math.ceil(candidate_count * required_ratio))
+        tiny_release_match = candidate_count <= 4 and strong_count >= candidate_count - 1
+        strong_core_match = strong_count >= math.ceil(candidate_count * 0.50) and average >= 0.68
+        normal_match = matched_count >= required_matches and average >= min_average
+        exact_core_match = exactish_count >= math.ceil(candidate_count * 0.50)
+
+        if not (normal_match or strong_core_match or tiny_release_match or exact_core_match):
+            continue
+
         evidence = {
             "matchedTrackCount": matched_count,
+            "strongTrackCount": strong_count,
+            "exactishTrackCount": exactish_count,
             "trackCount": candidate_count,
             "matchedTrackRatio": round(ratio, 4),
             "averageTrackSimilarity": round(average, 4),
-            "trackSimilarityScores": [round(x, 4) for x in scores],
+            "trackSimilarityScores": [round(x, 4) for x in sorted(scores, reverse=True)],
+            "trackMatchPairs": [
+                {"candidate": a, "existing": b, "similarity": round(score, 4)}
+                for a, b, score in pairs
+            ],
         }
-        if best_evidence is None or (ratio, average) > (
-            best_evidence["matchedTrackRatio"],
-            best_evidence["averageTrackSimilarity"],
-        ):
+        rank = (exactish_count, strong_count, matched_count, average)
+        current_rank = (-1, -1, -1, -1.0)
+        if best_evidence is not None:
+            current_rank = (
+                int(best_evidence.get("exactishTrackCount", 0)),
+                int(best_evidence.get("strongTrackCount", 0)),
+                int(best_evidence.get("matchedTrackCount", 0)),
+                float(best_evidence.get("averageTrackSimilarity", 0.0)),
+            )
+        if rank > current_rank:
             best_album = album
             best_evidence = evidence
 
@@ -228,9 +267,9 @@ def main() -> None:
     parser.add_argument("--output", default=str(BASE_DIR / "qq_album_need_submit.json"))
     parser.add_argument("--overlap-output", default=str(BASE_DIR / "qq_album_fuzzy_overlap.json"))
     parser.add_argument("--threshold", type=float, default=0.70, help="专辑标题相似度阈值")
-    parser.add_argument("--track-threshold", type=float, default=0.78, help="单曲名称视为匹配的最低相似度")
-    parser.add_argument("--track-ratio", type=float, default=1.0, help="同曲目数时，至少多少比例曲目需匹配；默认全部")
-    parser.add_argument("--track-average", type=float, default=0.88, help="整张专辑曲目匹配的最低平均相似度")
+    parser.add_argument("--track-threshold", type=float, default=0.68, help="单曲名称视为匹配的最低相似度")
+    parser.add_argument("--track-ratio", type=float, default=0.65, help="同曲目数时，至少多少比例曲目需匹配")
+    parser.add_argument("--track-average", type=float, default=0.72, help="整张专辑曲目匹配的最低平均相似度")
     args = parser.parse_args()
 
     threshold = max(0.0, min(1.0, float(args.threshold)))
@@ -251,27 +290,27 @@ def main() -> None:
     print(f"读取候选 {len(candidates)} 张；开始拉取现存小程序完整专辑库……")
     catalog = fetch_catalog(token, env)
     if not catalog:
-        raise SystemExit("错误：小程序专辑库读取为 0 张。请先部署最新版 fastCompareQQAlbums，再重试；本次不会覆盖候选文件。")
+        raise SystemExit("错误：小程序专辑库读取为 0 张。本次不会覆盖候选文件。")
 
     normalized_catalog = [
         (album, normalize_title(str(album.get("title") or "")))
         for album in catalog
         if str(album.get("title") or "").strip()
     ]
-    catalog_with_tracks = []
-    albums_with_tracks = 0
+    catalog_with_tracks: list[tuple[dict[str, Any], list[str]]] = []
     for album in catalog:
         tracks = extract_existing_tracks(album)
         if tracks:
-            albums_with_tracks += 1
             catalog_with_tracks.append((album, tracks))
 
-    print(f"  其中 {albums_with_tracks} 张专辑含可用于查重的 tracks 数据")
+    candidate_with_tracks = sum(1 for item in candidates if extract_candidate_tracks(item))
+    print(f"  小程序库中 {len(catalog_with_tracks)} 张专辑含 tracks；当前候选中 {candidate_with_tracks}/{len(candidates)} 张含 tracks")
 
     kept: list[dict[str, Any]] = []
     removed: list[dict[str, Any]] = []
     title_removed = 0
     track_removed = 0
+    no_candidate_tracks = 0
 
     for idx, item in enumerate(candidates, 1):
         candidate_title = str(item.get("title") or "")
@@ -300,30 +339,34 @@ def main() -> None:
             })
         else:
             candidate_tracks = extract_candidate_tracks(item)
-            matched_album, evidence = best_tracklist_match(
-                candidate_tracks,
-                catalog_with_tracks,
-                track_threshold,
-                track_ratio,
-                track_average,
-            )
-            if matched_album is not None and evidence is not None:
-                track_removed += 1
-                removed.append({
-                    **item,
-                    "matchedExistingAlbumId": matched_album.get("_id"),
-                    "matchedExistingTitle": matched_album.get("title"),
-                    "matchedExistingReleaseDate": matched_album.get("releaseDate") or "",
-                    **evidence,
-                    "filterReason": (
-                        f"曲目数量同为 {evidence['trackCount']} 首，"
-                        f"且 {evidence['matchedTrackCount']}/{evidence['trackCount']} 首曲名匹配，"
-                        f"平均曲名相似度 {evidence['averageTrackSimilarity']:.0%}"
-                    ),
-                    "filteredBy": "global_tracklist_similarity",
-                })
-            else:
+            if not candidate_tracks:
+                no_candidate_tracks += 1
                 kept.append(item)
+            else:
+                matched_album, evidence = best_tracklist_match(
+                    candidate_tracks,
+                    catalog_with_tracks,
+                    track_threshold,
+                    track_ratio,
+                    track_average,
+                )
+                if matched_album is not None and evidence is not None:
+                    track_removed += 1
+                    removed.append({
+                        **item,
+                        "matchedExistingAlbumId": matched_album.get("_id"),
+                        "matchedExistingTitle": matched_album.get("title"),
+                        "matchedExistingReleaseDate": matched_album.get("releaseDate") or "",
+                        **evidence,
+                        "filterReason": (
+                            f"曲目数量同为 {evidence['trackCount']} 首；"
+                            f"{evidence['matchedTrackCount']} 首达到基础匹配，"
+                            f"{evidence['strongTrackCount']} 首强匹配，平均相似度 {evidence['averageTrackSimilarity']:.0%}"
+                        ),
+                        "filteredBy": "global_tracklist_similarity_aggressive",
+                    })
+                else:
+                    kept.append(item)
 
         if idx % 50 == 0 or idx == len(candidates):
             print(
@@ -332,11 +375,7 @@ def main() -> None:
             )
 
     Path(args.output).write_text(
-        json.dumps(
-            {"source": "qq_album_need_submit_final_pruned", "count": len(kept), "results": kept},
-            ensure_ascii=False,
-            indent=2,
-        ),
+        json.dumps({"source": "qq_album_need_submit_final_pruned", "count": len(kept), "results": kept}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     Path(args.overlap_output).write_text(
@@ -359,6 +398,7 @@ def main() -> None:
     print("\n完成")
     print(f"标题 >= {threshold:.0%} 相似度剔除: {title_removed}")
     print(f"同曲目数 + 曲目表匹配剔除:    {track_removed}")
+    print(f"候选中无 tracks、无法曲目查重: {no_candidate_tracks}")
     print(f"总剔除:                      {len(removed)} -> {args.overlap_output}")
     print(f"最终剩余需要提交:            {len(kept)} -> {args.output}")
 
