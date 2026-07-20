@@ -12,11 +12,11 @@ Page({
   onLoad() {
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
-    this._loadList()
   },
 
   onShow() {
     this.setData({ themeClass: getThemeClass() })
+    this._loadList()
   },
 
   _loadList() {
