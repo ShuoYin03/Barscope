@@ -140,8 +140,17 @@ async function findBarscopeCreatorByName(name) {
   }
 }
 
+// A submitter isn't necessarily the playlist's own NetEase creator — someone can paste a link to
+// a playlist they merely like, not curated. submittedBy is only trusted as an identity match when
+// the user explicitly attested at submit time that it's their own playlist (isOwnPlaylist); an
+// unclaimed submission falls back to the best-effort nickname guess instead of assuming the
+// submitter is the creator.
 async function resolveBarscopeCreator(item) {
-  return (await findBarscopeCreatorBySubmitter(item.submittedBy)) || (await findBarscopeCreatorByName(item.creatorName))
+  if (item.isOwnPlaylist) {
+    const bySubmitter = await findBarscopeCreatorBySubmitter(item.submittedBy)
+    if (bySubmitter) return bySubmitter
+  }
+  return await findBarscopeCreatorByName(item.creatorName)
 }
 
 async function fetchAlbumArtists(albumId) {
@@ -432,6 +441,7 @@ async function submitPublicPlaylist(event, openId) {
     sourceType: priorDoc ? priorDoc.sourceType : 'community',
     editorialPriority: priorDoc ? priorDoc.editorialPriority : 0,
     submittedBy: priorDoc ? priorDoc.submittedBy : (openId || ''),
+    isOwnPlaylist: priorDoc ? !!priorDoc.isOwnPlaylist : !!event.isOwnPlaylist,
     updatedAt: now,
   }
 

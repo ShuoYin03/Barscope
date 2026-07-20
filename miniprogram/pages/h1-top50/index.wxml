@@ -17,6 +17,10 @@
       <text class="section-kicker">SUBMIT YOUR PLAYLIST</text>
       <text class="section-title">只需要一个网易云歌单链接</text>
       <input class="playlist-input" value="{{playlistUrl}}" bindinput="onUrlInput" placeholder="https://music.163.com/#/playlist?id=..." placeholder-style="color:#6f6762" />
+      <view class="own-playlist-row" bindtap="onToggleOwnPlaylist">
+        <view class="own-playlist-check {{isOwnPlaylist ? 'checked' : ''}}"><text wx:if="{{isOwnPlaylist}}">✓</text></view>
+        <text class="own-playlist-label">这是我自己在网易云上的歌单，关联到我的主页</text>
+      </view>
       <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="onSubmitPlaylist"><text>{{submitting ? '正在读取歌单…' : '提交歌单 →'}}</text></view>
     </view>
 

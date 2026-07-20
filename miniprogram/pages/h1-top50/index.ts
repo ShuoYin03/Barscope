@@ -27,6 +27,7 @@ Page({
     communityList: [] as PlaylistCard[],
     criticCount: 0,
     communityCount: 0,
+    isOwnPlaylist: false,
   },
 
   onLoad() {
@@ -39,6 +40,7 @@ Page({
   onShow() { this.setData({ themeClass: getThemeClass() }) },
   onBack() { wx.navigateBack() },
   onUrlInput(e: WechatMiniprogram.Input) { this.setData({ playlistUrl: e.detail.value || '' }) },
+  onToggleOwnPlaylist() { this.setData({ isOwnPlaylist: !this.data.isOwnPlaylist }) },
 
   _trackView() {
     wx.cloud.callFunction({
@@ -101,7 +103,7 @@ Page({
     wx.showLoading({ title: '正在读取歌单…', mask: true })
     wx.cloud.callFunction({
       name: 'manageFeaturePlaylists',
-      data: { action: 'submit_public', playlistUrl },
+      data: { action: 'submit_public', playlistUrl, isOwnPlaylist: this.data.isOwnPlaylist },
       success: (res: any) => {
         const r = res.result || {}
         if (!r.success) {
@@ -109,7 +111,7 @@ Page({
           wx.showToast({ title: message, icon: 'none' })
           return
         }
-        this.setData({ playlistUrl: '', activePlaylistTab: 'community' })
+        this.setData({ playlistUrl: '', isOwnPlaylist: false, activePlaylistTab: 'community' })
         wx.showToast({ title: r.duplicate ? '已重新排查一遍缺失的艺人/专辑' : '歌单已提交', icon: 'success', duration: 2200 })
         this._loadPlaylists()
       },
