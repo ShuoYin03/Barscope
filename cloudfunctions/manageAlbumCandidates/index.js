@@ -17,7 +17,7 @@ async function mapWithConcurrency(items, limit, fn) {
   return output
 }
 
-const UPSERT_CONCURRENCY = 8
+const UPSERT_CONCURRENCY = 20
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()

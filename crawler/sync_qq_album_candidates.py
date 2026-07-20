@@ -254,6 +254,7 @@ def upload_candidates(
 def main() -> None:
     parser = argparse.ArgumentParser(description="同步 QQ 独有专辑到 BarScope 专辑待审核")
     parser.add_argument("--matches", action="append", help="QQ artist match JSON，可重复传入多批文件")
+    parser.add_argument("--from-candidates", help="跳过重新爬QQ音乐，直接从之前 --output 生成的候选文件读取（比如重跑上传/预览步骤时）")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--new-candidates-output", default=str(BASE_DIR / "qq_album_would_be_new.json"), help="判定为待审核/新增的候选写入路径，供 verify_qq_new_candidates_by_tracks.py 做曲目复核")
     parser.add_argument("--dry-run", action="store_true", help="只跑本地质量筛选规则，不联网核对是否与库内专辑重复")
@@ -263,6 +264,14 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=20, help="每次云函数调用处理多少条候选；调小可以缓解云函数超时")
     parser.add_argument("--debug-filter-limit", type=int, default=12, help="最多打印 N 条被过滤专辑样本")
     args = parser.parse_args()
+
+    if args.from_candidates:
+        stats: Counter = Counter()
+        payload = json.loads(Path(args.from_candidates).read_text(encoding="utf-8"))
+        deduped = payload.get("results", []) or []
+        print(f"跳过爬取，直接从 {args.from_candidates} 读取了 {len(deduped)} 条候选")
+        _do_upload(args, deduped, stats)
+        return
 
     match_paths = [Path(p) for p in args.matches] if args.matches else [DEFAULT_MATCHES]
     rows = load_rows(match_paths)
@@ -339,6 +348,10 @@ def main() -> None:
     print(f"\nRule-passed QQ albums: {len(deduped)} -> {output}")
     print(f"Filter reasons: {dict(filter_reasons)}")
 
+    _do_upload(args, deduped, stats)
+
+
+def _do_upload(args: argparse.Namespace, deduped: list[dict], stats: Counter) -> None:
     if args.dry_run:
         print(f"Dry run complete: {dict(stats)}")
         return
