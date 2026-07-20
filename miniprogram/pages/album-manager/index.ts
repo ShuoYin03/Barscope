@@ -103,6 +103,8 @@ Page({
     applyRulesDone: 0,
     applyingOwnerFix: false,
     applyOwnerFixDone: 0,
+    applyingYearFix: false,
+    applyYearFixDone: 0,
 
     ownershipAuditList: [] as OwnershipAuditItem[],
     ownershipAuditScanning: false,
@@ -747,6 +749,39 @@ Page({
         this._runApplyOwnerFixStep(r.nextSkip)
       },
       fail: () => { this.setData({ applyingOwnerFix: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+    })
+  },
+
+  onApplyReleaseYearFix() {
+    if (this.data.applyingYearFix) return
+    wx.showModal({
+      title: '一键修正发行年份',
+      content: '把每张专辑的年份筛选字段（releaseYear）按发行日期（releaseDate）重新核对修正，用于修复"专辑详情页日期正常，但在发现页按年份筛选时不显示"的问题。只比对已有数据，不重新拉取网易云，确认继续？',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ applyingYearFix: true, applyYearFixDone: 0 })
+        this._runApplyYearFixStep(0)
+      },
+    })
+  },
+
+  _runApplyYearFixStep(skip: number) {
+    wx.cloud.callFunction({
+      name: 'manageCandidates',
+      data: { action: 'apply_release_year_fix', skip },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) { this.setData({ applyingYearFix: false }); wx.showToast({ title: r.error || '修正失败', icon: 'none' }); return }
+        this.setData({ applyYearFixDone: r.processed || 0 })
+        if (r.done) {
+          this.setData({ applyingYearFix: false })
+          wx.showToast({ title: '年份修正完成', icon: 'success' })
+          this._loadAllAlbums(this.data.allActiveLetter, 1)
+          return
+        }
+        this._runApplyYearFixStep(r.nextSkip)
+      },
+      fail: () => { this.setData({ applyingYearFix: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
     })
   },
 

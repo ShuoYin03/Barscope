@@ -259,6 +259,9 @@
           <view class="all-action-btn ghost {{applyingOwnerFix ? 'btn-disabled' : ''}}" bindtap="onApplyOwnerArtistFix">
             <text>{{applyingOwnerFix ? ('修正中 ' + applyOwnerFixDone) : '一键修正专辑归属'}}</text>
           </view>
+          <view class="all-action-btn ghost {{applyingYearFix ? 'btn-disabled' : ''}}" bindtap="onApplyReleaseYearFix">
+            <text>{{applyingYearFix ? ('修正中 ' + applyYearFixDone) : '一键修正发行年份'}}</text>
+          </view>
         </block>
       </view>
 

@@ -166,6 +166,7 @@ exports.main = async (event, context) => {
   if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
   if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
   if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
+  if (action === 'apply_release_year_fix')   return await applyReleaseYearFix(event.skip || 0)
   if (action === 'apply_owner_artist_fix')   return await applyOwnerArtistFix(event.skip || 0)
   if (action === 'audit_ownership_mismatches') return await auditOwnershipMismatches(event.skip || 0)
   if (action === 'apply_ownership_audit_fix') return await applyOwnershipAuditFix(event.ids || [])
@@ -543,6 +544,36 @@ async function applyReleaseTypeRules(skip) {
       const next = d.isMultiArtist ? (Number(d.trackCount) >= 7 ? 'LP' : 'Mixtape') : (Number(d.trackCount) > 6 ? 'LP' : 'Mixtape')
       updated++
       return db.collection('albums').doc(d._id).update({ data: { releaseType: next } })
+    }))
+    const failed = results.filter(r => r.status === 'rejected').length
+    return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+}
+
+// ── apply_release_year_fix ───────────────────────────────────────────────────
+// Reconciles the numeric releaseYear field (used by Discover's year-scoped filters, incl. the
+// SCORED section) against the string releaseDate field (used by the album-detail page's date
+// display). Various import paths (feature-playlist importer, QQ importer, crawler, syncAlbumTracks)
+// write these two fields independently; if one gets updated without the other, an album can show
+// the correct date on its own page yet be invisible in year-filtered Discover lists. Purely
+// reconciles two already-stored fields against each other — no network calls, idempotent, safe to
+// re-run. Client pages through with `skip` until `done`.
+async function applyReleaseYearFix(skip) {
+  try {
+    const pageSize = 300
+    const result = await db.collection('albums').skip(skip).limit(pageSize).field({ _id: true, releaseDate: true, releaseYear: true }).get()
+    const docs = result.data || []
+    if (!docs.length) return { success: true, done: true, processed: skip, updated: 0 }
+    let updated = 0
+    const results = await Promise.allSettled(docs.map(d => {
+      const match = /^(\d{4})/.exec(String(d.releaseDate || ''))
+      if (!match) return Promise.resolve()
+      const correctYear = parseInt(match[1], 10)
+      if (!correctYear || d.releaseYear === correctYear) return Promise.resolve()
+      updated++
+      return db.collection('albums').doc(d._id).update({ data: { releaseYear: correctYear } })
     }))
     const failed = results.filter(r => r.status === 'rejected').length
     return { success: true, done: false, processed: skip + docs.length, updated, failed, nextSkip: skip + docs.length }
