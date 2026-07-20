@@ -5,6 +5,8 @@ interface EditTrack { songId:string; name:string; guests:TrackGuest[]; clientKey
 interface GuestPick { artistId:string; artistName:string; picUrl:string; selected?:boolean }
 
 let _pickerSearchTimer:any = null
+let _dragRects:any[] = []
+let _dragTrackKey = ''
 
 Page({
   data:{
@@ -16,6 +18,7 @@ Page({
     tracks:[] as EditTrack[],
     loading:true,
     saving:false,
+    draggingKey:'',
     editVisible:false,
     editTrackIndex:-1,
     editName:'',
@@ -58,7 +61,8 @@ Page({
         }))
         this.setData({tracks,loading:false})
       },
-      fail:()=>{
+      fail:(err:any)=>{
+        console.error('getAlbums failed',err)
         this.setData({loading:false})
         wx.showToast({title:'加载失败',icon:'none'})
       },
@@ -113,20 +117,39 @@ Page({
     this.setData({tracks,editVisible:false,editTrackIndex:-1,editName:'',editIsNew:false})
   },
 
-  onMoveUp(e:WechatMiniprogram.TouchEvent){
-    const idx=Number((e.currentTarget.dataset as any).idx)
-    if(idx<=0)return
+  onDragStart(e:any){
+    const key=String((e.currentTarget.dataset as any).key||'')
+    if(!key)return
+    _dragTrackKey=key
+    this.setData({draggingKey:key})
+    wx.createSelectorQuery().in(this).selectAll('.track-row').boundingClientRect((rects:any[])=>{
+      _dragRects=Array.isArray(rects)?rects:[]
+    }).exec()
+    try{wx.vibrateShort({type:'light'} as any)}catch(_e){}
+  },
+
+  onDragMove(e:any){
+    if(!_dragTrackKey||!_dragRects.length)return
+    const touch=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])
+    if(!touch)return
+    const y=Number(touch.clientY)
+    let targetIndex=_dragRects.length-1
+    for(let i=0;i<_dragRects.length;i++){
+      const rect=_dragRects[i]
+      if(y<Number(rect.top)+Number(rect.height)/2){targetIndex=i;break}
+    }
     const tracks=this.data.tracks.slice()
-    ;[tracks[idx-1],tracks[idx]]=[tracks[idx],tracks[idx-1]]
+    const currentIndex=tracks.findIndex(t=>t.clientKey===_dragTrackKey)
+    if(currentIndex<0||targetIndex===currentIndex)return
+    const [moved]=tracks.splice(currentIndex,1)
+    tracks.splice(targetIndex,0,moved)
     this.setData({tracks})
   },
 
-  onMoveDown(e:WechatMiniprogram.TouchEvent){
-    const idx=Number((e.currentTarget.dataset as any).idx)
-    if(idx>=this.data.tracks.length-1)return
-    const tracks=this.data.tracks.slice()
-    ;[tracks[idx+1],tracks[idx]]=[tracks[idx],tracks[idx+1]]
-    this.setData({tracks})
+  onDragEnd(){
+    _dragRects=[]
+    _dragTrackKey=''
+    this.setData({draggingKey:''})
   },
 
   onEditGuests(){
@@ -226,14 +249,21 @@ Page({
             wx.hideLoading()
             this.setData({saving:false})
             const r=res.result||{}
-            if(!r.success){wx.showToast({title:r.error||'提交失败',icon:'none'});return}
+            if(!r.success){
+              console.error('manageTrackCorrections returned error',r)
+              wx.showToast({title:String(r.error||'提交失败').slice(0,40),icon:'none',duration:3500})
+              return
+            }
             wx.showToast({title:'已提交审核',icon:'success'})
             setTimeout(()=>wx.navigateBack(),700)
           },
-          fail:()=>{
+          fail:(err:any)=>{
             wx.hideLoading()
             this.setData({saving:false})
-            wx.showToast({title:'网络错误',icon:'none'})
+            console.error('manageTrackCorrections call failed',err)
+            const raw=String((err&&err.errMsg)||(err&&err.message)||'云函数调用失败')
+            const message=raw.replace(/^.*?:fail\s*/i,'').slice(0,40)
+            wx.showToast({title:message||'云函数调用失败',icon:'none',duration:4000})
           },
         } as any)
       },
