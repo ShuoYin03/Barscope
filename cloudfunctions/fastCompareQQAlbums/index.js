@@ -12,6 +12,7 @@ const ALBUM_FIELDS = {
   qqAlbumMid: true,
   qqAlbumId: true,
   neteaseArtistId: true,
+  releaseDate: true,
   releaseYear: true,
 }
 
@@ -28,6 +29,36 @@ function sourceKeyOf(item) {
   return String(item.sourceKey || `${source}:${String(item.sourceId || '').trim()}`)
 }
 
+function parseDate(value) {
+  if (!value) return null
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value
+  if (typeof value === 'number') {
+    const ms = value < 1e12 ? value * 1000 : value
+    const d = new Date(ms)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  const text = String(value).trim()
+  if (!text) return null
+  const normalized = text
+    .replace(/[./年]/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+  const match = normalized.match(/((?:19|20)\d{2})-(\d{1,2})-(\d{1,2})/)
+  if (match) {
+    const d = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  const d = new Date(text)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function dayDiff(a, b) {
+  const da = parseDate(a)
+  const dbb = parseDate(b)
+  if (!da || !dbb) return null
+  return Math.abs(da.getTime() - dbb.getTime()) / 86400000
+}
+
 async function queryIn(collection, field, values, projection) {
   const unique = Array.from(new Set((values || []).map(v => String(v || '').trim()).filter(Boolean)))
   const rows = []
@@ -36,6 +67,21 @@ async function queryIn(collection, field, values, projection) {
     if (!chunk.length) continue
     const r = await db.collection(collection).where({ [field]: _.in(chunk) }).field(projection).limit(100).get()
     rows.push(...(r.data || []))
+  }
+  return rows
+}
+
+async function getAllArtistAlbums(artistId) {
+  const rows = []
+  for (let offset = 0; ; offset += 100) {
+    const r = await db.collection('albums')
+      .where({ neteaseArtistId: artistId })
+      .field(ALBUM_FIELDS)
+      .skip(offset)
+      .limit(100)
+      .get()
+    rows.push(...(r.data || []))
+    if (!r.data || r.data.length < 100) break
   }
   return rows
 }
@@ -82,16 +128,10 @@ async function compareBatch(rawItems) {
     return !directAlbumMap.get(`key:${item.sourceKey}`) && !directAlbumMap.get(`qq:${item.qqAlbumMid}`) && !directAlbumMap.get(`source:${item.sourceId}`)
   })
 
-  // Candidate files are grouped by artist, so this is usually only a handful of DB reads per 100 items.
   const artistIds = Array.from(new Set(unresolved.map(x => x.neteaseArtistId).filter(Boolean)))
   const artistAlbums = new Map()
   await Promise.all(artistIds.map(async artistId => {
-    const r = await db.collection('albums')
-      .where({ neteaseArtistId: artistId })
-      .field(ALBUM_FIELDS)
-      .limit(100)
-      .get()
-    artistAlbums.set(artistId, r.data || [])
+    artistAlbums.set(artistId, await getAllArtistAlbums(artistId))
   }))
 
   const newItems = []
@@ -107,9 +147,30 @@ async function compareBatch(rawItems) {
     let album = directAlbumMap.get(`key:${item.sourceKey}`)
       || directAlbumMap.get(`qq:${item.qqAlbumMid}`)
       || directAlbumMap.get(`source:${item.sourceId}`)
+    let matchType = album ? 'direct_platform_identity' : ''
+    let matchedDateDiffDays = null
 
-    if (!album && item.neteaseArtistId && item.normalizedTitle) {
-      album = (artistAlbums.get(item.neteaseArtistId) || []).find(a => normalizeTitle(a.title) === item.normalizedTitle)
+    const sameArtistAlbums = item.neteaseArtistId ? (artistAlbums.get(item.neteaseArtistId) || []) : []
+
+    if (!album && item.normalizedTitle) {
+      album = sameArtistAlbums.find(a => normalizeTitle(a.title) === item.normalizedTitle)
+      if (album) matchType = 'normalized_title'
+    }
+
+    // Cross-platform titles can differ substantially. For candidates that still have not matched,
+    // use the mapped NetEase artist + release date as a second identity signal. NetEase is the
+    // benchmark catalogue; QQ dates within +/- 3 calendar days are treated as the same release.
+    if (!album && item.releaseDate) {
+      const dateHits = sameArtistAlbums
+        .map(a => ({ album: a, diff: dayDiff(item.releaseDate, a.releaseDate) }))
+        .filter(x => x.diff !== null && x.diff <= 3)
+        .sort((a, b) => a.diff - b.diff)
+
+      if (dateHits.length) {
+        album = dateHits[0].album
+        matchType = 'release_date_3d'
+        matchedDateDiffDays = dateHits[0].diff
+      }
     }
 
     if (album) {
@@ -117,8 +178,12 @@ async function compareBatch(rawItems) {
         sourceKey: item.sourceKey,
         qqTitle: item.title,
         qqArtist: item.artist,
+        qqReleaseDate: item.releaseDate || '',
         barscopeAlbumId: album._id,
         barscopeTitle: album.title,
+        neteaseReleaseDate: album.releaseDate || '',
+        matchType,
+        dateDiffDays: matchedDateDiffDays,
       })
     } else {
       newItems.push(item.sourceKey)
