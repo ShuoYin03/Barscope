@@ -1,7 +1,8 @@
 import { getThemeClass } from '../../utils/theme'
 
-type MissingArtist = { artistId:string; artistName:string; albumCount:number; albumIds:string[]; albums:{albumId:string;title:string;coverUrl:string}[]; selected?:boolean }
+type ArtistIssue = { artistId:string; artistName:string; albumCount:number; albumIds:string[]; albums:{albumId:string;title:string;coverUrl:string}[]; matchedArtistId?:string; matchedArtistName?:string; matchedArtistDocId?:string; selected?:boolean }
 type MissingOwnership = { albumId:string; title:string; artist:string; coverUrl:string; sourceId:string }
+type AuditTab = 'artists'|'idMismatch'|'suspected'|'ownership'
 
 Page({
   data:{
@@ -15,31 +16,48 @@ Page({
     scanProgress:0,
     scanCurrent:0,
     scanTotal:0,
-    activeTab:'artists' as 'artists'|'ownership',
-    summary:{healthScore:100,albumCount:0,artistCount:0,missingOwnership:0,missingArtists:0,missingDescription:0,missingCover:0,missingReleaseDate:0},
-    missingArtists:[] as MissingArtist[],
+    activeTab:'artists' as AuditTab,
+    summary:{healthScore:100,albumCount:0,artistCount:0,missingOwnership:0,missingArtists:0,idMismatches:0,suspectedMatches:0,missingDescription:0,missingCover:0,missingReleaseDate:0},
+    missingArtists:[] as ArtistIssue[],
+    idMismatches:[] as ArtistIssue[],
+    suspectedMatches:[] as ArtistIssue[],
     missingOwnership:[] as MissingOwnership[],
     selectedCount:0,
   },
   onLoad(){const app=getApp<IAppOption>();this.setData({statusBarHeight:app.globalData.statusBarHeight,topbarHeight:app.globalData.topbarHeight});this.onScan()},
   onShow(){this.setData({themeClass:getThemeClass()})},
   onBack(){wx.navigateBack()},
-  onTabTap(e:WechatMiniprogram.TouchEvent){const tab=String((e.currentTarget.dataset as any).tab||'artists') as 'artists'|'ownership';this.setData({activeTab:tab})},
+  onTabTap(e:WechatMiniprogram.TouchEvent){const tab=String((e.currentTarget.dataset as any).tab||'artists') as AuditTab;this.setData({activeTab:tab})},
   _call(data:any):Promise<any>{
     return new Promise((resolve,reject)=>{
       wx.cloud.callFunction({name:'manageDataDiagnostics',data,success:(res:any)=>resolve(res.result||{}),fail:reject} as any)
     })
   },
+  _mergeIssue(map:Map<string,ArtistIssue>,item:ArtistIssue){
+    const key=item.artistId||`name:${String(item.artistName||'').trim().toLowerCase()}`
+    const existing=map.get(key)
+    if(!existing){map.set(key,{...item,selected:false,albumIds:[...(item.albumIds||[])],albums:[...(item.albums||[])]});return}
+    existing.albumCount+=Number(item.albumCount||0)
+    existing.albumIds=Array.from(new Set([...(existing.albumIds||[]),...(item.albumIds||[])]))
+    const albumMap=new Map((existing.albums||[]).map(a=>[a.albumId,a]))
+    ;(item.albums||[]).forEach(a=>albumMap.set(a.albumId,a))
+    existing.albums=Array.from(albumMap.values()).slice(0,8)
+    if(!existing.matchedArtistId&&item.matchedArtistId)existing.matchedArtistId=item.matchedArtistId
+    if(!existing.matchedArtistName&&item.matchedArtistName)existing.matchedArtistName=item.matchedArtistName
+    if(!existing.matchedArtistDocId&&item.matchedArtistDocId)existing.matchedArtistDocId=item.matchedArtistDocId
+  },
   async onScan(){
     if(this.data.loading)return
-    this.setData({loading:true,hasScanned:false,scanError:'',scanProgress:0,scanCurrent:0,scanTotal:0,missingArtists:[],missingOwnership:[],selectedCount:0})
+    this.setData({loading:true,hasScanned:false,scanError:'',scanProgress:0,scanCurrent:0,scanTotal:0,missingArtists:[],idMismatches:[],suspectedMatches:[],missingOwnership:[],selectedCount:0})
     try{
       const meta=await this._call({action:'scan_meta'})
       if(!meta.success)throw new Error(meta.error==='unauthorized'?'仅管理员可用':(meta.detail||meta.error||'初始化扫描失败'))
       const total=Number(meta.albumCount||0)
       const pageSize=Number(meta.pageSize||80)
       const artistCount=Number(meta.artistCount||0)
-      const artistMap=new Map<string,MissingArtist>()
+      const artistMap=new Map<string,ArtistIssue>()
+      const idMismatchMap=new Map<string,ArtistIssue>()
+      const suspectedMap=new Map<string,ArtistIssue>()
       const ownership:MissingOwnership[]=[]
       let missingDescription=0
       let missingCover=0
@@ -59,37 +77,35 @@ Page({
         missingCover+=Number(page.missingCover||0)
         missingReleaseDate+=Number(page.missingReleaseDate||0)
         ownership.push(...(page.missingOwnership||[]))
-
-        ;(page.missingArtists||[]).forEach((item:MissingArtist)=>{
-          const key=item.artistId||`name:${String(item.artistName||'').trim().toLowerCase()}`
-          const existing=artistMap.get(key)
-          if(!existing){artistMap.set(key,{...item,selected:false,albumIds:[...(item.albumIds||[])],albums:[...(item.albums||[])]});return}
-          existing.albumCount+=Number(item.albumCount||0)
-          existing.albumIds=Array.from(new Set([...(existing.albumIds||[]),...(item.albumIds||[])]))
-          const albumMap=new Map((existing.albums||[]).map(a=>[a.albumId,a]))
-          ;(item.albums||[]).forEach(a=>albumMap.set(a.albumId,a))
-          existing.albums=Array.from(albumMap.values()).slice(0,8)
-        })
+        ;(page.missingArtists||[]).forEach((item:ArtistIssue)=>this._mergeIssue(artistMap,item))
+        ;(page.idMismatches||[]).forEach((item:ArtistIssue)=>this._mergeIssue(idMismatchMap,item))
+        ;(page.suspectedMatches||[]).forEach((item:ArtistIssue)=>this._mergeIssue(suspectedMap,item))
 
         skip=Number(page.nextSkip||skip+fetched)
         const current=Math.min(skip,total)
         const progress=total?Math.min(100,Math.round(current/total*100)):100
         const missingArtists=Array.from(artistMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
-        const issueCount=ownership.length+missingArtists.length+missingDescription+missingCover+missingReleaseDate
-        const healthScore=scannedAlbums?Math.max(0,Math.round((1-issueCount/Math.max(scannedAlbums*4,1))*1000)/10):100
+        const idMismatches=Array.from(idMismatchMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
+        const suspectedMatches=Array.from(suspectedMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
+        const issueCount=ownership.length+missingArtists.length+idMismatches.length+suspectedMatches.length+missingDescription+missingCover+missingReleaseDate
+        const healthScore=scannedAlbums?Math.max(0,Math.round((1-issueCount/Math.max(scannedAlbums*5,1))*1000)/10):100
         this.setData({
           scanCurrent:current,
           scanProgress:progress,
           missingArtists,
+          idMismatches,
+          suspectedMatches,
           missingOwnership:ownership,
-          summary:{healthScore,albumCount:scannedAlbums,artistCount,missingOwnership:ownership.length,missingArtists:missingArtists.length,missingDescription,missingCover,missingReleaseDate},
+          summary:{healthScore,albumCount:scannedAlbums,artistCount,missingOwnership:ownership.length,missingArtists:missingArtists.length,idMismatches:idMismatches.length,suspectedMatches:suspectedMatches.length,missingDescription,missingCover,missingReleaseDate},
         })
       }
 
       const missingArtists=Array.from(artistMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
-      const issueCount=ownership.length+missingArtists.length+missingDescription+missingCover+missingReleaseDate
-      const healthScore=scannedAlbums?Math.max(0,Math.round((1-issueCount/Math.max(scannedAlbums*4,1))*1000)/10):100
-      this.setData({hasScanned:true,scanProgress:100,scanCurrent:total,scanTotal:total,missingArtists,missingOwnership:ownership,summary:{healthScore,albumCount:scannedAlbums,artistCount,missingOwnership:ownership.length,missingArtists:missingArtists.length,missingDescription,missingCover,missingReleaseDate}})
+      const idMismatches=Array.from(idMismatchMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
+      const suspectedMatches=Array.from(suspectedMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
+      const issueCount=ownership.length+missingArtists.length+idMismatches.length+suspectedMatches.length+missingDescription+missingCover+missingReleaseDate
+      const healthScore=scannedAlbums?Math.max(0,Math.round((1-issueCount/Math.max(scannedAlbums*5,1))*1000)/10):100
+      this.setData({hasScanned:true,scanProgress:100,scanCurrent:total,scanTotal:total,missingArtists,idMismatches,suspectedMatches,missingOwnership:ownership,summary:{healthScore,albumCount:scannedAlbums,artistCount,missingOwnership:ownership.length,missingArtists:missingArtists.length,idMismatches:idMismatches.length,suspectedMatches:suspectedMatches.length,missingDescription,missingCover,missingReleaseDate}})
     }catch(err:any){
       const message=String(err&&err.message||err&&err.errMsg||'扫描失败')
       this.setData({hasScanned:false,scanError:message})
@@ -124,7 +140,7 @@ Page({
     const item=this.data.missingArtists.find(x=>x.artistId===id&&x.artistName===name)
     if(item)this._send([item])
   },
-  _send(items:MissingArtist[]){
+  _send(items:ArtistIssue[]){
     if(this.data.sending)return
     this.setData({sending:true})
     wx.showLoading({title:'送入审核中…',mask:true})
