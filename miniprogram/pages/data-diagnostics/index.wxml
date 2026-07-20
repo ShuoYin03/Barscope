@@ -11,6 +11,16 @@
       <view class="health-meta"><text>{{summary.albumCount}} Albums</text><text>{{summary.artistCount}} Artists</text></view>
     </view>
 
+    <view class="scan-panel {{scanError?'error':''}}">
+      <view class="scan-copy">
+        <text class="scan-title">{{loading?'正在扫描数据库':(scanError?'扫描没有完成':(hasScanned?'扫描已完成':'开始数据库体检'))}}</text>
+        <text class="scan-desc" wx:if="{{scanError}}">{{scanError}}</text>
+        <text class="scan-desc" wx:elif="{{hasScanned}}">已检查已入库专辑与 Artists 数据归属关系</text>
+        <text class="scan-desc" wx:else>扫描后会在下方直接列出具体缺失艺人与相关专辑</text>
+      </view>
+      <view class="primary-scan-btn" bindtap="onScan">{{loading?'扫描中…':(scanError?'重新扫描':'扫描数据库')}}</view>
+    </view>
+
     <view class="grid">
       <view class="metric"><text class="metric-num">{{summary.missingArtists}}</text><text class="metric-label">归属艺人未入库</text></view>
       <view class="metric"><text class="metric-num">{{summary.missingOwnership}}</text><text class="metric-label">专辑归属缺失</text></view>
@@ -24,26 +34,31 @@
     </view>
 
     <block wx:if="{{activeTab==='artists'}}">
-      <view wx:if="{{missingArtists.length}}" class="bulk-bar"><view bindtap="onSelectAll">{{selectedCount===missingArtists.length?'取消全选':'全选'}} · 已选 {{selectedCount}}</view><view class="bulk-btn" bindtap="onSendSelected">送入艺人审核</view></view>
-      <view wx:if="{{!loading && !missingArtists.length}}" class="empty">✓ 没有发现归属艺人缺失</view>
-      <view wx:for="{{missingArtists}}" wx:key="artistId" class="issue-card {{item.selected?'selected':''}}">
-        <view class="check" data-id="{{item.artistId}}" bindtap="onToggleArtist">{{item.selected?'✓':''}}</view>
+      <view wx:if="{{hasScanned && missingArtists.length}}" class="bulk-bar">
+        <view class="select-all" bindtap="onSelectAll">{{selectedCount===missingArtists.length?'取消全选':'全选'}} · 已选 {{selectedCount}}</view>
+        <view class="bulk-actions"><view class="bulk-btn secondary" bindtap="onSendSelected">送审已选</view><view class="bulk-btn" bindtap="onSendAll">一键全部送审</view></view>
+      </view>
+      <view wx:if="{{hasScanned && !loading && !missingArtists.length}}" class="empty">✓ 没有发现归属艺人缺失</view>
+      <view wx:if="{{!hasScanned && !loading}}" class="empty muted">扫描成功后，具体问题会显示在这里</view>
+      <view wx:for="{{missingArtists}}" wx:key="index" class="issue-card {{item.selected?'selected':''}}">
+        <view class="check" data-id="{{item.artistId}}" data-name="{{item.artistName}}" bindtap="onToggleArtist">{{item.selected?'✓':''}}</view>
         <view class="issue-main">
           <text class="issue-title">{{item.artistName}}</text>
-          <text class="issue-id">NETEASE ARTIST ID · {{item.artistId}}</text>
+          <text class="issue-id">NETEASE ARTIST ID · {{item.artistId||'缺失'}}</text>
           <text class="issue-desc">关联 {{item.albumCount}} 张已入库专辑</text>
           <view class="album-chips"><text wx:for="{{item.albums}}" wx:key="albumId" class="chip" data-id="{{item.albumId}}" catchtap="onAlbumTap">《{{item.title}}》</text></view>
         </view>
-        <view class="send-one" data-id="{{item.artistId}}" bindtap="onSendOne">送审 →</view>
+        <view class="send-one" data-id="{{item.artistId}}" data-name="{{item.artistName}}" bindtap="onSendOne">送审 →</view>
       </view>
     </block>
 
     <block wx:else>
-      <view wx:if="{{!loading && !missingOwnership.length}}" class="empty">✓ 没有发现专辑归属缺失</view>
+      <view wx:if="{{hasScanned && !loading && !missingOwnership.length}}" class="empty">✓ 没有发现专辑归属缺失</view>
+      <view wx:if="{{!hasScanned && !loading}}" class="empty muted">扫描成功后，具体问题会显示在这里</view>
       <view wx:for="{{missingOwnership}}" wx:key="albumId" class="issue-card album-issue" data-id="{{item.albumId}}" bindtap="onAlbumTap">
         <image wx:if="{{item.coverUrl}}" class="cover" src="{{item.coverUrl}}" mode="aspectFill" />
         <view class="issue-main"><text class="issue-title">{{item.title}}</text><text class="issue-desc">当前艺人字段：{{item.artist||'空'}}</text><text class="issue-id">SOURCE ID · {{item.sourceId||'—'}}</text></view>
-        <text class="send-one">修正归属 →</text>
+        <text class="send-one">查看专辑 →</text>
       </view>
     </block>
 
