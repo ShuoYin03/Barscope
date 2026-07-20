@@ -5,7 +5,7 @@ const db = cloud.database()
 exports.main = async event => {
   const action = String(event.action || 'list')
   try {
-    if (action === 'list') return listQQRecords(event)
+    if (action === 'list') return listRecords(event)
     if (action === 'artists') return listArtists(event)
     if (action === 'update') return updateRecords(event)
     return { success:false, error:'unknown action' }
@@ -15,13 +15,13 @@ exports.main = async event => {
   }
 }
 
-async function listQQRecords(event) {
+async function listRecords(event) {
   const collection = event.collection === 'album_candidates' ? 'album_candidates' : 'albums'
   const offset = Math.max(Number(event.offset || 0), 0)
   const limit = Math.min(Math.max(Number(event.limit || 100), 1), 100)
   const totalRes = await db.collection(collection).count()
   const page = await db.collection(collection).skip(offset).limit(limit).get()
-  const list = (page.data || []).filter(isQQRecord).map(row => ({
+  const list = (page.data || []).map(row => ({
     _id:row._id,
     title:row.title || '',
     artist:row.artist || '',
@@ -42,14 +42,11 @@ async function listQQRecords(event) {
     releaseYear:row.releaseYear || 0,
     company:row.company || '',
     trackCount:Number(row.trackCount || 0),
+    tracks:Array.isArray(row.tracks) ? row.tracks : [],
+    featuringGuests:Array.isArray(row.featuringGuests) ? row.featuringGuests : [],
     status:row.status || '',
   }))
   return { success:true, collection, offset, limit, total:Number(totalRes.total || 0), list }
-}
-
-function isQQRecord(row) {
-  const source = String(row.sourcePlatform || row.source || '').toLowerCase()
-  return source === 'qq' || !!row.qqAlbumMid || String(row.sourceKey || '').startsWith('qq:')
 }
 
 async function listArtists(event) {
@@ -57,7 +54,19 @@ async function listArtists(event) {
   const limit = Math.min(Math.max(Number(event.limit || 100), 1), 100)
   const totalRes = await db.collection('artist_candidates').where({status:'approved'}).count()
   const res = await db.collection('artist_candidates').where({status:'approved'})
-    .field({_id:true,artistId:true,artistName:true,aliases:true,aka:true})
+    .field({
+      _id:true,
+      artistId:true,
+      neteaseArtistId:true,
+      artistName:true,
+      name:true,
+      aliases:true,
+      aka:true,
+      qqArtistMid:true,
+      qqArtistId:true,
+      qqMid:true,
+      platformIds:true,
+    })
     .skip(offset).limit(limit).get()
   return { success:true, offset, limit, total:Number(totalRes.total || 0), list:res.data || [] }
 }
@@ -74,7 +83,6 @@ async function updateRecords(event) {
       if (!id) { failed++; continue }
       const patch = Object.assign({}, item.patch || {})
       delete patch._id
-      // Never touch ratings/reviews/approval state during metadata backfill.
       delete patch.avgScore
       delete patch.reviewCount
       delete patch.approved
