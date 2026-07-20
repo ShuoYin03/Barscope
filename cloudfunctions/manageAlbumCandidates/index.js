@@ -3,6 +3,22 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+async function mapWithConcurrency(items, limit, fn) {
+  const output = new Array(items.length)
+  let cursor = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = cursor++
+      if (i >= items.length) return
+      output[i] = await fn(items[i], i)
+    }
+  })
+  await Promise.all(workers)
+  return output
+}
+
+const UPSERT_CONCURRENCY = 8
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const action = event.action || 'list'
@@ -105,17 +121,14 @@ async function attachQQIdentity(album, item) {
 // dryRun runs the exact same existing-candidate/existing-album lookups upsert would use to
 // decide insert-vs-skip-vs-attach, without writing anything — lets a caller preview real
 // server-side dedup counts (not just the crawler's own pre-dedup rule filter) before committing.
+// Each candidate's lookups are independent of the others in the batch, so they run with bounded
+// concurrency instead of one-at-a-time — a batch of 20 candidates run serially (several sequential
+// DB round trips each) was long enough to hit the tcb/invokecloudfunction gateway's own timeout
+// regardless of the function's own configured timeout setting.
 async function upsert(candidates, dryRun) {
-  let inserted = 0
-  let skipped = 0
-  let matchedExisting = 0
-  let errors = 0
-  const matchedExistingSamples = []
-  const insertedKeys = []
-
-  for (const raw of candidates) {
+  const results = await mapWithConcurrency(candidates, UPSERT_CONCURRENCY, async raw => {
     try {
-      if (!raw.sourceId) { skipped += 1; continue }
+      if (!raw.sourceId) return { outcome: 'skipped' }
       const source = platformOf(raw)
       const sourceKey = sourceKeyOf(raw)
       const item = {
@@ -128,14 +141,15 @@ async function upsert(candidates, dryRun) {
       }
 
       const candidate = await findExistingCandidate(item)
-      if (candidate) { skipped += 1; continue }
+      if (candidate) return { outcome: 'skipped' }
 
       const album = await findExistingAlbum(item)
       if (album) {
         if (!dryRun) await attachQQIdentity(album, item)
-        matchedExisting += 1
-        if (matchedExistingSamples.length < 30) matchedExistingSamples.push({ title: item.title, artist: item.artist, existingAlbumId: album._id, existingTitle: album.title })
-        continue
+        return {
+          outcome: 'matchedExisting',
+          sample: { title: item.title, artist: item.artist, existingAlbumId: album._id, existingTitle: album.title },
+        }
       }
 
       if (!dryRun) {
@@ -148,11 +162,23 @@ async function upsert(candidates, dryRun) {
           },
         })
       }
-      inserted += 1
-      insertedKeys.push(sourceKey)
+      return { outcome: 'inserted', sourceKey }
     } catch (e) {
-      errors += 1
+      return { outcome: 'error' }
     }
+  })
+
+  let inserted = 0
+  let skipped = 0
+  let matchedExisting = 0
+  let errors = 0
+  const matchedExistingSamples = []
+  const insertedKeys = []
+  for (const r of results) {
+    if (r.outcome === 'inserted') { inserted += 1; insertedKeys.push(r.sourceKey) }
+    else if (r.outcome === 'matchedExisting') { matchedExisting += 1; if (matchedExistingSamples.length < 30) matchedExistingSamples.push(r.sample) }
+    else if (r.outcome === 'skipped') skipped += 1
+    else errors += 1
   }
   return { success: errors === 0, dryRun: !!dryRun, inserted, skipped, matchedExisting, errors, matchedExistingSamples, insertedKeys }
 }
