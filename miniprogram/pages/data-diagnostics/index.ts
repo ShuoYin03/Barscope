@@ -12,6 +12,9 @@ Page({
     sending:false,
     hasScanned:false,
     scanError:'',
+    scanProgress:0,
+    scanCurrent:0,
+    scanTotal:0,
     activeTab:'artists' as 'artists'|'ownership',
     summary:{healthScore:100,albumCount:0,artistCount:0,missingOwnership:0,missingArtists:0,missingDescription:0,missingCover:0,missingReleaseDate:0},
     missingArtists:[] as MissingArtist[],
@@ -22,29 +25,78 @@ Page({
   onShow(){this.setData({themeClass:getThemeClass()})},
   onBack(){wx.navigateBack()},
   onTabTap(e:WechatMiniprogram.TouchEvent){const tab=String((e.currentTarget.dataset as any).tab||'artists') as 'artists'|'ownership';this.setData({activeTab:tab})},
-  onScan(){
+  _call(data:any):Promise<any>{
+    return new Promise((resolve,reject)=>{
+      wx.cloud.callFunction({name:'manageDataDiagnostics',data,success:(res:any)=>resolve(res.result||{}),fail:reject} as any)
+    })
+  },
+  async onScan(){
     if(this.data.loading)return
-    this.setData({loading:true,scanError:''})
-    wx.cloud.callFunction({
-      name:'manageDataDiagnostics',
-      data:{action:'scan'},
-      success:(res:any)=>{
-        const r=res.result||{}
-        if(!r.success){
-          const message=r.error==='unauthorized'?'仅管理员可用':(r.detail||r.error||'扫描失败')
-          this.setData({hasScanned:false,scanError:message})
-          wx.showToast({title:r.error==='unauthorized'?'仅管理员可用':'扫描失败',icon:'none'})
-          return
-        }
-        this.setData({hasScanned:true,scanError:'',summary:r.summary||this.data.summary,missingArtists:(r.missingArtists||[]).map((x:any)=>({...x,selected:false})),missingOwnership:r.missingOwnership||[],selectedCount:0})
-      },
-      fail:(err:any)=>{
-        const message=String(err&&err.errMsg||'云函数调用失败')
-        this.setData({hasScanned:false,scanError:message})
-        wx.showToast({title:'扫描失败',icon:'none'})
-      },
-      complete:()=>this.setData({loading:false}),
-    } as any)
+    this.setData({loading:true,hasScanned:false,scanError:'',scanProgress:0,scanCurrent:0,scanTotal:0,missingArtists:[],missingOwnership:[],selectedCount:0})
+    try{
+      const meta=await this._call({action:'scan_meta'})
+      if(!meta.success)throw new Error(meta.error==='unauthorized'?'仅管理员可用':(meta.detail||meta.error||'初始化扫描失败'))
+      const total=Number(meta.albumCount||0)
+      const pageSize=Number(meta.pageSize||80)
+      const artistCount=Number(meta.artistCount||0)
+      const artistMap=new Map<string,MissingArtist>()
+      const ownership:MissingOwnership[]=[]
+      let missingDescription=0
+      let missingCover=0
+      let missingReleaseDate=0
+      let scannedAlbums=0
+      let skip=0
+
+      this.setData({scanTotal:total,summary:{...this.data.summary,albumCount:total,artistCount}})
+
+      while(skip<total){
+        const page=await this._call({action:'scan_page',skip,limit:pageSize})
+        if(!page.success)throw new Error(page.detail||page.error||`扫描第 ${skip+1} 条数据时失败`)
+        const fetched=Number(page.fetched||0)
+        if(fetched<=0)break
+        scannedAlbums+=Number(page.scanned||0)
+        missingDescription+=Number(page.missingDescription||0)
+        missingCover+=Number(page.missingCover||0)
+        missingReleaseDate+=Number(page.missingReleaseDate||0)
+        ownership.push(...(page.missingOwnership||[]))
+
+        ;(page.missingArtists||[]).forEach((item:MissingArtist)=>{
+          const key=item.artistId||`name:${String(item.artistName||'').trim().toLowerCase()}`
+          const existing=artistMap.get(key)
+          if(!existing){artistMap.set(key,{...item,selected:false,albumIds:[...(item.albumIds||[])],albums:[...(item.albums||[])]});return}
+          existing.albumCount+=Number(item.albumCount||0)
+          existing.albumIds=Array.from(new Set([...(existing.albumIds||[]),...(item.albumIds||[])]))
+          const albumMap=new Map((existing.albums||[]).map(a=>[a.albumId,a]))
+          ;(item.albums||[]).forEach(a=>albumMap.set(a.albumId,a))
+          existing.albums=Array.from(albumMap.values()).slice(0,8)
+        })
+
+        skip=Number(page.nextSkip||skip+fetched)
+        const current=Math.min(skip,total)
+        const progress=total?Math.min(100,Math.round(current/total*100)):100
+        const missingArtists=Array.from(artistMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
+        const issueCount=ownership.length+missingArtists.length+missingDescription+missingCover+missingReleaseDate
+        const healthScore=scannedAlbums?Math.max(0,Math.round((1-issueCount/Math.max(scannedAlbums*4,1))*1000)/10):100
+        this.setData({
+          scanCurrent:current,
+          scanProgress:progress,
+          missingArtists,
+          missingOwnership:ownership,
+          summary:{healthScore,albumCount:scannedAlbums,artistCount,missingOwnership:ownership.length,missingArtists:missingArtists.length,missingDescription,missingCover,missingReleaseDate},
+        })
+      }
+
+      const missingArtists=Array.from(artistMap.values()).sort((a,b)=>b.albumCount-a.albumCount||a.artistName.localeCompare(b.artistName))
+      const issueCount=ownership.length+missingArtists.length+missingDescription+missingCover+missingReleaseDate
+      const healthScore=scannedAlbums?Math.max(0,Math.round((1-issueCount/Math.max(scannedAlbums*4,1))*1000)/10):100
+      this.setData({hasScanned:true,scanProgress:100,scanCurrent:total,scanTotal:total,missingArtists,missingOwnership:ownership,summary:{healthScore,albumCount:scannedAlbums,artistCount,missingOwnership:ownership.length,missingArtists:missingArtists.length,missingDescription,missingCover,missingReleaseDate}})
+    }catch(err:any){
+      const message=String(err&&err.message||err&&err.errMsg||'扫描失败')
+      this.setData({hasScanned:false,scanError:message})
+      wx.showToast({title:'扫描未完成',icon:'none'})
+    }finally{
+      this.setData({loading:false})
+    }
   },
   onToggleArtist(e:WechatMiniprogram.TouchEvent){
     const id=String((e.currentTarget.dataset as any).id||'')
