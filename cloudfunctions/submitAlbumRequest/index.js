@@ -66,7 +66,27 @@ async function searchQQAndSubmit(event, openId) {
     provider = 'legacy'
   }
 
+  console.log('[QQ SEARCH DEBUG]', {
+    keyword,
+    normalizedKeyword: normalize(keyword),
+    provider,
+    count: albums.length,
+    albums: albums.map(a => ({
+      title: a.title,
+      normalizedTitle: normalize(a.title),
+      albumMid: a.albumMid,
+      albumId: a.albumId,
+      singers: a.singers,
+    })),
+  })
+
   const exact = albums.filter(a => normalize(a.title) === normalize(keyword))
+  console.log('[QQ SEARCH MATCH]', {
+    keyword,
+    provider,
+    exactMatchCount: exact.length,
+    exactMatches: exact.map(a => ({ title:a.title, albumMid:a.albumMid, singers:a.singers })),
+  })
   if (!exact.length) return { success:true, needsManual:true, searchedName:keyword, qqResults:albums.slice(0,10), provider }
 
   const picked = exact[0]
