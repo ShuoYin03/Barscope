@@ -143,20 +143,22 @@ Page({
   async _send(items:ArtistIssue[]){
     if(this.data.sending)return
     this.setData({sending:true})
-    const batchSize=40
-    let inserted=0,skipped=0,failed=0
+    const batchSize=8
+    let inserted=0,skipped=0,failed=0,enriched=0
     try{
       for(let i=0;i<items.length;i+=batchSize){
         const batch=items.slice(i,i+batchSize)
-        wx.showLoading({title:`送审 ${Math.min(i+batch.length,items.length)}/${items.length}`,mask:true})
+        wx.showLoading({title:`关联并送审 ${Math.min(i+batch.length,items.length)}/${items.length}`,mask:true})
         const r=await this._call({action:'send_artists_to_review',items:batch})
         if(!r.success)throw new Error(r.detail||r.error||'操作失败')
         inserted+=Number(r.inserted||0)
         skipped+=Number(r.skipped||0)
         failed+=Number(r.failed||0)
+        enriched+=Number(r.enriched||0)
       }
       wx.hideLoading()
-      wx.showToast({title:failed?`新增${inserted}，失败${failed}`:`新增 ${inserted} 位候选`,icon:'none',duration:2200})
+      const text=failed?`新增${inserted}，失败${failed}`:`新增${inserted} · 关联网易云${enriched}`
+      wx.showToast({title:text,icon:'none',duration:2600})
       await this.onScan()
     }catch(err:any){
       wx.hideLoading()
