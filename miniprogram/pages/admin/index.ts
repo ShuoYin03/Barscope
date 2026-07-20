@@ -27,7 +27,7 @@ Page({
     list: [] as Candidate[], loading: false, hasMore: false, page: 1, pageSize: 20,
     deciding: {} as Record<string, boolean>, refreshing: {} as Record<string, boolean>, keyword: '',
     selectMode: false, selected: {} as Record<string, boolean>, batchDeciding: false, exporting: false,
-    purging: false, purgedCount: 0,
+    purging: false, purgedCount: 0, autoCleaning: false,
   },
   onLoad(options: Record<string, string>) { const app = getApp<IAppOption>(); this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight }); this._loadStats(); const valid: TabKey[] = ['pending', 'approved', 'declined']; const tab = options && options.tab as TabKey; const initial: TabKey = valid.indexOf(tab) >= 0 ? tab : 'pending'; this.setData({ activeTab: initial }); this._loadList(initial, 1) },
   onShow() { this.setData({ themeClass: getThemeClass() }) },
@@ -58,6 +58,33 @@ Page({
         })
       },
       fail: () => { wx.hideLoading(); this.setData({ exporting: false }); wx.showModal({ title: '导出失败', content: '云端名单读取失败，请检查云函数是否已部署。', showCancel: false }) },
+    })
+  },
+
+  onAutoCleanDuplicates() {
+    if (this.data.autoCleaning) return
+    wx.showModal({
+      title: '自动清理重名候选',
+      content: '会扫描所有待审核候选，同名的一组里如果既有带头像的又有没头像的，没头像的会被自动拒绝（判定为网易云同名误匹配），带头像的保留待人工审核。手动提交（网易云未找到）的记录不受影响。误拒了可以去"已拒绝"里恢复，确认继续？',
+      confirmText: '开始清理',
+      confirmColor: '#C94E25',
+      success: (res) => {
+        if (!res.confirm) return
+        this.setData({ autoCleaning: true })
+        wx.cloud.callFunction({
+          name: 'manageCandidates',
+          data: { action: 'auto_clean_duplicate_candidates' },
+          success: (r: any) => {
+            const result = r.result || {}
+            this.setData({ autoCleaning: false })
+            if (!result.success) { wx.showToast({ title: result.error || '清理失败', icon: 'none' }); return }
+            wx.showToast({ title: `已自动拒绝 ${result.declined} 条重名误匹配`, icon: 'none', duration: 2500 })
+            this._loadStats()
+            this._loadList(this.data.activeTab, 1)
+          },
+          fail: () => { this.setData({ autoCleaning: false }); wx.showToast({ title: '网络错误', icon: 'none' }) },
+        })
+      },
     })
   },
   onApprove(e: WechatMiniprogram.TouchEvent) { const { id } = e.currentTarget.dataset as { id: string }; this._decide([{ id, decision: 'approved' }]) },

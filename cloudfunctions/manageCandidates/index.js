@@ -169,6 +169,7 @@ exports.main = async (event, context) => {
   if (action === 'apply_owner_artist_fix')   return await applyOwnerArtistFix(event.skip || 0)
   if (action === 'audit_ownership_mismatches') return await auditOwnershipMismatches(event.skip || 0)
   if (action === 'apply_ownership_audit_fix') return await applyOwnershipAuditFix(event.ids || [])
+  if (action === 'auto_clean_duplicate_candidates') return await autoCleanDuplicateCandidates()
   if (action === 'purge_declined')        return await purgeDeclinedCandidates()
 
   return { success: false, error: 'unknown action' }
@@ -720,6 +721,52 @@ async function applyOwnershipAuditFix(ids) {
     failed += results.filter(r => r === 'failed').length
   }
   return { success: true, updated, skipped, failed }
+}
+
+// ── auto_clean_duplicate_candidates ──────────────────────────────────────────
+// Groups all pending candidates by normalized name; wherever a group has both a photo-having
+// entry and a photo-less one, the photo-less ones are near-certainly the wrong same-named
+// NetEase match (see submitArtistRequest's photo-preference fix) — auto-decline those, leaving
+// the photo-having one for normal human approval. manualEntry candidates are never touched: a
+// missing photo is expected and intentional for those, not a signal of a bad match. Declines are
+// reversible via the 已拒绝 tab's 恢复 button, so this errs toward cleaning up rather than
+// leaving obvious duplicates for an admin to hunt down by hand.
+async function autoCleanDuplicateCandidates() {
+  try {
+    const pending = await db.collection('artist_candidates').where({ status: 'pending' })
+      .field({ _id: true, artistName: true, picUrl: true, manualEntry: true })
+      .limit(1000).get()
+    const rows = pending.data || []
+    const groups = new Map()
+    rows.forEach(r => {
+      const key = String(r.artistName || '').trim().toLowerCase()
+      if (!key) return
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(r)
+    })
+    const toDecline = []
+    let duplicateGroups = 0
+    for (const group of groups.values()) {
+      if (group.length < 2) continue
+      duplicateGroups++
+      const withPhoto = group.filter(r => r.picUrl && !r.manualEntry)
+      const withoutPhoto = group.filter(r => !r.picUrl && !r.manualEntry)
+      if (withPhoto.length && withoutPhoto.length) toDecline.push(...withoutPhoto)
+    }
+    const now = db.serverDate()
+    await Promise.allSettled(toDecline.map(r => db.collection('artist_candidates').doc(r._id).update({
+      data: { status: 'declined', decidedAt: now, autoDeclinedReason: '同名候选中已有带头像的匹配，判定为网易云同名误匹配' },
+    })))
+    return {
+      success: true,
+      scanned: rows.length,
+      duplicateGroups,
+      declined: toDecline.length,
+      declinedNames: toDecline.map(r => r.artistName),
+    }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
 }
 
 // ── decide ────────────────────────────────────────────────────────────────────
