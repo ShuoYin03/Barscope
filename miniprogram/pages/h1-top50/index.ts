@@ -12,6 +12,8 @@ interface PlaylistCard {
   isEditorial: boolean
 }
 
+const FEATURE_ID = '2026-h1-top-50-tracks'
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -30,12 +32,30 @@ Page({
   onLoad() {
     const app = getApp<IAppOption>()
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
+    this._trackView()
     this._loadPlaylists()
   },
 
   onShow() { this.setData({ themeClass: getThemeClass() }) },
   onBack() { wx.navigateBack() },
   onUrlInput(e: WechatMiniprogram.Input) { this.setData({ playlistUrl: e.detail.value || '' }) },
+
+  _trackView() {
+    wx.cloud.callFunction({
+      name: 'manageFeatureStats',
+      data: { action: 'track_view', featureId: FEATURE_ID },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) console.error('[h1-top50] track view failed', r)
+      },
+      fail: (err: any) => console.error('[h1-top50] track view call failed', err),
+    } as any)
+  },
+
+  onShareAppMessage() {
+    wx.cloud.callFunction({ name: 'manageFeatureStats', data: { action: 'track_share', featureId: FEATURE_ID } } as any)
+    return { title: '2026 上半年中文说唱 Top50 单曲', path: '/pages/h1-top50/index' }
+  },
 
   onPlaylistTabTap(e: WechatMiniprogram.TouchEvent) {
     const tab = String((e.currentTarget.dataset as any).tab || 'critics') as 'critics' | 'community'
@@ -51,8 +71,6 @@ Page({
         const r = res.result || {}
         if (!r.success) return
         const list = (r.list || []) as PlaylistCard[]
-        // All editor-curated/imported playlists belong to the critic side.
-        // Legacy sourceType='rapper' records are also folded into this tab so no data is hidden.
         const criticList = list.filter(item => item.isEditorial)
         const communityList = list.filter(item => !item.isEditorial)
         this.setData({
