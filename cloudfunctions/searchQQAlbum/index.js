@@ -12,6 +12,8 @@ const QQ_HEADERS = {
 }
 
 exports.main = async event => {
+  const { OPENID } = cloud.getWXContext()
+  if (!OPENID) return { success:false, error:'请先登录' }
   const keyword = String(event.name || event.keyword || '').trim()
   if (!keyword || keyword.length > 80) return { success:false, error:'请输入有效的专辑名称' }
 

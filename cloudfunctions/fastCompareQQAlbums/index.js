@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
@@ -221,6 +222,8 @@ async function compareBatch(rawItems) {
 
 exports.main = async event => {
   try {
+    const { OPENID } = cloud.getWXContext()
+    if (!OPENID || !(await isAdmin(OPENID))) return { success: false, error: 'unauthorized' }
     if (event.action === 'catalogPage') return await catalogPage(event)
     return await compareBatch(event.candidates || [])
   } catch (e) {
