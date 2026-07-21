@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
@@ -48,5 +49,4 @@ exports.main = async event => {
   return { success:true, tracks, featuringGuests }
 }
 
-async function isAdmin(openId) { if (!openId) return false; const r = await db.collection('users').where({ openId, type:'admin' }).limit(1).get(); return r.data.length > 0 }
 function collectGuests(tracks) { const map=new Map(); tracks.forEach(track=>(track.guests||[]).forEach(g=>{const key=g.id?String(g.id):g.name;if(!map.has(key))map.set(key,{id:g.id||0,name:g.name,count:0,trackNos:[]});const x=map.get(key);x.count++;x.trackNos.push(track.no)}));return Array.from(map.values()).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name)) }

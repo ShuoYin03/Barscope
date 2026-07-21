@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Beatween · 爬虫流水线（全自动）
+Beatween · 爬虫流水线（本地手动运行）
 
-爬取模式由云端任务指定（管理员在小程序「爬虫」面板里选择）：
   fission     裂变发现   — 已批准 rapper 的专辑 + 发现新候选（默认模式）
   sync        同步决定   — 将云端审核结果同步回 rappers.json，不爬取
 
@@ -16,9 +15,10 @@ Beatween · 爬虫流水线（全自动）
   5. 上传候选艺人到云 DB（fission 模式产生候选，等待管理员审核）
 
 用法:
-  python pipeline.py                              # 认领云端 pending 任务（含模式）
+  python pipeline.py                              # fission 模式（默认）
+  python pipeline.py --mode sync                  # 只同步审核结果，不爬取
   python pipeline.py --dry-run                    # 只爬取+清洗，不上传
-  python pipeline.py --skip-db-check --mode fission --max-rounds 2
+  python pipeline.py --mode fission --max-rounds 2
 """
 
 import argparse
@@ -43,7 +43,6 @@ from spider_netease import (
     load_rappers, save_rappers, RAPPERS_FILE,
 )
 from upload import clean
-from db_client import CrawlerDB
 
 # ── 微信 HTTP API ──────────────────────────────────────────────────────────────
 
@@ -122,7 +121,7 @@ def upload_albums(albums: list, token: str, env: str, batch_size: int = 20) -> d
     for i, batch in enumerate(batches, 1):
         print(f"  [{i:02d}/{n:02d}] {len(batch)} 张...", end=" ", flush=True)
         try:
-            res = invoke_cloud_fn(token, env, "uploadAlbums", {"albums": batch, "action": "upsert"})
+            res = invoke_cloud_fn(token, env, "uploadAlbums", {"albums": batch})
             result["inserted"] += res.get("inserted", 0)
             result["updated"]  += res.get("updated",  0)
             result["skipped"]  += res.get("skipped",  0)
@@ -166,10 +165,9 @@ def upload_candidates(token: str, env: str, batch_size: int = 100) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Beatween 爬虫")
     parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
-    parser.add_argument("--skip-db-check", action="store_true", help="跳过 DB pending 检查（直接运行）")
     parser.add_argument("--mode", choices=["fission", "sync"],
                         default="fission",
-                        help="运行模式（仅 --skip-db-check / --dry-run 时生效；正常由云端任务指定）")
+                        help="运行模式（默认 fission）")
     parser.add_argument("--max-rounds", type=int, default=2, help="裂变最大轮数（fission 模式，默认 2，深度 1 传 1）")
     parser.add_argument("--workers", type=int, default=5, help="裂变并发线程数（默认 5）")
     args = parser.parse_args()
@@ -188,22 +186,7 @@ def main():
         print("[!] 请先在 config.json 填入 appsecret")
         return
 
-    db = CrawlerDB(cfg) if not args.dry_run else None
-
-    # 默认模式由 CLI 指定；若认领到云端任务，则被云端任务的模式覆盖
     mode = args.mode
-
-    # ── DB: 认领任务 ─────────────────────────────────────────────────────────
-    if db and not args.skip_db_check:
-        print("━━━ 检查爬虫触发状态 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        claimed = db.claim_run()
-        if not claimed:
-            print("  未发现 pending 任务，退出。（如需强制运行，加 --skip-db-check）")
-            return
-        mode = claimed.get("mode", "fission")
-        print(f"  已认领任务（模式: {mode}），开始运行。")
-        db.append_log(f"爬虫任务开始（模式: {mode}）")
-
     errors_list: list = []
 
     try:
@@ -215,60 +198,26 @@ def main():
                 token = get_access_token(appid, appsecret)
             except RuntimeError as e:
                 print(f"  ✗ {e}")
-                if db: db.fail_run(str(e))
                 return
 
             # ── Step 1: 同步审核结果 ─────────────────────────────────────────
             print("\n━━━ Step 1：同步审核结果 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            if db: db.append_log("Step 1: 同步审核结果")
             sync_decisions(token, env)
 
             if mode == "sync":
                 print("\n✓ 同步完成，跳过爬取。")
-                if db:
-                    db.append_log("同步完成")
-                    db.complete_run(new_albums=0, new_candidates=0, errors=[])
                 return
 
         # ── Step 2: 爬取 ─────────────────────────────────────────────────────
         mode_name = "BFS 裂变"
         print(f"\n━━━ Step 2：{mode_name}爬取 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        if db: db.append_log(f"Step 2: {mode_name}爬取开始")
 
-        # 中止检测（节流：最多每 5 秒查一次云端 abort 标记）
-        _abort_state = {"last": 0.0, "aborted": False}
-        def _should_abort() -> bool:
-            if not db or _abort_state["aborted"]:
-                return _abort_state["aborted"]
-            now = time.time()
-            if now - _abort_state["last"] < 5:
-                return False
-            _abort_state["last"] = now
-            if db.is_aborted():
-                _abort_state["aborted"] = True
-                return True
-            return False
-
-        rappers_data  = load_rappers()
-        total_artists = len(rappers_data.get("rappers", []))
-        if db: db.update_progress(total_artists=total_artists)
-
-        raw_albums = run_fission(dry_run=False, should_abort=_should_abort, max_rounds=args.max_rounds, workers=args.workers)
-
-        aborted      = _abort_state["aborted"] or bool(db and db.is_aborted())
+        raw_albums   = run_fission(dry_run=False, max_rounds=args.max_rounds, workers=args.workers)
         albums_found = len(raw_albums)
-
-        if db:
-            db.update_progress(
-                total_artists=total_artists,
-                processed=total_artists,
-                albums_found=albums_found,
-            )
-            db.append_log(f"Step 2: 爬取完成，原始专辑 {albums_found} 张")
+        print(f"  爬取完成，原始专辑 {albums_found} 张")
 
         # ── Step 3: 清洗 ─────────────────────────────────────────────────────
-        print("\n━━━ Step 3：清洗 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        if db: db.append_log("Step 3: 数据清洗")
+        print("\n━━━ Step 3：数据清洗 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         cleaned = clean(raw_albums)
         print(f"  原始 {len(raw_albums)} 张  →  清洗后 {len(cleaned)} 张")
 
@@ -278,7 +227,6 @@ def main():
 
         # ── Step 4: 上传专辑 ─────────────────────────────────────────────────
         print("\n━━━ Step 4：上传专辑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        if db: db.append_log(f"Step 4: 上传 {len(cleaned)} 张专辑")
         if cleaned:
             result = upload_albums(cleaned, token, env, batch_size=batch_sz)
         else:
@@ -290,7 +238,6 @@ def main():
 
         # ── Step 5: 上传候选艺人 ─────────────────────────────────────────────
         print("\n━━━ Step 5：上传候选艺人 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        if db: db.append_log("Step 5: 上传候选艺人")
         cand_result = upload_candidates(token, env)
 
         new_candidates = cand_result.get("inserted", 0)
@@ -305,23 +252,8 @@ def main():
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """)
 
-        if db:
-            if aborted:
-                db.append_log(f"已中止 — 已上传专辑 {result['inserted']} 张，候选 {new_candidates} 位")
-                db.abort_run(new_albums=result["inserted"], new_candidates=new_candidates)
-            else:
-                db.append_log(f"完成 — 新增专辑 {result['inserted']} 张，新候选 {new_candidates} 位")
-                db.complete_run(
-                    new_albums=result["inserted"],
-                    new_candidates=new_candidates,
-                    errors=errors_list,
-                )
-
     except Exception as e:
         print(f"\n[!] 运行出错: {e}")
-        if db:
-            db.append_log(f"运行出错: {e}")
-            db.fail_run(str(e))
 
 
 if __name__ == "__main__":

@@ -21,9 +21,8 @@ function sortAlbums(a, b) {
 
 async function loadRelease2026Albums(limit) {
   const scored = _.gt(0)
-  const [numericYear, stringYear, dateYear] = await Promise.all([
+  const [numericYear, dateYear] = await Promise.all([
     db.collection('albums').where({ approved: true, avgScore: scored, releaseYear: 2026 }).limit(100).get(),
-    db.collection('albums').where({ approved: true, avgScore: scored, releaseYear: '2026' }).limit(100).get(),
     db.collection('albums').where({
       approved: true,
       avgScore: scored,
@@ -32,7 +31,7 @@ async function loadRelease2026Albums(limit) {
   ])
 
   const merged = new Map()
-  ;[...numericYear.data, ...stringYear.data, ...dateYear.data].forEach(album => {
+  ;[...numericYear.data, ...dateYear.data].forEach(album => {
     if (album && album._id && hasScore(album) && isReleasedIn2026(album)) {
       merged.set(album._id, album)
     }

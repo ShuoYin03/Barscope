@@ -12,7 +12,6 @@ reliable "is this actually the same track" signal than either alone.
 from __future__ import annotations
 
 import re
-from difflib import SequenceMatcher
 from typing import Any, Iterable
 
 # Bracketed/parenthetical noise: platform tags, mix/version labels, quality markers.
@@ -106,14 +105,3 @@ def overlap_ratio(qq_tracks: Iterable[Any], reference_tracks: Iterable[Any], dur
         if any(tracks_match(qt, rt, duration_tolerance_ms) for rt in ref_list):
             matched += 1
     return matched / len(qq_list)
-
-
-def title_similarity(a: str, b: str) -> float:
-    ka, kb = _title_key(a), _title_key(b)
-    if not ka or not kb:
-        return 0.0
-    if ka == kb:
-        return 1.0
-    if min(len(ka), len(kb)) <= 2:
-        return 0.0
-    return SequenceMatcher(None, ka, kb).ratio()

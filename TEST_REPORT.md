@@ -223,35 +223,7 @@ function formatTimeAgo(date) {
 
 ---
 
-### 2.7 `crawlerControl`
-
-**正常流程覆盖：** 0%  
-
-#### 需要测试的 Normal Case
-
-| # | 场景 | 预期 |
-|---|------|------|
-| N1 | `getStatus`（文档存在） | 返回当前 crawlerStatus 文档 |
-| N2 | `getStatus`（文档不存在） | 返回 `makeDefault()` 默认值 |
-| N3 | Admin `trigger` | status → `'pending'` |
-| N4 | `claimRun`（当前 pending） | status → `'running'`，`{success: true}` |
-| N5 | `appendLog` | log 数组追加，超 50 条自动截断 |
-| N6 | `completeRun` | status → `'done'`，lastRunSummary 更新 |
-| N7 | `failRun` | status → `'error'` |
-
-#### 需要测试的 Edge Case
-
-| # | 场景 | 预期 |
-|---|------|------|
-| E1 | 非 Admin 调用 `trigger` | `{success: false, error: '无权限'}` |
-| E2 | `claimRun` 当前 status 为 `'running'` | `{success: false, error: 'no pending run'}` |
-| E3 | `claimRun` 当前 status 为 `'idle'` | `{success: false, error: 'no pending run'}` |
-| E4 | Admin 在 `'running'` 时再次 `trigger` | 状态被覆盖为 `'pending'`（当前无保护，需考虑是否应阻止） |
-| E5 | `appendLog` 连续写满 50 条 | 第 51 条写入后，第 1 条被删除，总长仍 50 |
-
----
-
-### 2.8 `manageCandidates`
+### 2.7 `manageCandidates`
 
 **正常流程覆盖：** 0%  
 
@@ -279,7 +251,7 @@ function formatTimeAgo(date) {
 
 ---
 
-### 2.9 `uploadAlbums`
+### 2.8 `uploadAlbums`
 
 | # | 场景 | 预期 |
 |---|------|------|
@@ -292,7 +264,7 @@ function formatTimeAgo(date) {
 
 ---
 
-### 2.10 `likeReview` / `addFavorite` / `removeFavorite` / `getFavorites`
+### 2.9 `likeReview` / `addFavorite` / `removeFavorite` / `getFavorites`
 
 所有收藏和点赞函数：覆盖率 0%。
 
@@ -424,7 +396,6 @@ function formatTimeAgo(date) {
 | P1-4 | 集成测试 | `cloudfunctions/submitReview` | 重复提交同一用户同一专辑被拒绝 |
 | P1-5 | 集成测试 | `cloudfunctions/submitReview` | rating 范围校验（0、11、-1、null） |
 | P1-6 | 集成测试 | `cloudfunctions/manageUsers` | 非 Admin 调用返回 `无权限` |
-| P1-7 | 集成测试 | `cloudfunctions/crawlerControl` | `claimRun` 在非 pending 状态下被拒绝 |
 
 ### P2 — 重要边界条件
 
@@ -448,10 +419,9 @@ function formatTimeAgo(date) {
 | P3-3 | 集成测试 | `cloudfunctions/getReviews` | Critic 评论排在普通评论前 |
 | P3-4 | 集成测试 | `cloudfunctions/likeReview` | likes 原子递增，reviewId 缺失返回错误 |
 | P3-5 | 集成测试 | `cloudfunctions/addFavorite` | 重复收藏幂等，不重复插入 |
-| P3-6 | 集成测试 | `cloudfunctions/crawlerControl` | `appendLog` 50 条后自动截断 |
-| P3-7 | 集成测试 | `cloudfunctions/manageUsers` | `grantCritic` → `revokeCritic` 完整流程 |
-| P3-8 | 集成测试 | `cloudfunctions/getAlbums` | 未 approved 的专辑不出现在列表中 |
-| P3-9 | 单元测试 | `manageUsers/index.js:formatDate` | 有效日期、null、无效字符串 |
+| P3-6 | 集成测试 | `cloudfunctions/manageUsers` | `grantCritic` → `revokeCritic` 完整流程 |
+| P3-7 | 集成测试 | `cloudfunctions/getAlbums` | 未 approved 的专辑不出现在列表中 |
+| P3-8 | 单元测试 | `manageUsers/index.js:formatDate` | 有效日期、null、无效字符串 |
 
 ---
 

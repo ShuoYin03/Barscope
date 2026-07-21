@@ -15,15 +15,17 @@ function formatAgo(ms: number): string {
   if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'
   return Math.floor(diff / 3600000) + ' 小时前'
 }
+// 分支值来自 cloudCrawlerDailyTrigger 的 touch()，要跟它实际写入的值保持一致
 const HEARTBEAT_BRANCH_LABELS: Record<string, string> = {
-  start: '开始新一轮全量爬取',
-  resume: '链条卡住，接力续跑',
-  'skip-chain-alive': '跳过（链条正常运行中）',
-  'skip-pending': '跳过（等待本地爬虫流程）',
-  'skip-cooldown': '跳过（冷却期内已完成过一轮）',
+  'locked-running': '上一批仍在运行中',
+  'auto-idle': '今日已完成，等待明天',
+  'no-artists': '暂无已批准艺人',
+  'auto-tick': '开始处理新一批',
+  'auto-done': '今日全部处理完成',
+  'auto-ran': '已处理一批，继续中',
   error: '触发失败',
 }
-// 定时器每 5 分钟醒一次；超过这个时长没有心跳，基本可以判定触发器没在正常调用
+// 定时器每 1 分钟醒一次；超过这个时长没有心跳，基本可以判定触发器没在正常调用
 const HEARTBEAT_STALE_MS = 8 * 60 * 1000
 
 Page({
@@ -36,12 +38,12 @@ Page({
     crawlerTriggering:       false,
     heartbeatText:           '暂无记录',
     heartbeatStale:          false,
+    crawlerCompletedText:    '',
 
     crawlerMode:        'approved' as 'approved' | 'artist' | 'album' | 'fission' | 'sync' | 'qq_link_incremental',
     crawlerParam:       '',
     crawlerProgressPct: 0,
     crawlerNeedsId:     false,
-    crawlerIsCloud:     true,
     crawlerPlaceholder: '',
     crawlerDesc:        '云端一键爬取所有已批准 rapper 的全部专辑 + 单曲，并逐位写入运行日志',
     crawlerLastLog:     '',
@@ -67,7 +69,7 @@ Page({
 
   _fetchStatus() {
     wx.cloud.callFunction({
-      name: 'crawlerControl', data: { action: 'getStatus' },
+      name: 'cloudCrawler', data: { action: 'getStatus' },
       success: (res: any) => {
         const r = res.result; if (!r.success) return
         const s = r.status || {}, prog = s.progress || {}
@@ -90,7 +92,9 @@ Page({
           ? `${formatAgo(heartbeatMs)} · ${HEARTBEAT_BRANCH_LABELS[s.lastTriggerBranch] || s.lastTriggerBranch || '未知'}${heartbeatDetail}`
           : '暂无记录（定时器可能还没成功调用过）'
         const heartbeatStale = !heartbeatMs || (Date.now() - heartbeatMs) > HEARTBEAT_STALE_MS
-        this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear, heartbeatText, heartbeatStale })
+        const completedMs = toMillis(s.completedAt)
+        const crawlerCompletedText = completedMs ? formatAgo(completedMs) : ''
+        this.setData({ crawlerStatus: normalizedStatus, crawlerProgressPct: pct, crawlerLastLog: lastLog, crawlerTriggering: wasTriggering && !shouldClear, heartbeatText, heartbeatStale, crawlerCompletedText })
         if (!this.data.crawlerTriggering && s.status !== 'running') this._startPoll(4000)
       },
     })
@@ -100,7 +104,7 @@ Page({
     const key = (e.currentTarget.dataset as { key: string }).key
     if (key === this.data.crawlerMode) return
     const m = this.data.crawlerModes.find((x) => x.key === key)
-    this.setData({ crawlerMode:key as any, crawlerNeedsId:!!(m && m.needsId), crawlerIsCloud:!!(m && m.cloud), crawlerPlaceholder:(m && m.placeholder) || '', crawlerDesc:(m && m.desc) || '', crawlerParam:'' })
+    this.setData({ crawlerMode:key as any, crawlerNeedsId:!!(m && m.needsId), crawlerPlaceholder:(m && m.placeholder) || '', crawlerDesc:(m && m.desc) || '', crawlerParam:'' })
   },
   onCrawlerParamInput(e: WechatMiniprogram.Input) { this.setData({ crawlerParam: e.detail.value || '' }) },
 
@@ -114,8 +118,7 @@ Page({
       if (!param) { wx.showToast({ title: '请输入 ID', icon: 'none' }); return }
       if (!/^\d+$/.test(param)) { wx.showToast({ title: 'ID 必须是数字', icon: 'none' }); return }
     }
-    if (this.data.crawlerIsCloud) this._triggerCloud(mode, param)
-    else this._triggerLocal(mode, param)
+    this._triggerCloud(mode, param)
   },
 
   _triggerCloud(mode: string, param: string) {
@@ -130,12 +133,7 @@ Page({
     if (mode === 'approved') { wx.showToast({ title: '已在云端开始', icon: 'success' }); this._startPoll(1500) }
   },
 
-  _triggerLocal(mode: string, param: string) {
-    this.setData({ crawlerTriggering: true })
-    wx.cloud.callFunction({ name: 'crawlerControl', data: { action: 'trigger', mode, param }, success: (res: any) => { this.setData({ crawlerTriggering: false }); if (res.result?.success) { wx.showToast({ title: '已触发，等待本地爬虫', icon: 'success' }); this._fetchStatus() } else wx.showToast({ title: '触发失败', icon: 'error' }) }, fail: () => { this.setData({ crawlerTriggering: false }); wx.showToast({ title: '网络错误', icon: 'error' }) } })
-  },
-
-  onCrawlerAbort() { const s = this.data.crawlerStatus; if (!s || (s.status !== 'running' && s.status !== 'pending')) return; wx.showModal({ title:'中止爬虫', content:'确定中止当前任务？已爬取的数据会保留。', confirmText:'中止', confirmColor:'#C0392B', success:(r)=>{ if(!r.confirm)return; wx.cloud.callFunction({ name:'crawlerControl', data:{ action:'abort' }, success:(res:any)=>{ if(res.result&&res.result.success){ wx.showToast({ title:'已请求中止', icon:'none' }); this._fetchStatus() } else wx.showToast({ title:'操作失败', icon:'error' }) }, fail:()=>wx.showToast({ title:'网络错误', icon:'error' }) }) } }) },
-  onCrawlerClearLog() { wx.cloud.callFunction({ name:'crawlerControl', data:{ action:'clearLog' }, success:()=>{ this._fetchStatus(); wx.showToast({ title:'日志已清除', icon:'success' }) } }) },
+  onCrawlerAbort() { const s = this.data.crawlerStatus; if (!s || (s.status !== 'running' && s.status !== 'pending')) return; wx.showModal({ title:'中止爬虫', content:'确定中止当前任务？已爬取的数据会保留。', confirmText:'中止', confirmColor:'#C0392B', success:(r)=>{ if(!r.confirm)return; wx.cloud.callFunction({ name:'cloudCrawler', data:{ action:'abort' }, success:(res:any)=>{ if(res.result&&res.result.success){ wx.showToast({ title:'已请求中止', icon:'none' }); this._fetchStatus() } else wx.showToast({ title:'操作失败', icon:'error' }) }, fail:()=>wx.showToast({ title:'网络错误', icon:'error' }) }) } }) },
+  onCrawlerClearLog() { wx.cloud.callFunction({ name:'cloudCrawler', data:{ action:'clearLog' }, success:()=>{ this._fetchStatus(); wx.showToast({ title:'日志已清除', icon:'success' }) } }) },
   onCleanupSingles() { wx.showModal({ title:'清理专辑库', content:'将删除 trackCount 为 1 或 2 的条目，然后自动重新筛选剩余专辑，操作不可撤销。', confirmText:'开始清理', confirmColor:'#C0392B', success:(r)=>{ if(!r.confirm)return; wx.showLoading({ title:'清除单曲中…', mask:true }); wx.cloud.callFunction({ name:'manageCandidates', data:{ action:'cleanup_singles' }, success:(res:any)=>{ const result=res.result||{}; wx.hideLoading(); if(!result.success){ wx.showToast({ title:result.error||'操作失败', icon:'none' }); return } wx.showToast({ title:'已开始清理', icon:'success' }); this._fetchStatus() }, fail:()=>{ wx.hideLoading(); wx.showToast({ title:'网络错误', icon:'error' }) } }) } }) },
 })

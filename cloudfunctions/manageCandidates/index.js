@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { checkAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db    = cloud.database()
 const _     = db.command
@@ -154,7 +155,6 @@ exports.main = async (event, context) => {
   if (action === 'refresh_albums')       return await refreshAlbums(event.candidateId)
   if (action === 'list_admin_albums')    return await listAdminAlbums(event.artistId, event.artistName)
   if (action === 'search_admin_albums')  return await searchAdminAlbums(event.keyword || '')
-  if (action === 'toggle_album_approved') return await toggleAlbumApproved(event.albumId, !!event.approved)
   if (action === 'cleanup_singles')      return await cleanupSingles(openId)
   if (action === 'list_all_albums')      return await listAllAlbums(event.letter || '', event.page || 1, event.pageSize || 60)
   if (action === 'album_letter_counts')  return await albumLetterCounts()
@@ -163,8 +163,6 @@ exports.main = async (event, context) => {
   if (action === 'list_uncategorized_albums') return await listUncategorizedAlbums(event.page || 1, event.pageSize || 60)
   if (action === 'rebuild_multi_artist_index') return await rebuildMultiArtistIndex(event.skip || 0)
   if (action === 'batch_toggle_approved') return await batchToggleApproved(event.ids || [], !!event.approved)
-  if (action === 'find_resurrected')     return await findResurrectedAlbums()
-  if (action === 'remove_resurrected')   return await removeResurrectedAlbums(event.ids || [])
   if (action === 'set_release_type')     return await setReleaseType(event.albumId, event.releaseType)
   if (action === 'batch_set_release_type') return await batchSetReleaseType(event.ids || [], event.releaseType)
   if (action === 'apply_release_type_rules') return await applyReleaseTypeRules(event.skip || 0)
@@ -180,16 +178,6 @@ exports.main = async (event, context) => {
   return { success: false, error: 'unknown action' }
 }
 
-// ── admin 鉴权 ────────────────────────────────────────────────────────────────
-async function checkAdmin(openId) {
-  if (!openId) return false
-  try {
-    const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-    return r.data.length > 0
-  } catch (e) {
-    return false
-  }
-}
 
 // ── upsert_candidates ─────────────────────────────────────────────────────────
 // candidates: [{name, id, picUrl, albumSize, foundFrom, fromAlbum, round, status}]
@@ -590,16 +578,6 @@ async function batchToggleApproved(ids, approved) {
   const results = await Promise.allSettled(cleanIds.map(id => db.collection('albums').doc(id).update({ data: { approved } })))
   const succeeded = results.filter(r => r.status === 'fulfilled').length
   return { success: true, succeeded, failed: cleanIds.length - succeeded }
-}
-
-// ── toggle_album_approved ─────────────────────────────────────────────────────
-async function toggleAlbumApproved(albumId, approved) {
-  try {
-    await db.collection('albums').doc(albumId).update({ data: { approved } })
-    return { success: true }
-  } catch (e) {
-    return { success: false, error: e.message }
-  }
 }
 
 // ── set_release_type / batch_set_release_type ───────────────────────────────
@@ -1107,56 +1085,6 @@ async function cleanupSingles(openId) {
   } catch (e) {
     return { success: false, error: e.message }
   }
-}
-
-// ── 找回被误重新收录的专辑 ─────────────────────────────────────────────────────
-// 一张专辑被判定"不该收录"，无论是人工在候选区删除（status:'deleted'）还是自动质检流程标记后还没人
-// 复核（status:'pending'），只要不是 status:'kept'，就说明这个 sourceId 现在不应该出现在 albums 里。
-// 只查 'deleted' 会漏掉 rescreenAlbums 那条自动质检流程留下的 'pending' 记录。一次全量重新爬取如果
-// 又扫到同一个艺人，会把这个 sourceId 当全新专辑重新插回 albums（cloudCrawler 已经加了拦截，但爬虫
-// 上次跑的时候还没有这道检查，已经误加回来的需要手动找出来复核）。
-async function findResurrectedAlbums() {
-  try {
-    const blockedSourceIds = new Set()
-    let skip = 0
-    while (true) {
-      const res = await db.collection('album_candidates').where({ status: _.neq('kept') }).field({ sourceId: true }).skip(skip).limit(1000).get()
-      const rows = res.data || []
-      rows.forEach(x => { if (x.sourceId) blockedSourceIds.add(String(x.sourceId)) })
-      if (rows.length < 1000) break
-      skip += 1000
-    }
-    const ids = Array.from(blockedSourceIds)
-    const matches = []
-    for (let i = 0; i < ids.length; i += 100) {
-      const res = await db.collection('albums').where({ sourceId: _.in(ids.slice(i, i + 100)) })
-        .field({ _id: true, title: true, artist: true, sourceId: true, approved: true }).get()
-      matches.push(...(res.data || []))
-    }
-    return { success: true, total: matches.length, list: matches }
-  } catch (e) {
-    return { success: false, error: e.message }
-  }
-}
-
-async function removeResurrectedAlbums(ids) {
-  const list = Array.isArray(ids) ? ids.filter(Boolean) : []
-  if (!list.length) return { success: false, error: '缺少专辑ID列表' }
-  let removed = 0
-  const errors = []
-  for (const id of list) {
-    try {
-      await Promise.all([
-        db.collection('reviews').where({ albumId: id }).remove().catch(() => {}),
-        db.collection('favorites').where({ albumId: id }).remove().catch(() => {}),
-      ])
-      await db.collection('albums').doc(id).remove()
-      removed += 1
-    } catch (e) {
-      errors.push({ id, error: e.message })
-    }
-  }
-  return { success: true, removed, errors }
 }
 
 // ── stats ─────────────────────────────────────────────────────────────────────

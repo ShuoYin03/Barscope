@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test": "node --test \"cloudfunctions/**/*.test.js\""
+    "test": "node --test \"cloudfunctions/**/*.test.js\"",
+    "sync:cf-shared": "node scripts/sync-cloudfunctions-shared.js"
   },
   "keywords": [],
   "author": "",

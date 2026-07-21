@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
@@ -25,12 +26,6 @@ exports.main = async event => {
   if (action === 'list_brand_suggestions') return listBrandSuggestions()
   if (action === 'review_brand_suggestion') return reviewBrandSuggestion(event, OPENID)
   return { success:false, error:'unknown action' }
-}
-
-async function isAdmin(openId) {
-  if (!openId) return false
-  const r = await db.collection('users').where({ openId, type:'admin' }).limit(1).get()
-  return r.data.length > 0
 }
 
 function cleanValues(values, limit) {
