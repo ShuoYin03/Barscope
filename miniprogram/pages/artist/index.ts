@@ -217,7 +217,18 @@ Page({
 
   onYearTap(e: WechatMiniprogram.TouchEvent) {
     const year = Number((e.currentTarget.dataset as any).year || 0)
-    if (year) this.setData({ activeYear: year, scrollIntoView: `career-year-${year}` })
+    if (!year) return
+    this.setData({ activeYear: year })
+    const selector = `#career-year-${year}`
+    wx.createSelectorQuery()
+      .select(selector).boundingClientRect()
+      .selectViewport().scrollOffset()
+      .exec((res: any[]) => {
+        const target = res?.[0]
+        const viewport = res?.[1]
+        if (!target || !viewport) return
+        wx.pageScrollTo({ scrollTop: Math.max(0, Number(viewport.scrollTop || 0) + Number(target.top || 0) - 16), duration: 260 })
+      })
   },
   onCollaboratorsMore() {
     const expanded = !this.data.collaboratorsExpanded
