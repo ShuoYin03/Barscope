@@ -4,7 +4,6 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const QQ_SEARCH_URL = 'https://u.y.qq.com/cgi-bin/musicu.fcg'
-const QQ_LEGACY_SEARCH_URL = 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp'
 const QQ_ALBUM_INFO_URL = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_album_info_cp.fcg'
 const QQ_HEADERS = {
   'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
@@ -61,12 +60,8 @@ async function searchQQAndSubmit(event, openId) {
   const keyword = String(event.name || '').trim()
   if (keyword.length < 1 || keyword.length > 80) return { success:false, error:'请输入有效的专辑名称' }
 
-  let albums = await searchQQMusicu(keyword)
-  let provider = 'musicu'
-  if (!albums.length) {
-    albums = await searchQQLegacy(keyword)
-    provider = 'legacy'
-  }
+  const albums = await searchQQMusicu(keyword)
+  const provider = 'musicu'
 
   const exact = albums.filter(a => normalize(a.title) === normalize(keyword))
   if (!exact.length) return { success:true, needsManual:true, searchedName:keyword, qqResults:albums.slice(0,10), provider }
@@ -189,13 +184,6 @@ async function searchQQMusicu(keyword) {
   return rows.map(row => normalizeQQAlbum(row && (row.album || row))).filter(Boolean)
 }
 
-async function searchQQLegacy(keyword) {
-  const url = `${QQ_LEGACY_SEARCH_URL}?${new URLSearchParams({ct:'24',qqmusic_ver:'1298',new_json:'1',remoteplace:'txt.yqq.album',searchid:String(Date.now()),t:'8',aggr:'1',cr:'1',catZhida:'1',lossless:'0',flag_qc:'0',p:'1',n:'20',w:keyword,g_tk:'5381',loginUin:'0',hostUin:'0',format:'json',inCharset:'utf8',outCharset:'utf-8',notice:'0',platform:'yqq.json',needNewCode:'0'}).toString()}`
-  const raw = await getJsonFlexible(url, QQ_HEADERS)
-  const rows = (((raw || {}).data || {}).album || {}).list || []
-  return rows.map(normalizeLegacyQQAlbum).filter(Boolean)
-}
-
 async function fetchQQAlbumDetail(albumMid) {
   const url = `${QQ_ALBUM_INFO_URL}?${new URLSearchParams({albummid:albumMid,format:'json',platform:'yqq',newsong:'1'}).toString()}`
   return getJsonFlexible(url, QQ_HEADERS)
@@ -294,18 +282,6 @@ function normalizeQQAlbum(album) {
   if (!title || !albumMid) return null
   const singerRows = album.singerList || album.singer_list || album.singer || []
   const singers = (Array.isArray(singerRows) ? singerRows : [singerRows]).map(s => ({name:String((s && (s.name || s.singerName || s.singer_name)) || '').trim(),mid:String((s && (s.mid || s.singerMID || s.singer_mid)) || '').trim()})).filter(s => s.name || s.mid)
-  return {title,albumMid,albumId:String(album.albumID || album.album_id || album.id || '').trim(),singers,publishDate:String(album.pub_time || album.publish_date || album.publishDate || album.publicTime || album.date || '').trim(),company:String(album.company || album.label || '').trim()}
-}
-
-function normalizeLegacyQQAlbum(album) {
-  if (!album || typeof album !== 'object') return null
-  const title = String(album.albumName || album.album_name || album.name || '').replace(/<[^>]+>/g,'').trim()
-  const albumMid = String(album.albumMID || album.album_mid || album.mid || '').trim()
-  if (!title || !albumMid) return null
-  let singerRows = album.singer || album.singerList || album.singer_list || []
-  if (!Array.isArray(singerRows)) singerRows = [singerRows]
-  let singers = singerRows.map(s => ({name:String((s && (s.name || s.singerName || s.singer_name)) || '').replace(/<[^>]+>/g,'').trim(),mid:String((s && (s.mid || s.singerMID || s.singer_mid)) || '').trim()})).filter(s => s.name || s.mid)
-  if (!singers.length) { const name=String(album.singerName || album.singer_name || '').trim(); const mid=String(album.singerMID || album.singer_mid || '').trim(); if(name||mid) singers=[{name,mid}] }
   return {title,albumMid,albumId:String(album.albumID || album.album_id || album.id || '').trim(),singers,publishDate:String(album.pub_time || album.publish_date || album.publishDate || album.publicTime || album.date || '').trim(),company:String(album.company || album.label || '').trim()}
 }
 
