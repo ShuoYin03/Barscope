@@ -1,4 +1,5 @@
 const cloud=require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({env:cloud.DYNAMIC_CURRENT_ENV})
 const db=cloud.database()
 const COL='artist_profile_corrections'
@@ -24,7 +25,6 @@ async function ensureCollection(){
   }
 }
 function cleanRoles(values){return Array.from(new Set((Array.isArray(values)?values:[]).map(x=>String(x||'').trim().toLowerCase()).filter(x=>ALLOWED_ROLES.has(x))))}
-async function isAdmin(openId){if(!openId)return false;const r=await db.collection('users').where({openId,type:'admin'}).limit(1).get();return r.data.length>0}
 
 async function submit(event,openId){
   if(!openId)return {success:false,error:'请先登录'}

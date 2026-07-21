@@ -1,12 +1,7 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-
-async function isAdmin(openId) {
-  if (!openId) return false
-  const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-  return r.data.length > 0
-}
 
 exports.main = async () => {
   try {

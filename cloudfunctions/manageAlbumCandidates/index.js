@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
@@ -34,12 +35,6 @@ exports.main = async (event) => {
   if (action === 'batchDecideHidden') return batchDecideHidden(event.ids || [], event.decision, OPENID)
   if (action === 'stats') return stats()
   return { success: false, error: 'unknown action' }
-}
-
-async function isAdmin(openId) {
-  if (!openId) return false
-  const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-  return r.data.length > 0
 }
 
 function normalizeTitle(value) {
@@ -146,7 +141,7 @@ async function upsert(candidates, dryRun) {
         sourcePlatform: source,
         sourceId: String(raw.sourceId),
         sourceKey,
-        normalizedTitle: raw.normalizedTitle || normalizeTitle(raw.title),
+        decisionTitle: raw.decisionTitle || normalizeTitle(raw.title),
       }
 
       const candidate = await findExistingCandidate(item)
@@ -268,14 +263,14 @@ async function runBatch(ids, handler) {
 }
 
 async function decideHidden(id, decision, openId) {
-  if (!id || !['keep', 'delete', 'show', 'mark'].includes(decision)) return { success: false, error: 'invalid decision' }
+  if (!id || !['keep', 'delete', 'mark'].includes(decision)) return { success: false, error: 'invalid decision' }
   const doc = await db.collection('albums').doc(id).get()
   if (!doc.data) return { success: false, error: 'album not found' }
   if (decision === 'mark') {
     await setHiddenState(id, false, openId)
     return { success: true }
   }
-  if (decision === 'keep' || decision === 'show') {
+  if (decision === 'keep') {
     await setHiddenState(id, true, openId)
     await db.collection('albums').doc(id).update({ data: { movedToCandidate: false, restoredFromHiddenAt: db.serverDate(), restoredFromHiddenBy: openId } })
     return { success: true }
@@ -336,7 +331,7 @@ function pinyinInitial(ch){ let letter='#'; for(const [initial,startChar] of PIN
 function firstLetter(name){ for(const ch of Array.from(String(name||'').trim())){ if(/[A-Za-z]/.test(ch))return ch.toUpperCase(); if(/[一-鿿]/.test(ch))return pinyinInitial(ch) } return '#' }
 
 function albumFromCandidate(candidate, openId) {
-  const { _id, status, addedAt, decidedAt, albumOriginalId, originalAlbumId, reportReason, reportSource, reportedBy, movedFromAlbumsAt, decision, decidedBy, candidateReason, ...album } = candidate
+  const { _id, status, addedAt, decidedAt, albumOriginalId, reportReason, reportSource, reportedBy, movedFromAlbumsAt, decision, decidedBy, candidateReason, ...album } = candidate
   const isMultiArtist = Array.isArray(album.artistIds) && album.artistIds.length > 1
   return { ...album, approved: true, movedToCandidate: false, titleLetter: firstLetter(album.title), isMultiArtist, restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId }
 }
@@ -358,13 +353,12 @@ async function findAlbumForDecision(candidate) {
 }
 
 async function decide(id, decision, openId) {
-  if (!id || !['keep', 'delete', 'approve', 'decline'].includes(decision)) return { success: false, error: 'invalid decision' }
-  const normalized = decision === 'approve' ? 'keep' : decision === 'decline' ? 'delete' : decision
+  if (!id || !['keep', 'delete'].includes(decision)) return { success: false, error: 'invalid decision' }
   const doc = await db.collection('album_candidates').doc(id).get()
   const candidate = doc.data
   if (!candidate) return { success: false, error: 'candidate not found' }
-  const originalId = candidate.albumOriginalId || candidate.originalAlbumId || ''
-  if (normalized === 'keep') {
+  const originalId = candidate.albumOriginalId || ''
+  if (decision === 'keep') {
     if (originalId) {
       await db.collection('albums').doc(originalId).update({ data: { approved: true, movedToCandidate: false, hiddenByAdmin: _.remove(), hiddenAt: _.remove(), hiddenBy: _.remove(), hiddenReason: _.remove(), restoredFromCandidateAt: db.serverDate(), restoredFromCandidateBy: openId } })
     } else {
@@ -373,7 +367,7 @@ async function decide(id, decision, openId) {
       else await db.collection('albums').add({ data: albumFromCandidate(candidate, openId) })
     }
   }
-  if (normalized === 'delete') {
+  if (decision === 'delete') {
     if (originalId) {
       await Promise.all([removeRelated('reviews', 'albumId', originalId), removeRelated('favorites', 'albumId', originalId)])
       try { await db.collection('albums').doc(originalId).remove() }
@@ -387,6 +381,6 @@ async function decide(id, decision, openId) {
       }
     }
   }
-  await db.collection('album_candidates').doc(id).update({ data: { status: normalized === 'keep' ? 'kept' : 'deleted', decision: normalized, decidedAt: db.serverDate(), decidedBy: openId } })
+  await db.collection('album_candidates').doc(id).update({ data: { status: decision === 'keep' ? 'kept' : 'deleted', decision: decision, decidedAt: db.serverDate(), decidedBy: openId } })
   return { success: true }
 }

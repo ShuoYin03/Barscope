@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk')
 const https = require('https')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
@@ -43,12 +44,6 @@ function formatDate(publishTime) {
   return `${y}-${m}-${day}`
 }
 
-async function isAdmin(openId) {
-  if (!openId) return false
-  const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-  return r.data.length > 0
-}
-
 async function runPool(items, worker) {
   let cursor = 0
   const workers = Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
@@ -67,7 +62,7 @@ exports.main = async (event) => {
 
   const skip = Math.max(0, Number(event.skip || 0))
   const res = await db.collection('albums')
-    .field({ _id: true, sourceId: true, albumId: true, neteaseAlbumId: true, releaseDate: true, releaseYear: true })
+    .field({ _id: true, sourceId: true, releaseDate: true, releaseYear: true })
     .skip(skip)
     .limit(PAGE_SIZE)
     .get()
@@ -79,7 +74,7 @@ exports.main = async (event) => {
 
   await runPool(rows, async (album) => {
     if (album.releaseDate) { alreadyHadDate += 1; return }
-    const sourceId = String(album.sourceId || album.neteaseAlbumId || album.albumId || '')
+    const sourceId = String(album.sourceId || '')
     if (!/^\d+$/.test(sourceId)) { missingSourceId += 1; return }
     const raw = await fetchAlbumWithRetry(sourceId)
     const releaseDate = raw ? formatDate(raw.publishTime) : ''

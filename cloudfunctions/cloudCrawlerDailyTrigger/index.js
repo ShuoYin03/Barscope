@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
@@ -227,7 +228,6 @@ async function loadApproved() {
   return out
 }
 
-async function isAdmin(openId) { if (!openId) return false; const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get(); return r.data.length > 0 }
 async function getControl() { try { return (await db.collection(AUTO_COL).doc(AUTO_DOC).get()).data || makeControl() } catch (e) { return makeControl() } }
 async function saveControl(doc) { const d = Object.assign({}, doc); delete d._id; await db.collection(AUTO_COL).doc(AUTO_DOC).set({ data: d }) }
 function makeControl() { return { _id: AUTO_DOC, status: 'waiting', lockedAt: null, lockToken: '', runDate: '', cursor: 0, total: 0, failedIds: [], albumsFound: 0, candidatesFound: 0, dated: 0, processedToday: 0, startedAt: null, completedToday: false, lastTickAt: null, lastTickBranch: '', lastLog: '', lastError: '' } }

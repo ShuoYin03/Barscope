@@ -1,16 +1,9 @@
 const cloud = require('wx-server-sdk')
 const https = require('https')
+const { checkAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
-
-async function checkAdmin(openId) {
-  if (!openId) return false
-  try {
-    const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-    return r.data.length > 0
-  } catch (e) { return false }
-}
 
 function normalizeName(v) {
   return String(v || '').trim().toLowerCase().replace(/[\s._\-·'’()（）\[\]【】]/g, '')

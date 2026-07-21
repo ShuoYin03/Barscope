@@ -22,6 +22,8 @@ class ArtistResolutionTests(unittest.TestCase):
             "Artist",
             "Artist",
         )
+        # 75% overlap + matched >= 3 + identical names clears the combined-evidence
+        # auto-match rule in resolve_artist_match.
         self.assertEqual(result.status, "matched")
         self.assertEqual(result.matched_tracks, 3)
         self.assertAlmostEqual(result.track_overlap, 0.75)

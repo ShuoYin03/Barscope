@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { checkAdmin } = require('./_shared/auth')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -32,13 +33,4 @@ exports.main = async event => {
   })
 
   return { success: true, coverUrl }
-}
-
-async function checkAdmin(openId) {
-  try {
-    const r = await db.collection('users').where({ openId, type: 'admin' }).limit(1).get()
-    return r.data.length > 0
-  } catch (e) {
-    return false
-  }
 }

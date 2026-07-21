@@ -63,8 +63,12 @@
   transition: opacity .2s ease;
 }
 
-.cover-marquee-item.is-hovered .cover-marquee-overlay { opacity: 1; }
-.cover-marquee-item.is-hovered .cover-marquee-img {
+.cover-marquee-inner.is-paused {
+  animation-play-state: paused;
+}
+
+.cover-marquee-item.is-active .cover-marquee-overlay { opacity: 1; }
+.cover-marquee-item.is-active .cover-marquee-img {
   filter: brightness(.38);
   transform: scale(1.025);
 }

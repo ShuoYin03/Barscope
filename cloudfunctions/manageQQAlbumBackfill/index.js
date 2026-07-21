@@ -1,8 +1,11 @@
 const cloud = require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 exports.main = async event => {
+  const { OPENID } = cloud.getWXContext()
+  if (!OPENID || !(await isAdmin(OPENID))) return { success:false, error:'unauthorized' }
   const action = String(event.action || 'list')
   try {
     if (action === 'list') return listRecords(event)

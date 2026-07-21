@@ -3,7 +3,6 @@ const https=require('https')
 cloud.init({env:cloud.DYNAMIC_CURRENT_ENV})
 const db=cloud.database()
 const SEARCH='https://u.y.qq.com/cgi-bin/musicu.fcg'
-const LEGACY='https://c.y.qq.com/soso/fcgi-bin/client_search_cp'
 const DETAIL='https://c.y.qq.com/v8/fcg-bin/fcg_v8_album_info_cp.fcg'
 const HEADERS={'User-Agent':'Mozilla/5.0','Referer':'https://y.qq.com/','Origin':'https://y.qq.com'}
 
@@ -63,14 +62,6 @@ async function findAlbum(keyword){
   }
   let hit=merged.find(a=>normalize(a.title)===target)
   if(hit)return hit
-  for(let page=1;page<=3;page++){
-    const url=`${LEGACY}?${new URLSearchParams({ct:'24',qqmusic_ver:'1298',new_json:'1',remoteplace:'txt.yqq.album',searchid:String(Date.now()),t:'8',aggr:'1',cr:'1',catZhida:'1',lossless:'0',flag_qc:'0',p:String(page),n:'30',w:keyword,g_tk:'5381',loginUin:'0',hostUin:'0',format:'json',inCharset:'utf8',outCharset:'utf-8',notice:'0',platform:'yqq.json',needNewCode:'0'}).toString()}`
-    const raw=await getJson(url).catch(()=>null)
-    const rows=(((raw||{}).data||{}).album||{}).list||[]
-    const list=rows.map(x=>normalizeAlbum(x,'legacy')).filter(Boolean)
-    hit=list.find(a=>normalize(a.title)===target)
-    if(hit)return hit
-  }
   for(let page=1;page<=3;page++){
     const raw=await postJson(SEARCH,{comm:{ct:'19',cv:'1859',uin:'0'},req:{module:'music.search.SearchCgiService',method:'DoSearchForQQMusicDesktop',param:{query:keyword,search_type:0,num_per_page:50,page_num:page}}},HEADERS).catch(()=>null)
     const songs=(((((raw||{}).req||{}).data||{}).body||{}).song||{}).list||[]

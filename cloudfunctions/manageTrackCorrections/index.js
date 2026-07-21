@@ -1,4 +1,5 @@
 const cloud=require('wx-server-sdk')
+const { isAdmin } = require('./_shared/auth')
 cloud.init({env:cloud.DYNAMIC_CURRENT_ENV})
 const db=cloud.database()
 const COLLECTION='track_corrections'
@@ -128,12 +129,6 @@ async function reject(event,adminOpenId){
   const id=String(event.id||'')
   await db.collection(COLLECTION).doc(id).update({data:{status:'rejected',adminNote:String(event.adminNote||''),reviewedAt:db.serverDate(),reviewedBy:adminOpenId,updatedAt:db.serverDate()}})
   return {success:true}
-}
-
-async function isAdmin(openId){
-  if(!openId)return false
-  const r=await db.collection('users').where({openId,type:'admin'}).limit(1).get()
-  return r.data.length>0
 }
 
 function collectGuests(tracks){
