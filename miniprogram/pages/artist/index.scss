@@ -1,8 +1,8 @@
 .page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow: visible;
   background: var(--black);
 }
 
@@ -45,7 +45,7 @@
 .bio-toggle-arrow { font-size: 24rpx; line-height: 1; }
 .orange-rule { height: 2rpx; background: var(--accent); margin: 20rpx 32rpx 0; flex-shrink: 0; }
 
-.content { flex: 1; min-height: 0; }
+.content { width: 100%; }
 .side-row { display: flex; align-items: center; gap: 16rpx; padding: 28rpx 32rpx 14rpx; }
 .side-text { font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; color: var(--gray-mid); white-space: nowrap; }
 .side-rule { flex: 1; height: 1px; background: var(--gray-light); }
