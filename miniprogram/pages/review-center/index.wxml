@@ -26,6 +26,18 @@
       <text class="card-arrow">→</text>
     </view>
 
+    <view class="admin-card" bindtap="onSectionTap" data-section="artistRoles">
+      <view class="card-icon">ID</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">艺人身份审核</text>
+          <view wx:if="{{artistRoleCount > 0}}" class="count-chip"><text>{{artistRoleCount}}</text></view>
+        </view>
+        <text class="card-desc">审核用户提交的 Rapper、Producer 与 Label 身份修改。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
     <view class="admin-card" bindtap="onSectionTap" data-section="reports">
       <view class="card-icon">⚑</view>
       <view class="card-body">
