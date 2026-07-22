@@ -53,7 +53,7 @@ Page({
       safeCallFunction('getCharts', { limit: 5 }),
       safeCallFunction('getReviews', { recent: true, pageSize: 4 }),
       safeCallFunction('getCatalogStats', {}),
-      safeCallFunction('getLatestAlbums', { limit: 12 }),
+      safeCallFunction('getLatestAlbums', { limit: 10 }),
       safeCallFunction('getReviews', { dailyHotAlbums: true, limit: 6 }),
       safeCallFunction('getArtists', { limit: 1 }),
       safeCallFunction('getReviews', { totalCount: true }),
