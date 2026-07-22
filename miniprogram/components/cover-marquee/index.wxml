@@ -1,20 +1,23 @@
-<swiper
+<scroll-view
   wx:if="{{list.length}}"
   class="cover-marquee"
-  autoplay="{{list.length > 3}}"
-  circular="{{list.length > 3}}"
-  interval="{{secondsPerItem * 1000}}"
-  duration="600"
-  display-multiple-items="{{list.length >= 3 ? 3 : list.length}}"
-  easing-function="easeOutCubic"
+  scroll-x
+  enhanced
+  show-scrollbar="{{false}}"
+  scroll-left="{{scrollLeft}}"
+  scroll-with-animation="{{false}}"
+  bindscroll="onScroll"
+  bindtouchend="onTouchEnd"
+  bindtouchcancel="onTouchEnd"
 >
-  <swiper-item wx:for="{{list}}" wx:key="albumId" class="cover-marquee-slide">
+  <view class="cover-marquee-track">
     <view
+      wx:for="{{loopList}}"
+      wx:key="loopKey"
       class="cover-marquee-item {{activeIndex === index ? 'is-active' : ''}}"
+      style="width: {{itemSize}}rpx; height: {{itemSize}}rpx;"
       bindtap="onCoverTap"
-      bindtouchstart="onItemTouchStart"
-      bindtouchend="onItemTouchEnd"
-      bindtouchcancel="onItemTouchEnd"
+      bindtouchstart="onTouchStart"
       data-id="{{item.albumId}}"
       data-index="{{index}}"
     >
@@ -26,5 +29,5 @@
         <text wx:if="{{item.dateDisplay}}" class="cover-overlay-date">{{item.dateDisplay}}</text>
       </view>
     </view>
-  </swiper-item>
-</swiper>
+  </view>
+</scroll-view>
