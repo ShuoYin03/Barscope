@@ -21,7 +21,12 @@ Component({
   observers: {
     'list, itemSize'(list: any[], itemSize: number) {
       const source = Array.isArray(list) ? list : []
-      const loopList = source.length ? [...source, ...source, ...source] : []
+      const loopList = source.length
+        ? [0, 1, 2].flatMap(copy => source.map((item, index) => ({
+            ...item,
+            loopKey: `${copy}-${String(item.albumId || index)}`,
+          })))
+        : []
       this.setData({ loopList }, () => this._resetLoopPosition(Number(itemSize || 200)))
     },
   },
