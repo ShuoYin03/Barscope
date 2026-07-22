@@ -1,6 +1,6 @@
 import { getThemeClass } from '../../utils/theme'
 
-type ReviewSection = 'candidates' | 'reports' | 'tracks' | 'critics' | 'interviews'
+type ReviewSection = 'candidates' | 'artistRoles' | 'reports' | 'tracks' | 'critics' | 'interviews'
 
 Page({
   data: {
@@ -8,6 +8,7 @@ Page({
     topbarHeight: 64,
     themeClass: '',
     candidateCount: 0,
+    artistRoleCount: 0,
     reportCount: 0,
     trackCorrectionCount: 0,
     interviewCount: 0,
@@ -35,16 +36,19 @@ Page({
     this.setData({ loading: true })
     Promise.allSettled([
       wx.cloud.callFunction({ name: 'manageCandidates', data: { action: 'stats' } }),
+      wx.cloud.callFunction({ name: 'manageArtistBrands', data: { action: 'list_role_suggestions' } }),
       wx.cloud.callFunction({ name: 'reviewModeration', data: { action: 'stats' } }),
       wx.cloud.callFunction({ name: 'manageTrackCorrections', data: { action: 'stats' } }),
       wx.cloud.callFunction({ name: 'manageInterviews', data: { action: 'stats' } }),
     ]).then((results: any[]) => {
       const candidateResult = results[0]?.status === 'fulfilled' ? results[0].value?.result : null
-      const reportResult = results[1]?.status === 'fulfilled' ? results[1].value?.result : null
-      const trackResult = results[2]?.status === 'fulfilled' ? results[2].value?.result : null
-      const interviewResult = results[3]?.status === 'fulfilled' ? results[3].value?.result : null
+      const artistRoleResult = results[1]?.status === 'fulfilled' ? results[1].value?.result : null
+      const reportResult = results[2]?.status === 'fulfilled' ? results[2].value?.result : null
+      const trackResult = results[3]?.status === 'fulfilled' ? results[3].value?.result : null
+      const interviewResult = results[4]?.status === 'fulfilled' ? results[4].value?.result : null
       this.setData({
         candidateCount: candidateResult?.success ? (candidateResult.pending || 0) : 0,
+        artistRoleCount: artistRoleResult?.success ? (artistRoleResult.total || artistRoleResult.list?.length || 0) : 0,
         reportCount: reportResult?.success ? (reportResult.pending || 0) : 0,
         trackCorrectionCount: trackResult?.success ? (trackResult.pending || 0) : 0,
         interviewCount: interviewResult?.success ? (interviewResult.pending || 0) : 0,
@@ -57,6 +61,7 @@ Page({
     const section = (e.currentTarget.dataset as { section: ReviewSection }).section
     const routes: Record<ReviewSection, string> = {
       candidates: '/pages/admin/index',
+      artistRoles: '/pages/artist-brands/index',
       reports: '/pages/review-reports/index',
       tracks: '/pages/track-corrections/index',
       critics: '/pages/critics/index',
