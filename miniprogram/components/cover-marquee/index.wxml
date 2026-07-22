@@ -1,26 +1,30 @@
-<view class="cover-marquee" wx:if="{{list.length}}" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd" bindtouchcancel="onTouchEnd">
-  <view class="cover-marquee-inner {{paused ? 'is-paused' : ''}}" style="animation-duration: {{duration}};">
-    <block wx:for="{{list}}" wx:key="index">
-      <view class="cover-marquee-item {{activeIndex === index ? 'is-active' : ''}}" style="width: {{itemSize}}rpx; height: {{itemSize}}rpx;" bindtap="onCoverTap" data-id="{{item.albumId}}">
-        <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
-        <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
-        <view class="cover-marquee-overlay">
-          <text class="cover-overlay-title">{{item.title}}</text>
-          <text wx:if="{{item.artist}}" class="cover-overlay-artist">{{item.artist}}</text>
-          <text wx:if="{{item.dateDisplay}}" class="cover-overlay-date">{{item.dateDisplay}}</text>
-        </view>
+<swiper
+  wx:if="{{list.length}}"
+  class="cover-marquee"
+  autoplay="{{list.length > 3}}"
+  circular="{{list.length > 3}}"
+  interval="{{secondsPerItem * 1000}}"
+  duration="600"
+  display-multiple-items="{{list.length >= 3 ? 3 : list.length}}"
+  easing-function="easeOutCubic"
+>
+  <swiper-item wx:for="{{list}}" wx:key="albumId" class="cover-marquee-slide">
+    <view
+      class="cover-marquee-item {{activeIndex === index ? 'is-active' : ''}}"
+      bindtap="onCoverTap"
+      bindtouchstart="onItemTouchStart"
+      bindtouchend="onItemTouchEnd"
+      bindtouchcancel="onItemTouchEnd"
+      data-id="{{item.albumId}}"
+      data-index="{{index}}"
+    >
+      <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
+      <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
+      <view class="cover-marquee-overlay">
+        <text class="cover-overlay-title">{{item.title}}</text>
+        <text wx:if="{{item.artist}}" class="cover-overlay-artist">{{item.artist}}</text>
+        <text wx:if="{{item.dateDisplay}}" class="cover-overlay-date">{{item.dateDisplay}}</text>
       </view>
-    </block>
-    <block wx:for="{{list}}" wx:key="index">
-      <view class="cover-marquee-item {{activeIndex === index + list.length ? 'is-active' : ''}}" style="width: {{itemSize}}rpx; height: {{itemSize}}rpx;" bindtap="onCoverTap" data-id="{{item.albumId}}">
-        <image wx:if="{{item.coverUrl}}" class="cover-marquee-img" src="{{item.coverUrl}}" mode="aspectFill" />
-        <view wx:else class="cover-marquee-fallback"><text>{{item.title[0]}}</text></view>
-        <view class="cover-marquee-overlay">
-          <text class="cover-overlay-title">{{item.title}}</text>
-          <text wx:if="{{item.artist}}" class="cover-overlay-artist">{{item.artist}}</text>
-          <text wx:if="{{item.dateDisplay}}" class="cover-overlay-date">{{item.dateDisplay}}</text>
-        </view>
-      </view>
-    </block>
-  </view>
-</view>
+    </view>
+  </swiper-item>
+</swiper>
