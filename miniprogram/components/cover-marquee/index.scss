@@ -5,17 +5,20 @@
   border-top: 2rpx solid var(--gray-light);
   border-bottom: 2rpx solid var(--gray-light);
   box-sizing: border-box;
+  white-space: nowrap;
 }
 
-.cover-marquee-slide {
+.cover-marquee-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 0;
   box-sizing: border-box;
-  padding: 20rpx 8rpx;
 }
 
 .cover-marquee-item {
   position: relative;
-  width: 100%;
-  height: 250rpx;
+  flex-shrink: 0;
   overflow: hidden;
   background: var(--off-white);
 }
