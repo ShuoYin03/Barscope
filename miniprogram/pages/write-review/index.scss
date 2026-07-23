@@ -48,11 +48,19 @@
   gap: 26rpx;
 }
 
+.vinyl-player {
+  position: relative;
+  width: 460rpx;
+  height: 460rpx;
+}
+
 .vinyl-score-disc {
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: 400rpx;
   height: 400rpx;
   border-radius: 50%;
-  position: relative;
   overflow: hidden;
   background: var(--black);
   box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light);
@@ -98,6 +106,69 @@
   background: var(--black);
   box-shadow: 0 0 0 3rpx var(--gray-light);
   z-index: 4;
+}
+
+/* TONEARM */
+.tonearm {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 0;
+  height: 0;
+  z-index: 5;
+}
+
+.tonearm-pivot {
+  position: absolute;
+  top: -18rpx;
+  right: -18rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: var(--gray-light);
+  box-shadow: 0 0 0 5rpx var(--black), 0 2rpx 6rpx rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.tonearm-arm {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8rpx;
+  height: 210rpx;
+  background: linear-gradient(180deg, var(--gray-light), #8a8580);
+  border-radius: 6rpx;
+  transform-origin: top center;
+  transform: rotate(-26deg);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.35);
+}
+
+.tonearm.is-dropped .tonearm-arm {
+  transform: rotate(16deg);
+}
+
+.tonearm-head {
+  position: absolute;
+  bottom: -16rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28rpx;
+  height: 36rpx;
+  background: var(--black);
+  border-radius: 4rpx;
+  box-shadow: 0 0 0 2rpx var(--gray-light);
+}
+
+.tonearm-head::after {
+  content: '';
+  position: absolute;
+  bottom: -8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4rpx;
+  height: 10rpx;
+  background: var(--accent);
 }
 
 .dial-hint {
