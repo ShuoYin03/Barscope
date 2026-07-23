@@ -80,7 +80,7 @@ function formatTimeAgo(date) {
     const beijing = new Date(d.getTime() + 8 * 60 * 60 * 1000)
     const hh = String(beijing.getUTCHours()).padStart(2, '0')
     const mm = String(beijing.getUTCMinutes()).padStart(2, '0')
-    return `${hh}时${mm}分`
+    return `${hh}:${mm}`
   }
   const days = Math.floor((now - d.getTime()) / 86400000)
   if (days <= 1) return '昨天'

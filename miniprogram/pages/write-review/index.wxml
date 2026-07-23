@@ -14,7 +14,8 @@
 
     <!-- RATING — vinyl dial -->
     <view class="dial-section">
-      <view class="vinyl-score-disc">
+      <view class="vinyl-score-disc {{rating > 0 ? 'is-lit' : ''}} {{rating > 0 ? 'is-spinning' : ''}}">
+        <image wx:if="{{albumCoverUrl}}" class="vinyl-score-cover" src="{{albumCoverUrl}}" mode="aspectFill" />
         <view class="vinyl-score-label">
           <text class="vinyl-score-num">{{ratingDisplay}}</text>
           <text class="vinyl-score-cap">SCORE</text>

@@ -53,14 +53,53 @@
   height: 400rpx;
   border-radius: 50%;
   position: relative;
+  overflow: hidden;
+  background: var(--accent);
+  box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light);
+  transition: box-shadow 0.4s ease;
+}
+
+.vinyl-score-disc::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  z-index: 2;
   background: radial-gradient(circle at 50% 50%,
-    var(--accent) 0, var(--accent) 17%,
+    transparent 0, transparent 17%,
     var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
     var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
     var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
+    var(--groove-a) 42%, var(--groove-b) 44%, transparent 100%
   );
-  box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light);
+  opacity: 0.55;
+}
+
+.vinyl-score-disc.is-lit {
+  box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light), 0 0 60rpx 4rpx rgba(211, 78, 36, 0.55);
+}
+
+.vinyl-score-disc.is-spinning {
+  animation: vinyl-spin 6s linear infinite;
+}
+
+@keyframes vinyl-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vinyl-score-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  filter: brightness(0.45) saturate(0.7);
+  transition: filter 0.4s ease;
+}
+
+.vinyl-score-disc.is-lit .vinyl-score-cover {
+  filter: brightness(1) saturate(1.05);
 }
 
 .vinyl-score-label {
@@ -75,6 +114,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  z-index: 3;
 }
 
 .vinyl-score-num {
@@ -99,7 +139,7 @@
   width: 12rpx; height: 12rpx;
   border-radius: 50%;
   background: var(--black);
-  z-index: 3;
+  z-index: 4;
 }
 
 .dial-hint {

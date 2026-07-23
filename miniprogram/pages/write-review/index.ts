@@ -7,6 +7,7 @@ Page({
     themeClass: '',
     albumId: '',
     albumTitle: '',
+    albumCoverUrl: '',
     rating: 0,
     ratingDisplay: '—',
     sliderValue: 5,
@@ -21,6 +22,7 @@ Page({
       topbarHeight: app.globalData.topbarHeight,
       albumId: options.albumId || '',
       albumTitle: decodeURIComponent(options.albumTitle || ''),
+      albumCoverUrl: decodeURIComponent(options.albumCoverUrl || ''),
     })
   },
 
