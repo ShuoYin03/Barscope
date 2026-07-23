@@ -39,6 +39,12 @@ const TARGETS = {
     'updateAlbumTracks',
     'reviewModeration',
   ],
+  'contentModeration.js': [
+    'submitReview',
+    'replyReview',
+    'login',
+    'manageInterviews',
+  ],
 }
 
 const HEADER = '// 自动生成，请勿手改。源文件在 shared/cloudfunctions/，改完运行 node scripts/sync-cloudfunctions-shared.js 重新同步。\n'
