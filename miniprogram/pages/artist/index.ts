@@ -61,6 +61,7 @@ Page({
     roles: [] as ArtistRole[],
     brandLabel: '',
     roleTag: '',
+    isArtistVerified: false,
     briefDesc: '',
     briefDescPreview: '',
     hasLongBio: false,
@@ -112,7 +113,7 @@ Page({
         const roles = Array.isArray(artist.roles) ? artist.roles.filter((x:string)=>ROLE_OPTIONS.some(r=>r.key===x)) : []
         const roleLabel = roles.map((x:string)=>String(x).toUpperCase()).join(' / ')
         const roleTag = [roleLabel, brandLabel].filter(Boolean).join(' | ')
-        this.setData({ notCollected: false, bannerUrl, avatarUrl, roles, roleLabel, brandLabel, roleTag, bioExpanded: false, ...bioState })
+        this.setData({ notCollected: false, bannerUrl, avatarUrl, roles, roleLabel, brandLabel, roleTag, isArtistVerified: !!artist.isArtistVerified, bioExpanded: false, ...bioState })
       },
     } as any)
   },

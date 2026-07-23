@@ -71,6 +71,18 @@
       <text class="card-arrow">→</text>
     </view>
 
+    <view class="admin-card" bindtap="onSectionTap" data-section="artistVerification">
+      <view class="card-icon">✓</view>
+      <view class="card-body">
+        <view class="card-title-row">
+          <text class="card-title">艺人入驻审核</text>
+          <view wx:if="{{artistVerificationCount > 0}}" class="count-chip"><text>{{artistVerificationCount}}</text></view>
+        </view>
+        <text class="card-desc">审核用户提交的艺人身份认证申请，通过后主页显示已入驻标识。</text>
+      </view>
+      <text class="card-arrow">→</text>
+    </view>
+
     <view class="admin-card" bindtap="onSectionTap" data-section="interviews">
       <view class="card-icon">✎</view>
       <view class="card-body">
