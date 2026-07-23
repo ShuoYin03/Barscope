@@ -15,7 +15,7 @@
 
     <view wx:if="{{!loading && heroSwiperList.length}}" class="otd-section">
       <section-header prefix="专栏" side="" title="" />
-      <swiper class="hero-swiper" style="height:700rpx;" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25">
+      <swiper class="hero-swiper" style="height:{{heroSwiperHeight}}rpx;" autoplay="{{heroSwiperList.length > 1}}" interval="5000" duration="380" circular="{{heroSwiperList.length > 1}}" indicator-dots="{{heroSwiperList.length > 1}}" indicator-color="rgba(150,150,150,.4)" indicator-active-color="#C94E25" bindchange="onHeroSwiperChange">
         <swiper-item wx:for="{{heroSwiperList}}" wx:key="albumId">
           <view class="hero-banner" bindtap="onAlbumTap" data-id="{{item.albumId}}">
             <view style="align-self:flex-start;margin-bottom:10rpx;"><text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">{{item.kicker}}</text></view>
