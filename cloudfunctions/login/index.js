@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const { moderateFields } = require('./_shared/contentModeration')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
@@ -7,33 +8,38 @@ exports.main = async (event, context) => {
 
   try {
     const { data } = await db.collection('users').where({ openId: OPENID }).get()
-    const nickName = String(event.nickName || '').trim()
+    const nickName = String(event.nickName || '').trim().slice(0, 40)
     const avatarUrl = String(event.avatarUrl || '').trim()
     const coverUrl = String(event.coverUrl || '').trim()
     const bio = String(event.bio || '').trim().slice(0, 100)
+
+    const moderation = moderateFields([
+      { key: 'nickName', value: nickName, options: { maxLength: 40, fieldLabel: '昵称' } },
+      { key: 'bio', value: bio, options: { maxLength: 100, fieldLabel: '个人简介' } },
+    ])
+    if (!moderation.ok) return { success: false, error: moderation.error, moderationCode: moderation.code }
 
     let user
     if (data.length > 0) {
       const existing = data[0]
       const patch = {}
-      if (nickName && nickName !== existing.nickName) patch.nickName = nickName
+      if (moderation.values.nickName && moderation.values.nickName !== existing.nickName) patch.nickName = moderation.values.nickName
       if (avatarUrl && avatarUrl !== existing.avatarUrl) patch.avatarUrl = avatarUrl
       if (coverUrl && coverUrl !== existing.coverUrl) patch.coverUrl = coverUrl
-      if (bio !== (existing.bio || '')) patch.bio = bio
+      if (moderation.values.bio !== (existing.bio || '')) patch.bio = moderation.values.bio
       if (Object.keys(patch).length) {
         await db.collection('users').doc(existing._id).update({ data: patch })
         Object.assign(existing, patch)
       }
       user = existing
     } else {
-      // First time login — create user
       const newUser = {
         openId: OPENID,
-        nickName: nickName || '说唱迷',
+        nickName: moderation.values.nickName || '说唱迷',
         avatarUrl: avatarUrl || '',
         coverUrl: coverUrl || '',
         type: 'normal',
-        bio: bio || '',
+        bio: moderation.values.bio || '',
         reviewCount: 0,
         joinedAt: db.serverDate(),
       }
@@ -51,9 +57,6 @@ exports.main = async (event, context) => {
   }
 }
 
-// cloud:// fileIDs (from wx.cloud.uploadFile) don't render directly in <image src> under every
-// render context, so any avatar/cover pulled from storage needs resolving to a temp HTTPS URL
-// before it's sent to the client. Temp URLs expire, so this happens fresh on every read.
 async function resolveCloudUrls(urls) {
   const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
   if (!targets.length) return new Map()
