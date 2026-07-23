@@ -1,0 +1,26 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <text class="title">ARTIST VERIFICATION REVIEW</text>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无待审核的艺人入驻申请</view>
+    <view wx:for="{{list}}" wx:key="_id" class="review-item">
+      <view class="applicant-row">
+        <view class="applicant-avatar"><image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.nickName[0]}}</text></view>
+        <view class="applicant-copy">
+          <text class="applicant-name">{{item.nickName || '未命名用户'}}</text>
+          <text class="applicant-wechat">微信号：{{item.wechatId}}</text>
+        </view>
+      </view>
+      <view class="claim-row"><text class="claim-label">认领艺人</text><text class="claim-name">{{item.artistName}}</text></view>
+      <view class="evidence-block"><text class="evidence-label">证明材料</text><text class="evidence-text">{{item.evidence}}</text></view>
+      <view class="review-actions">
+        <view class="review-reject" bindtap="onReview" data-id="{{item._id}}" data-decision="reject">拒绝</view>
+        <view class="review-approve" bindtap="onReview" data-id="{{item._id}}" data-decision="approve">通过</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

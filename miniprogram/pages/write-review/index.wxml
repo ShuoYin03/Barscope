@@ -11,20 +11,31 @@
   <view class="album-sub">{{albumTitle || '专辑'}}</view>
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="content-inner">
 
     <!-- RATING — vinyl dial -->
     <view class="dial-section">
-      <view class="vinyl-score-disc">
-        <view class="vinyl-score-label">
-          <text class="vinyl-score-num">{{ratingDisplay}}</text>
-          <text class="vinyl-score-cap">SCORE</text>
+      <view class="vinyl-player">
+        <view class="vinyl-score-disc {{needleOnRecord ? 'is-lit is-spinning' : ''}}">
+          <image wx:if="{{albumCoverUrl}}" class="vinyl-score-cover" src="{{albumCoverUrl}}" mode="aspectFill" />
+          <view class="vinyl-score-spindle" />
         </view>
-        <view class="vinyl-score-spindle" />
+        <view
+          class="tonearm {{needleOnRecord ? 'is-dropped' : ''}}"
+          catchtouchstart="onTonearmTouchStart"
+          catchtouchmove="onTonearmTouchMove"
+          catchtouchend="onTonearmTouchEnd"
+        >
+          <view class="tonearm-pivot" />
+          <view class="tonearm-arm {{tonearmDragging ? 'is-dragging' : ''}}" style="transform: rotate({{tonearmAngle}}deg)">
+            <view class="tonearm-head" />
+          </view>
+        </view>
       </view>
 
-      <text class="dial-hint">{{rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数'}}</text>
+      <text class="dial-hint">{{needleOnRecord ? (rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数') : '拖动唱针至黑胶上开始评分'}}</text>
 
-      <view class="score-axis-wrap">
+      <view class="score-axis-wrap" wx:if="{{needleOnRecord}}">
         <slider
           class="score-axis"
           min="1"
@@ -63,6 +74,7 @@
       <text class="char-count {{content.length > 0 && content.length < 10 ? 'char-count-warn' : ''}}">{{content.length}}/500{{content.length < 10 ? '（至少10字）' : ''}}</text>
     </view>
 
+    </view>
   </scroll-view>
 
   <!-- SUBMIT BAR -->

@@ -1,5 +1,12 @@
 import { getThemeClass } from '../../utils/theme'
 
+const TONEARM_LIFTED_ANGLE = -26
+const TONEARM_DROPPED_ANGLE = 16
+const TONEARM_MIN_ANGLE = -30
+const TONEARM_MAX_ANGLE = 25
+const TONEARM_DROP_THRESHOLD = (TONEARM_LIFTED_ANGLE + TONEARM_DROPPED_ANGLE) / 2
+const TONEARM_DRAG_SENSITIVITY = 0.25
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -7,12 +14,19 @@ Page({
     themeClass: '',
     albumId: '',
     albumTitle: '',
+    albumCoverUrl: '',
     rating: 0,
     ratingDisplay: '—',
     sliderValue: 5,
     content: '',
     submitting: false,
+    needleOnRecord: false,
+    tonearmDragging: false,
+    tonearmAngle: TONEARM_LIFTED_ANGLE,
   },
+
+  _tonearmStartX: 0,
+  _tonearmStartAngle: TONEARM_LIFTED_ANGLE,
 
   onLoad(options) {
     const app = getApp<IAppOption>()
@@ -21,6 +35,7 @@ Page({
       topbarHeight: app.globalData.topbarHeight,
       albumId: options.albumId || '',
       albumTitle: decodeURIComponent(options.albumTitle || ''),
+      albumCoverUrl: decodeURIComponent(options.albumCoverUrl || ''),
     })
   },
 
@@ -30,6 +45,29 @@ Page({
 
   onBack() {
     wx.navigateBack()
+  },
+
+  onTonearmTouchStart(e: WechatMiniprogram.TouchEvent) {
+    this._tonearmStartX = e.touches[0].clientX
+    this._tonearmStartAngle = this.data.tonearmAngle
+    this.setData({ tonearmDragging: true })
+  },
+
+  onTonearmTouchMove(e: WechatMiniprogram.TouchEvent) {
+    if (!this.data.tonearmDragging) return
+    const dx = e.touches[0].clientX - this._tonearmStartX
+    let angle = this._tonearmStartAngle - dx * TONEARM_DRAG_SENSITIVITY
+    angle = Math.max(TONEARM_MIN_ANGLE, Math.min(TONEARM_MAX_ANGLE, angle))
+    this.setData({ tonearmAngle: angle })
+  },
+
+  onTonearmTouchEnd() {
+    const dropped = this.data.tonearmAngle > TONEARM_DROP_THRESHOLD
+    this.setData({
+      tonearmDragging: false,
+      needleOnRecord: dropped,
+      tonearmAngle: dropped ? TONEARM_DROPPED_ANGLE : TONEARM_LIFTED_ANGLE,
+    })
   },
 
   onRateChange(e: WechatMiniprogram.SliderChange) {

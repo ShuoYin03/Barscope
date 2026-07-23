@@ -321,12 +321,23 @@ function beijingDayRange() {
   return { start, end, dateKey }
 }
 
+function toBeijingDateKey(ms) {
+  const beijing = new Date(ms + 8 * 60 * 60 * 1000)
+  return `${beijing.getUTCFullYear()}-${beijing.getUTCMonth()}-${beijing.getUTCDate()}`
+}
+
 function formatTimeAgo(date) {
   if (!date) return ''
-  const diff = Date.now() - new Date(date).getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return '今天'
-  if (days === 1) return '昨天'
+  const d = new Date(date)
+  const now = Date.now()
+  if (toBeijingDateKey(d.getTime()) === toBeijingDateKey(now)) {
+    const beijing = new Date(d.getTime() + 8 * 60 * 60 * 1000)
+    const hh = String(beijing.getUTCHours()).padStart(2, '0')
+    const mm = String(beijing.getUTCMinutes()).padStart(2, '0')
+    return `${hh}:${mm}`
+  }
+  const days = Math.floor((now - d.getTime()) / 86400000)
+  if (days <= 1) return '昨天'
   if (days < 7) return days + '天前'
   if (days < 30) return Math.floor(days / 7) + '周前'
   return Math.floor(days / 30) + '个月前'

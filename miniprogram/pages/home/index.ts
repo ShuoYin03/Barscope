@@ -9,6 +9,9 @@ const FALLBACK_TICKER_SONGS = [
   'SOUNDIVE · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
+const HERO_CARD_HEIGHT_BASE = 600
+const HERO_CARD_HEIGHT_HOT = 720
+
 function fmtScore(n: number): string { if (!n) return '—'; const r = Math.round(n * 10) / 10; return r === 10 ? '10' : r.toFixed(1) }
 function fmtReleaseDate(value: any, fallbackYear?: any): string {
   const raw = String(value || '').trim()
@@ -30,6 +33,7 @@ Page({
     isLoggedIn: false,
     recentHotItems: [] as any[],
     heroSwiperList: [] as any[],
+    heroSwiperHeight: HERO_CARD_HEIGHT_BASE,
     chartItems: [] as any[],
     newReleases: [] as any[],
     reviews: [] as any[],
@@ -114,6 +118,7 @@ Page({
         isTodayHot: true,
         todayReviewCount: Number(a.todayReviewCount || 0),
         currentScore: fmtScore(Number(a.score || 0)),
+        cardHeight: HERO_CARD_HEIGHT_HOT,
       }))
 
       const onThisDaySwiperItems = onThisDayRes?.success
@@ -126,6 +131,7 @@ Page({
             coverUrl: a.coverUrl || '',
             kicker: `历史上的今天 · ${a.yearsAgo}年前`,
             isTodayHot: false,
+            cardHeight: HERO_CARD_HEIGHT_BASE,
           }))
         : []
 
@@ -154,6 +160,7 @@ Page({
         tickerSongs,
         recentHotItems,
         heroSwiperList,
+        heroSwiperHeight: heroSwiperList[0]?.cardHeight || HERO_CARD_HEIGHT_BASE,
         chartItems,
         newReleases,
         reviews: reviewsRes.success ? (reviewsRes.list || []) : [],
@@ -164,6 +171,11 @@ Page({
         totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0,
         loading: false,
       })
+  },
+  onHeroSwiperChange(e: WechatMiniprogram.SwiperChange) {
+    const index = e.detail.current
+    const height = this.data.heroSwiperList[index]?.cardHeight || HERO_CARD_HEIGHT_BASE
+    if (height !== this.data.heroSwiperHeight) this.setData({ heroSwiperHeight: height })
   },
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
   onReleasesMore() { wx.navigateTo({ url: '/pages/recent-releases/index' }) },

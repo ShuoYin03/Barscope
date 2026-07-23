@@ -66,6 +66,7 @@ exports.main = async (event) => {
         brand: brands[0] || '',
         brands,
         roles,
+        isArtistVerified: !!(candidate?.isArtistVerified || artist?.isArtistVerified),
       },
     }
   } catch (e) {

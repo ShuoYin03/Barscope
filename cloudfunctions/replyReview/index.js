@@ -2,14 +2,19 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
+const { moderateText } = require('./_shared/contentModeration')
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   const reviewId = event.reviewId
-  const content = String(event.content || '').trim()
+  const rawContent = String(event.content || '').trim()
   if (!OPENID) return { success: false, error: 'login required' }
-  if (!reviewId || !content) return { success: false, error: 'reviewId and content required' }
-  if (content.length > 300) return { success: false, error: 'reply too long' }
+  if (!reviewId || !rawContent) return { success: false, error: 'reviewId and content required' }
+
+  const moderation = moderateText(rawContent, { maxLength: 300, fieldLabel: '回复内容' })
+  if (!moderation.ok) return { success: false, error: moderation.error, moderationCode: moderation.code }
+  const content = moderation.content
+
   try {
     await db.collection('review_replies').add({ data: { reviewId, content, openId: OPENID, createdAt: db.serverDate() } })
     await db.collection('reviews').doc(reviewId).update({ data: { replyCount: _.inc(1) } })

@@ -1,6 +1,6 @@
 import { getThemeClass } from '../../utils/theme'
 
-type ReviewSection = 'candidates' | 'artistRoles' | 'reports' | 'tracks' | 'critics' | 'interviews'
+type ReviewSection = 'candidates' | 'artistRoles' | 'reports' | 'tracks' | 'critics' | 'interviews' | 'artistVerification'
 
 Page({
   data: {
@@ -12,6 +12,7 @@ Page({
     reportCount: 0,
     trackCorrectionCount: 0,
     interviewCount: 0,
+    artistVerificationCount: 0,
     loading: false,
   },
 
@@ -40,18 +41,21 @@ Page({
       wx.cloud.callFunction({ name: 'reviewModeration', data: { action: 'stats' } }),
       wx.cloud.callFunction({ name: 'manageTrackCorrections', data: { action: 'stats' } }),
       wx.cloud.callFunction({ name: 'manageInterviews', data: { action: 'stats' } }),
+      wx.cloud.callFunction({ name: 'submitArtistVerification', data: { action: 'stats' } }),
     ]).then((results: any[]) => {
       const candidateResult = results[0]?.status === 'fulfilled' ? results[0].value?.result : null
       const artistRoleResult = results[1]?.status === 'fulfilled' ? results[1].value?.result : null
       const reportResult = results[2]?.status === 'fulfilled' ? results[2].value?.result : null
       const trackResult = results[3]?.status === 'fulfilled' ? results[3].value?.result : null
       const interviewResult = results[4]?.status === 'fulfilled' ? results[4].value?.result : null
+      const artistVerificationResult = results[5]?.status === 'fulfilled' ? results[5].value?.result : null
       this.setData({
         candidateCount: candidateResult?.success ? (candidateResult.pending || 0) : 0,
         artistRoleCount: artistRoleResult?.success ? (artistRoleResult.total || artistRoleResult.list?.length || 0) : 0,
         reportCount: reportResult?.success ? (reportResult.pending || 0) : 0,
         trackCorrectionCount: trackResult?.success ? (trackResult.pending || 0) : 0,
         interviewCount: interviewResult?.success ? (interviewResult.pending || 0) : 0,
+        artistVerificationCount: artistVerificationResult?.success ? (artistVerificationResult.pending || 0) : 0,
         loading: false,
       })
     })
@@ -66,6 +70,7 @@ Page({
       tracks: '/pages/track-corrections/index',
       critics: '/pages/critics/index',
       interviews: '/pages/interview-review/index',
+      artistVerification: '/pages/artist-verification-review/index',
     }
     wx.navigateTo({ url: routes[section] })
   },

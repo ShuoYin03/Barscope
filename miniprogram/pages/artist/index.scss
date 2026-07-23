@@ -35,6 +35,8 @@
 .artist-block { padding: 128rpx 32rpx 0; text-align: center; flex-shrink: 0; }
 .artist-en { font-family: var(--font-bebas); color: var(--white); line-height: 1; display: block; }
 .artist-tag { display:block; margin-top:12rpx; font-family:var(--font-bebas); font-size:20rpx; letter-spacing:3rpx; color:var(--accent); }
+.verified-badge-wrap { display:flex; justify-content:center; margin-top:14rpx; }
+.verified-badge { font-size:19rpx; font-weight:700; letter-spacing:2rpx; color:#000; background:#FFD600; padding:6rpx 18rpx; border-radius:4rpx; }
 .artist-stats-row { display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 14rpx; padding-bottom: 4rpx; }
 .stat-num { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent); line-height: 1; }
 .stat-unit { font-size: 18rpx; color: var(--gray-mid); letter-spacing: 2rpx; margin: 0 16rpx 0 6rpx; }

@@ -34,10 +34,17 @@ const TARGETS = {
     'manageQQAlbumBackfill',
     'manageQQAlbumCache',
     'manageTrackCorrections',
+    'submitArtistVerification',
     'updateAlbumCover',
     'updateAlbumMetadata',
     'updateAlbumTracks',
     'reviewModeration',
+  ],
+  'contentModeration.js': [
+    'submitReview',
+    'replyReview',
+    'login',
+    'manageInterviews',
   ],
 }
 

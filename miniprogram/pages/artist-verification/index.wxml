@@ -1,0 +1,73 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+    <text class="back" bindtap="onBack">←</text>
+    <view class="title-wrap"><text class="title">ARTIST VERIFICATION</text><text class="sub">艺人入驻申请</text></view>
+  </view>
+
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="intro">
+      <text class="intro-kicker">SIDE A — CLAIM YOUR PAGE</text>
+      <text class="intro-title">证明你就是这位艺人</text>
+      <text class="intro-copy">通过认证后，你的艺人主页会显示「艺人已入驻」标识。请提供真实联系方式和可验证的身份证明材料。</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="state-card"><text>正在读取申请状态…</text></view>
+
+    <view wx:elif="{{existing}}" class="state-card status-{{existing.status}}">
+      <text class="state-label">申请状态</text>
+      <text class="state-title">{{existing.status === 'pending' ? '待审核' : existing.status === 'approved' ? '已通过' : '未通过'}}</text>
+      <text class="state-copy" wx:if="{{existing.status === 'pending'}}">管理员正在核实你与「{{existing.artistName}}」的关联，请耐心等待。</text>
+      <text class="state-copy" wx:elif="{{existing.status === 'approved'}}">你已通过认证，「{{existing.artistName}}」的主页现已显示艺人已入驻标识。</text>
+      <text class="state-copy" wx:else>{{existing.adminNote || '本次申请暂未通过，你可以补充更多证明材料后再次申请。'}}</text>
+      <view class="submitted-block"><text class="submitted-label">认领艺人</text><text class="submitted-text">{{existing.artistName}}</text></view>
+      <view class="submitted-block"><text class="submitted-label">证明材料</text><text class="submitted-text">{{existing.evidence}}</text></view>
+    </view>
+
+    <block wx:else>
+      <view class="criteria">
+        <text class="section-kicker">申请标准</text>
+        <view class="criterion"><text class="num">01</text><text>你确实是该艺人本人或其官方团队成员</text></view>
+        <view class="criterion"><text class="num">02</text><text>能提供可验证的身份证明，例如官方社交账号、官方渠道链接</text></view>
+        <view class="criterion"><text class="num">03</text><text>提交真实联系方式，便于管理员核实与沟通</text></view>
+      </view>
+
+      <view class="form-section">
+        <text class="field-label first">认领艺人 <text class="required">*</text></text>
+        <view wx:if="{{selectedArtist}}" class="selected-artist">
+          <view class="selected-avatar"><image wx:if="{{selectedArtist.picUrl}}" src="{{selectedArtist.picUrl}}" mode="aspectFill" /><text wx:else>{{selectedArtist.artistName[0]}}</text></view>
+          <text class="selected-name">{{selectedArtist.artistName}}</text>
+          <view class="selected-clear" bindtap="onClearArtist"><text>重新选择</text></view>
+        </view>
+        <block wx:else>
+          <input class="input" placeholder="搜索你的艺人名字" value="{{searchKeyword}}" bindinput="onSearchInput" />
+          <view wx:if="{{searching}}" class="search-hint"><text>搜索中…</text></view>
+          <view wx:elif="{{searchKeyword && searchResults.length === 0}}" class="search-hint"><text>没有找到匹配的艺人</text></view>
+          <view class="search-results" wx:if="{{searchResults.length > 0}}">
+            <view
+              wx:for="{{searchResults}}"
+              wx:key="id"
+              class="search-row"
+              bindtap="onSelectArtist"
+              data-doc-id="{{item.id}}"
+              data-artist-id="{{item.artistId}}"
+              data-artist-name="{{item.artistName}}"
+              data-pic-url="{{item.picUrl}}"
+            >
+              <view class="search-avatar"><image wx:if="{{item.picUrl}}" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.artistName[0]}}</text></view>
+              <text class="search-name">{{item.artistName}}</text>
+            </view>
+          </view>
+        </block>
+
+        <text class="field-label">微信号 <text class="required">*</text></text>
+        <input class="input" placeholder="用于审核沟通，不会公开展示" value="{{wechatId}}" data-field="wechatId" bindinput="onInput" maxlength="80" />
+
+        <view class="label-row"><text class="field-label">身份证明材料 <text class="required">*</text></text><text class="counter">{{evidenceCount}} / 1500</text></view>
+        <textarea class="textarea evidence" auto-height="{{false}}" fixed="{{true}}" placeholder="请提供能证明你就是该艺人的材料，例如官方社交媒体主页链接、官方合作渠道联系方式等。至少 30 字。" value="{{evidence}}" data-field="evidence" bindinput="onInput" maxlength="1500" />
+
+        <view class="notice"><text>提交即表示你确认材料由本人提供，并同意管理员仅为审核认证目的查看联系方式与材料内容。</text></view>
+        <button class="submit" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmit">提交申请</button>
+      </view>
+    </block>
+  </scroll-view>
+</view>
