@@ -11,6 +11,7 @@
   <view class="album-sub">{{albumTitle || '专辑'}}</view>
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="content-inner">
 
     <!-- RATING — vinyl dial -->
     <view class="dial-section">
@@ -73,6 +74,7 @@
       <text class="char-count {{content.length > 0 && content.length < 10 ? 'char-count-warn' : ''}}">{{content.length}}/500{{content.length < 10 ? '（至少10字）' : ''}}</text>
     </view>
 
+    </view>
   </scroll-view>
 
   <!-- SUBMIT BAR -->
