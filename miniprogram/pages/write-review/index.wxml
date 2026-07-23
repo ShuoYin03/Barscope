@@ -16,7 +16,11 @@
     <!-- RATING — vinyl dial -->
     <view class="dial-section">
       <view class="vinyl-player">
-        <view class="turntable-base" />
+        <view class="turntable-base">
+          <view class="deck-knob deck-knob-power"><view class="deck-knob-mark" /></view>
+          <view class="deck-knob deck-knob-speed"><view class="deck-knob-mark" /></view>
+          <view class="deck-fader"><view class="deck-fader-grip" /></view>
+        </view>
         <view class="vinyl-score-disc {{needleOnRecord ? 'is-lit is-spinning' : ''}}">
           <image wx:if="{{albumCoverUrl}}" class="vinyl-score-cover" src="{{albumCoverUrl}}" mode="aspectFill" />
           <view class="vinyl-score-spindle" />
