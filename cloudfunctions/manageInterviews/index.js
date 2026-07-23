@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk')
 const { isAdmin } = require('./_shared/auth')
+const { moderateFields } = require('./_shared/contentModeration')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
@@ -7,18 +8,6 @@ const COL = 'interviews'
 
 const CONTENT_MIN_LENGTH = 200
 const TITLE_MIN_LENGTH = 2
-
-// Basic content gate — minimum length plus a hardcoded list of common Chinese/English profanity,
-// matching the same pattern used by submitReview/moderation.js and the vote features' note filter.
-const BAD_WORDS = [
-  '傻逼', '傻屄', '煞笔', '沙比', '傻比', 'sb', '智障', '脑残', '弱智', '废物', '人渣', '畜生', '杂种',
-  '婊子', '妓女', '贱人', '贱货', '狗娘养的', '死全家', '去死吧', '滚你妈',
-  '妈的', '他妈的', 'tmd', 'cnm', 'nmsl', '操你妈', '日你妈', '草你妈', '我操', '我艹',
-  'fuck', 'fucker', 'fucking', 'bitch', 'asshole', 'cunt', 'nigger', 'retard',
-]
-function normalizeForFilter(text) { return String(text || '').toLowerCase().replace(/[\s.,!?~*_\-·、。！？，]/g, '') }
-const NORMALIZED_BAD_WORDS = BAD_WORDS.map(normalizeForFilter)
-function hasBadWord(text) { const n = normalizeForFilter(text); return NORMALIZED_BAD_WORDS.some(w => w && n.includes(w)) }
 
 async function resolveCloudUrls(urls) {
   const targets = Array.from(new Set(urls.filter(u => typeof u === 'string' && u.startsWith('cloud://'))))
@@ -64,7 +53,14 @@ async function submit(event, OPENID) {
   if (title.length < TITLE_MIN_LENGTH) return { success: false, error: '请填写标题' }
   if (!intervieweeName) return { success: false, error: '请填写受访对象' }
   if (content.length < CONTENT_MIN_LENGTH) return { success: false, error: `正文内容至少需要 ${CONTENT_MIN_LENGTH} 个字` }
-  if (hasBadWord(title) || hasBadWord(intro) || hasBadWord(content)) return { success: false, error: '内容包含不当用语，请修改后重新提交' }
+
+  const moderation = moderateFields([
+    { key: 'title', value: title, options: { minLength: TITLE_MIN_LENGTH, maxLength: 80, fieldLabel: '访谈标题' } },
+    { key: 'intervieweeName', value: intervieweeName, options: { maxLength: 40, fieldLabel: '受访对象' } },
+    { key: 'intro', value: intro, options: { maxLength: 200, fieldLabel: '访谈简介' } },
+    { key: 'content', value: content, options: { minLength: CONTENT_MIN_LENGTH, maxLength: 20000, fieldLabel: '访谈正文' } },
+  ])
+  if (!moderation.ok) return { success: false, error: moderation.error, moderationCode: moderation.code }
 
   const { data: users } = await db.collection('users').where({ openId: OPENID }).limit(1).get()
   const user = users[0] || {}
@@ -75,7 +71,12 @@ async function submit(event, OPENID) {
   if ((pendingRes.total || 0) >= 3) return { success: false, error: '你已有 3 篇访谈在审核中，请等待处理后再提交' }
 
   const doc = {
-    title, intervieweeName, intro, content, coverUrl, wechat,
+    title: moderation.values.title,
+    intervieweeName: moderation.values.intervieweeName,
+    intro: moderation.values.intro,
+    content: moderation.values.content,
+    coverUrl,
+    wechat,
     submitterOpenId: OPENID,
     submitterName: user.nickName || '匿名用户',
     submitterAvatar: user.avatarUrl || '',
