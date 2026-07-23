@@ -66,14 +66,10 @@
   inset: 0;
   border-radius: 50%;
   z-index: 2;
-  background: radial-gradient(circle at 50% 50%,
-    transparent 0, transparent 17%,
-    var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
-    var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
-    var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, transparent 100%
+  background: repeating-radial-gradient(circle at 50% 50%,
+    transparent 0, transparent 12rpx,
+    rgba(0, 0, 0, 0.18) 12rpx, rgba(0, 0, 0, 0.18) 13rpx
   );
-  opacity: 0.55;
 }
 
 .vinyl-score-disc.is-lit {
@@ -91,12 +87,6 @@
   width: 100%;
   height: 100%;
   z-index: 1;
-  filter: brightness(0.45) saturate(0.7);
-  transition: filter 0.4s ease;
-}
-
-.vinyl-score-disc.is-lit .vinyl-score-cover {
-  filter: brightness(1) saturate(1.05);
 }
 
 .vinyl-score-spindle {
