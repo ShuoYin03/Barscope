@@ -1,0 +1,115 @@
+'use strict'
+
+const DEFAULT_BAD_WORDS = [
+  '傻逼','傻屄','煞笔','沙比','傻比','智障','脑残','弱智','废物','人渣','畜生','杂种',
+  '婊子','妓女','贱人','贱货','狗娘养的','死全家','去死吧','滚你妈','操你妈','日你妈','草你妈',
+  'nmsl','cnm','tmd','fuck','fucker','fucking','bitch','asshole','cunt','nigger','retard',
+]
+
+const TARGET_TERMS = [
+  '你','他','她','这个人','那个人','rapper','歌手','艺人','作者','乐评人','粉丝','听众','饭圈','群体','这帮','这群',
+]
+
+const ATTACK_TERMS = [
+  '废物','垃圾人','人渣','畜生','杂种','智障','脑残','弱智','恶心的人','不配做人','不配活','活着浪费空气',
+]
+
+const GROUP_ATTACK_PATTERNS = [
+  /(粉丝|听众|饭圈|这帮人|这群人).{0,8}(都是|全是|一群).{0,10}(傻|蠢|低等|垃圾|废物|脑残|智障)/i,
+  /(喜欢|支持|听).{0,10}(的人|粉丝).{0,8}(都是|全是).{0,10}(傻|蠢|低等|垃圾|废物|脑残|智障)/i,
+]
+
+const HARASSMENT_PATTERNS = [
+  /(大家|都|一起|所有人).{0,8}(去)?(冲|爆破|网暴|围攻|骚扰)(他|她|这个人|他们|她们)?/i,
+  /(人肉|开盒|曝光).{0,8}(住址|地址|电话|手机号|身份证|学校|单位|家人)/i,
+]
+
+const THREAT_PATTERNS = [
+  /(杀了|弄死|砍死|打死|灭门|烧死|捅死).{0,8}(你|他|她|他们|她们|这个人)?/i,
+  /(你|他|她|他们|她们).{0,8}(等着|小心).{0,8}(弄死|打死|砍死|报复)/i,
+]
+
+const CURSE_PATTERNS = [
+  /(赶紧|最好|应该|活该).{0,6}(去死|死掉|消失)/i,
+  /(不配活|活着就是浪费空气|怎么还不死)/i,
+]
+
+function normalize(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[\s.,!?~*＿_\-—·、。！？，；;：:（）()\[\]【】'"“”‘’]/g, '')
+}
+
+function containsBadWord(text, extraBadWords = []) {
+  const normalized = normalize(text)
+  const words = [...DEFAULT_BAD_WORDS, ...(Array.isArray(extraBadWords) ? extraBadWords : [])]
+  return words.find(word => {
+    const n = normalize(word)
+    return n && normalized.includes(n)
+  }) || ''
+}
+
+function containsTargetedAttack(text) {
+  const normalized = normalize(text)
+  const hasTarget = TARGET_TERMS.some(term => normalized.includes(normalize(term)))
+  const attack = ATTACK_TERMS.find(term => normalized.includes(normalize(term)))
+  return hasTarget && attack ? attack : ''
+}
+
+function findPatternMatch(text, patterns) {
+  const raw = String(text || '')
+  return patterns.some(pattern => pattern.test(raw))
+}
+
+function moderateText(rawContent, options = {}) {
+  const content = String(rawContent || '').trim()
+  const minLength = Number(options.minLength || 0)
+  const maxLength = Number(options.maxLength || 0)
+  const fieldLabel = String(options.fieldLabel || '内容')
+
+  if (minLength && content.length < minLength) {
+    return { ok: false, code: 'too_short', error: `${fieldLabel}至少需要 ${minLength} 个字` }
+  }
+  if (maxLength && content.length > maxLength) {
+    return { ok: false, code: 'too_long', error: `${fieldLabel}不能超过 ${maxLength} 个字` }
+  }
+
+  if (!content) return { ok: true, content }
+
+  if (containsBadWord(content, options.extraBadWords)) {
+    return { ok: false, code: 'abusive_language', error: `${fieldLabel}包含不当或攻击性用语，请修改后重新提交` }
+  }
+  if (containsTargetedAttack(content)) {
+    return { ok: false, code: 'personal_attack', error: `${fieldLabel}包含针对个人或群体的人身攻击，请聚焦作品或行为本身` }
+  }
+  if (findPatternMatch(content, GROUP_ATTACK_PATTERNS)) {
+    return { ok: false, code: 'group_attack', error: `${fieldLabel}包含群体性贬损，请避免攻击粉丝、听众或其他群体` }
+  }
+  if (findPatternMatch(content, HARASSMENT_PATTERNS)) {
+    return { ok: false, code: 'harassment', error: `${fieldLabel}包含煽动围攻、人肉或骚扰的表达，无法发布` }
+  }
+  if (findPatternMatch(content, THREAT_PATTERNS)) {
+    return { ok: false, code: 'threat', error: `${fieldLabel}包含威胁或暴力表达，无法发布` }
+  }
+  if (findPatternMatch(content, CURSE_PATTERNS)) {
+    return { ok: false, code: 'curse', error: `${fieldLabel}包含恶意诅咒或伤害性表达，无法发布` }
+  }
+
+  return { ok: true, content }
+}
+
+function moderateFields(fields) {
+  const output = {}
+  for (const field of fields || []) {
+    const result = moderateText(field.value, field.options || {})
+    if (!result.ok) return result
+    output[field.key] = result.content
+  }
+  return { ok: true, values: output }
+}
+
+module.exports = {
+  moderateText,
+  moderateFields,
+  normalize,
+}
