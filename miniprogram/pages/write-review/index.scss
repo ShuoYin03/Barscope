@@ -65,6 +65,9 @@
   background: var(--black);
   box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light);
   transition: box-shadow 0.4s ease;
+}
+
+.vinyl-score-disc.is-spinning {
   animation: vinyl-spin 14s linear infinite;
 }
 
@@ -125,9 +128,14 @@
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  background: var(--gray-light);
+  background: #ffffff;
   box-shadow: 0 0 0 5rpx var(--black), 0 2rpx 6rpx rgba(0, 0, 0, 0.4);
   z-index: 2;
+  transition: box-shadow 0.4s ease;
+}
+
+.tonearm.is-dropped .tonearm-pivot {
+  box-shadow: 0 0 0 5rpx var(--black), 0 0 16rpx 2rpx rgba(211, 78, 36, 0.6);
 }
 
 .tonearm-arm {
@@ -136,16 +144,15 @@
   right: 0;
   width: 8rpx;
   height: 210rpx;
-  background: linear-gradient(180deg, var(--gray-light), #8a8580);
+  background: #ffffff;
   border-radius: 6rpx;
   transform-origin: top center;
-  transform: rotate(-26deg);
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.35);
 }
 
-.tonearm.is-dropped .tonearm-arm {
-  transform: rotate(16deg);
+.tonearm-arm.is-dragging {
+  transition: none;
 }
 
 .tonearm-head {
