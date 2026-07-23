@@ -1,4 +1,8 @@
 import { getThemeClass } from '../../utils/theme'
+import { swrAll, invalidateCache } from '../../utils/cloudCache'
+
+// 专题统计 5 分钟内视为新鲜
+const FEATURES_TTL = 5 * 60 * 1000
 
 type FeatureItem = {
   id: string
@@ -88,11 +92,14 @@ Page({
   },
   _loadFeatureMetrics(){
     const featureIds=BASE_FEATURES.map(x=>x.id)
-    const statsCall=wx.cloud.callFunction({name:'manageFeatureStats',data:{action:'get_many',featureIds}}).catch((err:any)=>{console.error('[features] load stats failed',err);return{result:{success:false,list:[]}}})
-    const playlistCall=wx.cloud.callFunction({name:'manageFeaturePlaylists',data:{action:'list_public'}}).catch(()=>({result:{success:false}}))
-    Promise.all([statsCall,playlistCall]).then((results:any[])=>{
-      const statsResult=results[0]?.result||{}
-      const playlistResult=results[1]?.result||{}
+    const specs=[
+      {name:'manageFeatureStats',data:{action:'get_many',featureIds},ttl:FEATURES_TTL},
+      {name:'manageFeaturePlaylists',data:{action:'list_public'},ttl:FEATURES_TTL},
+    ]
+    // SWR：有缓存先渲染，过期后台刷新
+    swrAll(specs,(results:any[])=>{
+      const statsResult=results[0]||{}
+      const playlistResult=results[1]||{}
       const statsMap:any={}
       if(statsResult.success)(statsResult.list||[]).forEach((x:any)=>{statsMap[String(x.featureId||'')]=x})
       const playlistCount=playlistResult.success?Number(playlistResult.editorialCount||0)+Number(playlistResult.communityCount||0):0
@@ -119,7 +126,11 @@ Page({
       data:{action:'track_share',featureId},
       success:(res:any)=>{if(!(res.result||{}).success)console.error('[features] track share failed',res.result)},
       fail:(err:any)=>console.error('[features] track share call failed',err),
-      complete:()=>this._loadFeatureMetrics(),
+      complete:()=>{
+        // 分享后统计变了，失效缓存强制下次刷新
+        invalidateCache('manageFeatureStats',{action:'get_many',featureIds:BASE_FEATURES.map(x=>x.id)})
+        this._loadFeatureMetrics()
+      },
     } as any)
   },
   onFilterTap(e:WechatMiniprogram.TouchEvent){ const value=String((e.currentTarget.dataset as any).value||'全部'); const allFeatures=this.data.allFeatures as any[]; const features=value==='全部'?allFeatures:allFeatures.filter(x=>x.category===value); this.setData({activeFilter:value,features}) },

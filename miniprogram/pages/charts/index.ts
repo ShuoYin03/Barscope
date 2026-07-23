@@ -69,6 +69,10 @@ interface ChartEntry {
 }
 
 import { getThemeClass } from '../../utils/theme'
+import { swrCall, hasCache } from '../../utils/cloudCache'
+
+// 榜单 10 分钟内视为新鲜
+const CHARTS_TTL = 10 * 60 * 1000
 
 const PERIOD_META: Record<Period, { label: string }> = {
   weekly:      { label: '周榜' },
@@ -106,40 +110,39 @@ Page({
   },
 
   _loadCharts(period: Period) {
-    this.setData({ loading: true, list: [], periodSubtitle: buildPeriodSubtitle(period) })
+    // 有缓存时不清空列表、不显示 loading，避免秒开时闪空屏
+    const cached = hasCache('getCharts', { period, limit: 30 })
+    this.setData({ loading: !cached, periodSubtitle: buildPeriodSubtitle(period) })
+    if (!cached) this.setData({ list: [] })
 
-    wx.cloud.callFunction({
-      name: 'getCharts',
-      data: { period, limit: 30 },
-      success: (res: any) => {
-        const result = res.result || {}
-        if (!result.success) {
-          this.setData({ list: [], loading: false })
-          wx.showToast({ title: result.error || '加载失败', icon: 'none' })
-          return
+    swrCall('getCharts', { period, limit: 30 }, { ttl: CHARTS_TTL }, (result: any, meta) => {
+      // 切榜单期间已翻到别的 period 了，丢弃过期回调
+      if (this.data.period !== period) return
+      if (!result || !result.success) {
+        this.setData({ loading: false })
+        if (!meta.fromCache) {
+          this.setData({ list: [] })
+          wx.showToast({ title: (result && result.error) || '加载失败', icon: 'none' })
         }
+        return
+      }
 
-        let rawList = (result.list || []).filter((item: any) => Number(item.score || 0) > 0)
-        if (period === 'release2026') rawList = rawList.filter(isReleasedIn2026)
+      let rawList = (result.list || []).filter((item: any) => Number(item.score || 0) > 0)
+      if (period === 'release2026') rawList = rawList.filter(isReleasedIn2026)
 
-        const list: ChartEntry[] = rawList.slice(0, 30).map((item: any, index: number) => {
-          const year = item.year || item.releaseYear
-          return {
-            ...item,
-            rank: index + 1,
-            year,
-            dateDisplay: fmtReleaseDate(item.releaseDate, year),
-            scoreDisplay: fmtScore(Number(item.score || 0)),
-          }
-        })
+      const list: ChartEntry[] = rawList.slice(0, 30).map((item: any, index: number) => {
+        const year = item.year || item.releaseYear
+        return {
+          ...item,
+          rank: index + 1,
+          year,
+          dateDisplay: fmtReleaseDate(item.releaseDate, year),
+          scoreDisplay: fmtScore(Number(item.score || 0)),
+        }
+      })
 
-        this.setData({ list, loading: false })
-      },
-      fail: () => {
-        this.setData({ list: [], loading: false })
-        wx.showToast({ title: '加载失败', icon: 'none' })
-      },
-    } as any)
+      this.setData({ list, loading: false })
+    })
   },
 
   onPeriod(e: WechatMiniprogram.TouchEvent) {

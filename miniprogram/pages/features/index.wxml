@@ -3,7 +3,7 @@
     <view><text class="title">FEATURES</text><text class="sub">专题</text></view>
   </view>
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
-    <view class="masthead"><text class="kicker">BEATWEEN EDITORIAL</text><text class="headline">专题栏目，等待你的投稿</text><text class="deck">年度榜单、深度乐评与 Rapper 访谈，欢迎一起把内容做出来。</text></view>
+    <view class="masthead"><text class="kicker">SOUNDIVE EDITORIAL</text><text class="headline">专题栏目，等待你的投稿</text><text class="deck">年度榜单、深度乐评与 Rapper 访谈，欢迎一起把内容做出来。</text></view>
     <scroll-view class="filters" scroll-x show-scrollbar="{{false}}"><view class="filter-row"><view wx:for="{{filters}}" wx:key="*this" class="filter {{activeFilter===item?'active':''}}" data-value="{{item}}" bindtap="onFilterTap"><text>{{item}}</text></view></view></scroll-view>
     <view class="feature-list">
       <view wx:for="{{features}}" wx:key="id" class="feature-card {{item.hero?'hero':''}}" data-id="{{item.id}}" bindtap="onFeatureTap">

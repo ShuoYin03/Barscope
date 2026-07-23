@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Beatween · 网易云音乐爬虫（多模式版）
+Soundive · 网易云音乐爬虫（多模式版）
 
 模式:
   search      -- 从 rappers.json 按艺人 ID 拉取所有专辑/单曲（默认）
@@ -864,7 +864,7 @@ def run_fission(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Beatween 网易云爬虫（多模式）",
+        description="Soundive 网易云爬虫（多模式）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

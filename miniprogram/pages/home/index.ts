@@ -1,7 +1,12 @@
 import { getThemeClass } from '../../utils/theme'
+import { swrAll } from '../../utils/cloudCache'
+
+// 首页数据 5 分钟内视为新鲜：TTL 内切 tab / 返回页面直接读缓存秒开，
+// 超过则先显示旧数据再后台刷新。
+const HOME_TTL = 5 * 60 * 1000
 
 const FALLBACK_TICKER_SONGS = [
-  'BEATWEEN · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
+  'SOUNDIVE · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
 function fmtScore(n: number): string { if (!n) return '—'; const r = Math.round(n * 10) / 10; return r === 10 ? '10' : r.toFixed(1) }
@@ -13,9 +18,6 @@ function fmtReleaseDate(value: any, fallbackYear?: any): string {
     return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
   }
   return String(fallbackYear || '').trim()
-}
-function safeCallFunction(name: string, data: Record<string, any>) {
-  return wx.cloud.callFunction({ name, data }).then((res: any) => res.result || { success: false }).catch((err: any) => { console.warn(`${name} failed`, err); return { success: false } })
 }
 
 Page({
@@ -49,21 +51,27 @@ Page({
   },
   _loadData() {
     this.setData({ loading: true })
-    const requests = [
-      safeCallFunction('getCharts', { limit: 5 }),
-      safeCallFunction('getReviews', { recent: true, pageSize: 4 }),
-      safeCallFunction('getCatalogStats', {}),
-      safeCallFunction('getLatestAlbums', { limit: 10 }),
-      safeCallFunction('getReviews', { dailyHotAlbums: true, limit: 6 }),
-      safeCallFunction('getArtists', { limit: 1 }),
-      safeCallFunction('getReviews', { totalCount: true }),
-      safeCallFunction('getOnThisDay', { limit: 8 }),
-      safeCallFunction('getReviews', { monthlyTopCritics: true, limit: 8 }),
-      safeCallFunction('getReviews', { followingFeed: true, pageSize: 6 }),
-      safeCallFunction('getRecentHotAlbums', { limit: 5, days: 30 }),
+    const specs = [
+      { name: 'getCharts', data: { limit: 5 }, ttl: HOME_TTL },
+      { name: 'getReviews', data: { recent: true, pageSize: 4 }, ttl: HOME_TTL },
+      { name: 'getCatalogStats', data: {}, ttl: HOME_TTL },
+      { name: 'getLatestAlbums', data: { limit: 10 }, ttl: HOME_TTL },
+      { name: 'getReviews', data: { dailyHotAlbums: true, limit: 6 }, ttl: HOME_TTL },
+      { name: 'getArtists', data: { limit: 1 }, ttl: HOME_TTL },
+      { name: 'getReviews', data: { totalCount: true }, ttl: HOME_TTL },
+      { name: 'getOnThisDay', data: { limit: 8 }, ttl: HOME_TTL },
+      { name: 'getReviews', data: { monthlyTopCritics: true, limit: 8 }, ttl: HOME_TTL },
+      { name: 'getReviews', data: { followingFeed: true, pageSize: 6 }, ttl: HOME_TTL },
+      { name: 'getRecentHotAlbums', data: { limit: 5, days: 30 }, ttl: HOME_TTL },
     ]
 
-    Promise.all(requests).then((results: any[]) => {
+    // SWR：有缓存先渲染（秒开），过期时后台刷新后再渲染一次。
+    swrAll(specs, (results: any[]) => this._render(results)).catch((err: any) => {
+      console.error('home _loadData error', err)
+      this.setData({ loading: false })
+    })
+  },
+  _render(results: any[]) {
       const [chartsRes, reviewsRes, totalRes, latestRes, dailyHotRes, artistsRes, reviewCountRes, onThisDayRes, topCriticsRes, followingFeedRes, recentHotRes] = results
 
       const chartItems = chartsRes.success
@@ -156,10 +164,6 @@ Page({
         totalReviews: reviewCountRes.success ? (reviewCountRes.total || 0) : 0,
         loading: false,
       })
-    }).catch((err: any) => {
-      console.error('home _loadData error', err)
-      this.setData({ loading: false })
-    })
   },
   onChartMore() { wx.switchTab({ url: '/pages/charts/index' }) },
   onReleasesMore() { wx.navigateTo({ url: '/pages/recent-releases/index' }) },

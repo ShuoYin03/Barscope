@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Beatween · 爬虫流水线（本地手动运行）
+Soundive · 爬虫流水线（本地手动运行）
 
   fission     裂变发现   — 已批准 rapper 的专辑 + 发现新候选（默认模式）
   sync        同步决定   — 将云端审核结果同步回 rappers.json，不爬取
@@ -163,7 +163,7 @@ def upload_candidates(token: str, env: str, batch_size: int = 100) -> dict:
 # ── 主流程 ─────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Beatween 爬虫")
+    parser = argparse.ArgumentParser(description="Soundive 爬虫")
     parser.add_argument("--dry-run",       action="store_true", help="只爬取+清洗，不上传")
     parser.add_argument("--mode", choices=["fission", "sync"],
                         default="fission",

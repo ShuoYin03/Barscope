@@ -1,6 +1,6 @@
 <view class="page-wrapper {{themeClass}}">
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
-    <view class="logo-col"><text class="logo-main">BEATWEEN</text><text class="logo-sub">中文说唱</text></view>
+    <view class="logo-col"><text class="logo-main">SOUNDIVE</text><text class="logo-sub">中文说唱</text></view>
     <text class="logo-search" bindtap="onSearchTap">⌕</text>
   </view>
 
@@ -21,7 +21,7 @@
             <view style="align-self:flex-start;margin-bottom:10rpx;"><text style="display:block;font-size:20rpx;font-weight:800;letter-spacing:5rpx;color:#d45124;">{{item.kicker}}</text></view>
             <view class="vinyl-hero-wrap" style="width:560rpx;height:355rpx;position:relative;display:flex;align-items:flex-start;justify-content:center;">
               <view class="vinyl-hero-disc" style="position:absolute;right:42rpx;top:8rpx;width:340rpx;height:340rpx;z-index:1;">
-                <view class="vinyl-hero-label"><text class="vinyl-label-score-num">{{item.score}}</text><text class="vinyl-label-score-sub">BEATWEEN</text></view>
+                <view class="vinyl-hero-label"><text class="vinyl-label-score-num">{{item.score}}</text><text class="vinyl-label-score-sub">SOUNDIVE</text></view>
                 <view class="vinyl-hero-spindle" />
               </view>
               <view class="hero-cover-card" style="position:absolute;left:72rpx;top:8rpx;width:320rpx;height:320rpx;z-index:3;background:#050505;box-shadow:0 18rpx 36rpx rgba(0,0,0,.5);">
