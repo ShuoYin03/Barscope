@@ -65,16 +65,18 @@
 .turntable-base {
   position: absolute;
   inset: 0;
-  background: #ffffff;
+  background: #9a9288;
   border-radius: 20rpx;
   box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.45);
 }
 
 .vinyl-score-disc {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
   width: 380rpx;
   height: 380rpx;
   border-radius: 50%;
