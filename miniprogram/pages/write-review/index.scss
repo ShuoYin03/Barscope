@@ -50,14 +50,14 @@
 
 .vinyl-player {
   position: relative;
-  width: 460rpx;
-  height: 460rpx;
+  width: 400rpx;
+  height: 400rpx;
+  margin: 0 auto;
 }
 
 .vinyl-score-disc {
   position: absolute;
-  left: 0;
-  bottom: 0;
+  inset: 0;
   width: 400rpx;
   height: 400rpx;
   border-radius: 50%;
@@ -115,7 +115,7 @@
 .tonearm {
   position: absolute;
   top: 6rpx;
-  right: 6rpx;
+  right: -54rpx;
   width: 0;
   height: 0;
   z-index: 5;
