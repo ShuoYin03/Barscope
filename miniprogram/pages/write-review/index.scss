@@ -57,14 +57,28 @@
 
 .vinyl-player {
   position: relative;
-  width: 400rpx;
-  height: 400rpx;
+  width: 440rpx;
+  height: 470rpx;
   margin: 0 auto;
+}
+
+.turntable-base {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 440rpx;
+  height: 110rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.4);
 }
 
 .vinyl-score-disc {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 400rpx;
   height: 400rpx;
   border-radius: 50%;
@@ -122,7 +136,7 @@
 .tonearm {
   position: absolute;
   top: 6rpx;
-  right: -54rpx;
+  right: -34rpx;
   width: 0;
   height: 0;
   z-index: 5;
