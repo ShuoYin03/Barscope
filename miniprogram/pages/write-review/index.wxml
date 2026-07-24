@@ -17,10 +17,12 @@
     <view class="dial-section">
       <view class="vinyl-player">
         <view class="turntable-base">
-          <view class="deck-knob deck-knob-power"><view class="deck-knob-mark" /></view>
-          <view class="deck-knob deck-knob-speed"><view class="deck-knob-mark" /></view>
           <view class="deck-fader"><view class="deck-fader-grip" /></view>
+          <view class="deck-knob deck-knob-power"><view class="deck-knob-mark" /></view>
+          <view class="deck-square-btn" />
+          <view class="deck-knob deck-knob-speed"><view class="deck-knob-mark" /></view>
           <view class="deck-foot deck-foot-tl" />
+          <view class="deck-foot deck-foot-tr" />
           <view class="deck-foot deck-foot-bl" />
           <view class="deck-foot deck-foot-br" />
         </view>
@@ -34,6 +36,7 @@
           catchtouchmove="onTonearmTouchMove"
           catchtouchend="onTonearmTouchEnd"
         >
+          <view class="tonearm-hub" />
           <view class="tonearm-pivot" />
           <view class="tonearm-arm {{tonearmDragging ? 'is-dragging' : ''}}" style="transform: rotate({{tonearmAngle}}deg)">
             <view class="tonearm-head" />

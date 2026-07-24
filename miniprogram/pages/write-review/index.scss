@@ -57,8 +57,8 @@
 
 .vinyl-player {
   position: relative;
-  width: 480rpx;
-  height: 480rpx;
+  width: 460rpx;
+  height: 540rpx;
   margin: 0 auto;
 }
 
@@ -72,40 +72,50 @@
 
 .deck-knob {
   position: absolute;
-  width: 44rpx;
-  height: 44rpx;
+  width: 36rpx;
+  height: 36rpx;
   border-radius: 50%;
   background: #171310;
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.3), inset 0 0 0 3rpx rgba(0, 0, 0, 0.15);
 }
 
 .deck-knob-power {
-  top: 22rpx;
-  left: 22rpx;
+  top: 32rpx;
+  right: 32rpx;
 }
 
 .deck-knob-speed {
-  bottom: 22rpx;
-  left: 22rpx;
+  top: 130rpx;
+  left: 160rpx;
 }
 
 .deck-knob-mark {
   position: absolute;
-  top: 6rpx;
+  top: 5rpx;
   left: 50%;
   transform: translateX(-50%);
   width: 4rpx;
-  height: 14rpx;
+  height: 12rpx;
   border-radius: 2rpx;
   background: #ffffff;
 }
 
+.deck-square-btn {
+  position: absolute;
+  top: 32rpx;
+  right: 82rpx;
+  width: 30rpx;
+  height: 30rpx;
+  border-radius: 4rpx;
+  background: #171310;
+}
+
 .deck-fader {
   position: absolute;
-  bottom: 24rpx;
-  right: 24rpx;
-  width: 14rpx;
-  height: 80rpx;
+  top: 40rpx;
+  left: 32rpx;
+  width: 130rpx;
+  height: 14rpx;
   border-radius: 7rpx;
   background: #171310;
   box-shadow: inset 0 0 0 2rpx rgba(0, 0, 0, 0.15);
@@ -113,11 +123,11 @@
 
 .deck-fader-grip {
   position: absolute;
-  left: 50%;
-  bottom: 10rpx;
-  transform: translateX(-50%);
-  width: 26rpx;
-  height: 14rpx;
+  top: 50%;
+  left: 65rpx;
+  transform: translate(-50%, -50%);
+  width: 14rpx;
+  height: 26rpx;
   border-radius: 4rpx;
   background: #ffffff;
 }
@@ -132,18 +142,16 @@
 }
 
 .deck-foot-tl { top: 10rpx; left: 10rpx; }
+.deck-foot-tr { top: 10rpx; right: 10rpx; }
 .deck-foot-bl { bottom: 10rpx; left: 10rpx; }
 .deck-foot-br { bottom: 10rpx; right: 10rpx; }
 
 .vinyl-score-disc {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  margin: auto;
-  width: 380rpx;
-  height: 380rpx;
+  right: 26rpx;
+  bottom: 26rpx;
+  width: 320rpx;
+  height: 320rpx;
   border-radius: 50%;
   overflow: hidden;
   background: var(--black);
@@ -198,17 +206,30 @@
 /* TONEARM */
 .tonearm {
   position: absolute;
-  top: 30rpx;
-  right: 36rpx;
+  top: 155rpx;
+  left: 85rpx;
   width: 0;
   height: 0;
   z-index: 5;
 }
 
+.tonearm-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 50%;
+  background: #171310;
+  box-shadow: 0 0 0 3rpx #F0E8D4, inset 0 0 0 14rpx rgba(240, 232, 212, 0.14), 0 2rpx 8rpx rgba(0, 0, 0, 0.35);
+  z-index: 1;
+}
+
 .tonearm-pivot {
   position: absolute;
   top: -18rpx;
-  right: -18rpx;
+  left: -18rpx;
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
@@ -225,9 +246,9 @@
 .tonearm-arm {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 0;
   width: 8rpx;
-  height: 210rpx;
+  height: 150rpx;
   background: #171310;
   border-radius: 6rpx;
   transform-origin: top center;
@@ -244,22 +265,11 @@
   bottom: -16rpx;
   left: 50%;
   transform: translateX(-50%);
-  width: 28rpx;
-  height: 36rpx;
-  background: #0c0a08;
-  border-radius: 4rpx;
-  box-shadow: 0 0 0 2rpx #3a332c;
-}
-
-.tonearm-head::after {
-  content: '';
-  position: absolute;
-  bottom: -8rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4rpx;
-  height: 10rpx;
+  width: 24rpx;
+  height: 32rpx;
   background: var(--accent);
+  border-radius: 4rpx;
+  box-shadow: 0 0 0 2rpx #F0E8D4;
 }
 
 .dial-hint {

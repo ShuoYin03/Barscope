@@ -1,9 +1,9 @@
 import { getThemeClass } from '../../utils/theme'
 
-const TONEARM_LIFTED_ANGLE = -4
-const TONEARM_DROPPED_ANGLE = 10
-const TONEARM_MIN_ANGLE = -8
-const TONEARM_MAX_ANGLE = 14
+const TONEARM_LIFTED_ANGLE = -5
+const TONEARM_DROPPED_ANGLE = -43
+const TONEARM_MIN_ANGLE = -48
+const TONEARM_MAX_ANGLE = 0
 const TONEARM_DROP_THRESHOLD = (TONEARM_LIFTED_ANGLE + TONEARM_DROPPED_ANGLE) / 2
 const TONEARM_DRAG_SENSITIVITY = 0.25
 
@@ -62,7 +62,7 @@ Page({
   },
 
   onTonearmTouchEnd() {
-    const dropped = this.data.tonearmAngle > TONEARM_DROP_THRESHOLD
+    const dropped = this.data.tonearmAngle < TONEARM_DROP_THRESHOLD
     this.setData({
       tonearmDragging: false,
       needleOnRecord: dropped,
