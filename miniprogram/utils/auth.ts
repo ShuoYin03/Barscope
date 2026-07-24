@@ -1,4 +1,4 @@
-const LOGGED_OUT_KEY = 'barscope_logged_out'
+const LOGGED_OUT_KEY = 'soundive_logged_out'
 
 export const markLoggedIn = () => {
   wx.removeStorageSync(LOGGED_OUT_KEY)
