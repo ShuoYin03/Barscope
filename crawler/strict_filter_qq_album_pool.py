@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply BarScope's strict album inclusion rules to the QQ-only submission pool.
+"""Apply Soundive's strict album inclusion rules to the QQ-only submission pool.
 
 Removes an entire album when any of these is true:
 - any track is an accompaniment / instrumental / beat variant
@@ -32,7 +32,7 @@ ACCOMPANIMENT_RE = re.compile(
     re.IGNORECASE,
 )
 
-# These are not merely "high risk" in BarScope's current rule set. They are collection-style
+# These are not merely "high risk" in Soundive's current rule set. They are collection-style
 # releases where the album owner is not the sole/main recording artist across the tracklist.
 ACTIVITY_OR_COMPILATION_WORDS = [
     "地下8英里",
@@ -164,7 +164,7 @@ def filter_reasons(item: dict[str, Any]) -> list[str]:
 def write_review_csv(path: Path, items: list[dict[str, Any]]) -> None:
     fields = [
         "审核建议", "艺人", "专辑名", "曲目数", "发行日期", "QQ Album MID", "QQ Artist MID",
-        "网易云 Artist ID", "BarScope Artist ID", "曲目预览", "封面",
+        "网易云 Artist ID", "Soundive Artist ID", "曲目预览", "封面",
     ]
     rows = []
     for item in items:
@@ -178,7 +178,7 @@ def write_review_csv(path: Path, items: list[dict[str, Any]]) -> None:
             "QQ Album MID": item.get("qqAlbumMid") or item.get("sourceId") or "",
             "QQ Artist MID": item.get("qqArtistMid") or "",
             "网易云 Artist ID": item.get("neteaseArtistId") or "",
-            "BarScope Artist ID": item.get("barscopeArtistId") or "",
+            "Soundive Artist ID": item.get("barscopeArtistId") or "",
             "曲目预览": " | ".join(names[:10]),
             "封面": item.get("coverUrl") or "",
         })
@@ -190,7 +190,7 @@ def write_review_csv(path: Path, items: list[dict[str, Any]]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="按 BarScope 正式收录规则严格清洗 QQ 专辑提交池")
+    parser = argparse.ArgumentParser(description="按 Soundive 正式收录规则严格清洗 QQ 专辑提交池")
     parser.add_argument("--input", default=str(BASE_DIR / "qq_album_need_submit.json"))
     parser.add_argument("--output", default=str(BASE_DIR / "qq_album_need_submit.json"))
     parser.add_argument("--filtered-output", default=str(BASE_DIR / "qq_album_filtered_out.json"))

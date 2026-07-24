@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backfill missing QQ Music album descriptions into BarScope albums/candidates.
+"""Backfill missing QQ Music album descriptions into Soundive albums/candidates.
 
 Usage:
   python3 backfill_qq_descriptions.py --dry-run
@@ -7,7 +7,7 @@ Usage:
   python3 backfill_qq_descriptions.py --albums-only
 
 The script only writes `description` and QQ description audit metadata. Existing non-empty
-BarScope descriptions are preserved unless `--overwrite` is explicitly passed.
+Soundive descriptions are preserved unless `--overwrite` is explicitly passed.
 """
 from __future__ import annotations
 

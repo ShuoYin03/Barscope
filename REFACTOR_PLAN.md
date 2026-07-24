@@ -172,7 +172,7 @@
 
 ## P2-6. `ios/Barscope/` 是被 Soundive 取代的旧原型
 
-- [ ] 待实施
+- [x] 已实施
 
 **问题**：`ios/Barscope/` 有 4 个 Swift 文件但**无 xcodeproj**，`ios/README.md` 还在教人"手动在 Xcode 新建项目再把文件拖进去"。而 `ios/Soundive/` 有完整 xcodeproj 和平行功能结构（HomeView 两边都有）。README 描述的是已废弃的那个。
 

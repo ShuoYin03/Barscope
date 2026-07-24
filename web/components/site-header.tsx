@@ -10,7 +10,7 @@ const NAV = [
 export function SiteHeader() {
   return (
     <header className="site-header">
-      <Link className="brand" href="/">BARSCOPE</Link>
+      <Link className="brand" href="/">SOUNDIVE</Link>
       <nav className="desktop-nav" aria-label="Main navigation">
         {NAV.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
       </nav>

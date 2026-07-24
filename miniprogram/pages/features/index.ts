@@ -134,7 +134,7 @@ Page({
   onShareAppMessage(options:any){
     const ds=(options.target&&options.target.dataset)||{}
     const id=String(ds.id||'')
-    const title=String(ds.title||'BarScope 专题')
+    const title=String(ds.title||'Soundive 专题')
     if(id)this._trackShare(id)
     const path=id==='2026-h1-top-50-tracks'?'/pages/h1-top50/index':id==='2026-top-reviewers'?'/pages/annual-reviewers/index':id==='rapper-interview'?'/pages/interviews/index':`/pages/feature-detail/index?id=${id}`
     return {title,path}

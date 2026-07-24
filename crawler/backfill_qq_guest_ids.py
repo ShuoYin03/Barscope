@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve historical Featuring Guests to canonical BarScope artist IDs.
+"""Resolve historical Featuring Guests to canonical Soundive artist IDs.
 
 Usage:
   python3 backfill_qq_guest_ids.py --dry-run
@@ -188,7 +188,7 @@ def main() -> None:
     env = str(cfg.get("env") or "")
     artists = fetch_artists(token, env)
     by_name, by_qq_mid = build_artist_indexes(artists)
-    print(f"已加载 {len(artists)} 位 BarScope rapper")
+    print(f"已加载 {len(artists)} 位 Soundive rapper")
     print(f"名称索引 {len(by_name)} 个；QQ 身份索引 {len(by_qq_mid)} 个")
 
     collections = ["albums"] if args.albums_only else ["albums", "album_candidates"]

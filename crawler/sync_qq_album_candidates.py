@@ -6,7 +6,7 @@ Flow:
 2. Fetch QQ album catalogues for matched artists.
 3. Apply the same basic collection rules used by the NetEase crawler, except QQ release dates are optional.
 4. Upload candidates to manageAlbumCandidates.
-5. Cloud-side dedupe binds matching QQ identities onto existing BarScope albums;
+5. Cloud-side dedupe binds matching QQ identities onto existing Soundive albums;
    only genuinely missing albums enter album_candidates as pending.
 
 Usage:
@@ -132,7 +132,7 @@ def build_candidate(row: dict, album: Any, tracks: list[str]) -> tuple[dict[str,
         return None, "skip_keyword"
 
     repeat_meta = repeated_track_metadata(tracks)
-    reason = "QQ音乐发现 · 网易云/BarScope现有专辑库未匹配 · 符合当前专辑收录规则"
+    reason = "QQ音乐发现 · 网易云/Soundive现有专辑库未匹配 · 符合当前专辑收录规则"
     if not year:
         reason += "；QQ未提供发行日期，待审核时补充"
     if repeat_meta:
@@ -252,7 +252,7 @@ def upload_candidates(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="同步 QQ 独有专辑到 BarScope 专辑待审核")
+    parser = argparse.ArgumentParser(description="同步 QQ 独有专辑到 Soundive 专辑待审核")
     parser.add_argument("--matches", action="append", help="QQ artist match JSON，可重复传入多批文件")
     parser.add_argument("--from-candidates", help="跳过重新爬QQ音乐，直接从之前 --output 生成的候选文件读取（比如重跑上传/预览步骤时）")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))

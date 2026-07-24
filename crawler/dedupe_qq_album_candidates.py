@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only dedupe for QQ album candidates against the BarScope Cloud DB.
+"""Read-only dedupe for QQ album candidates against the Soundive Cloud DB.
 
 This script DOES NOT write to Cloud DB.
 
@@ -283,7 +283,7 @@ def dedupe(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Read-only dedupe QQ album candidates against BarScope Cloud DB")
+    parser = argparse.ArgumentParser(description="Read-only dedupe QQ album candidates against Soundive Cloud DB")
     parser.add_argument("--candidates", default="qq_album_candidates.json")
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--output-dir", default=".")
@@ -318,7 +318,7 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"候选数量: {len(candidates)}")
-    print("正在只读拉取 BarScope albums 数据库……")
+    print("正在只读拉取 Soundive albums 数据库……")
     token = get_access_token(appid, appsecret)
     albums = fetch_all_albums(token, env)
     print(f"数据库专辑数量: {len(albums)}")

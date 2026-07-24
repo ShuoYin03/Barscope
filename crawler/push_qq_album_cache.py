@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Push locally resolved QQ albums into the BarScope qq_album_cache collection.
+"""Push locally resolved QQ albums into the Soundive qq_album_cache collection.
 
 The cache is intentionally separate from album_candidates. Admins can review the cached
 QQ-only additions in the mini-program's QQ Album Sync center and explicitly promote

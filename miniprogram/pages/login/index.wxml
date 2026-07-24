@@ -67,7 +67,7 @@
     <scroll-view class="scroll-area" scroll-y enhanced show-scrollbar="{{false}}" style="padding-top: {{capsuleTop + capsuleHeight + 16}}px">
       <view class="logo-area">
         <view class="logo-vinyl-disc"><view class="logo-vinyl-label"><text class="logo-vinyl-text">韵</text></view><view class="logo-vinyl-spindle" /></view>
-        <text class="logo-zh">BEATWEEN</text><text class="logo-en">韵镜</text><text class="tagline">授权头像和昵称，加入说唱评分社区</text>
+        <text class="logo-zh">SOUNDIVE</text><text class="logo-en">韵镜</text><text class="tagline">授权头像和昵称，加入说唱评分社区</text>
       </view>
 
       <view class="cover-section">

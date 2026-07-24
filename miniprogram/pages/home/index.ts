@@ -1,7 +1,7 @@
 import { getThemeClass } from '../../utils/theme'
 
 const FALLBACK_TICKER_SONGS = [
-  'BEATWEEN · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
+  'SOUNDIVE · 中文说唱', 'LATEST RELEASES · 最新专辑', 'UNDERGROUND · ALBUMS',
 ]
 
 const HERO_CARD_HEIGHT_BASE = 600

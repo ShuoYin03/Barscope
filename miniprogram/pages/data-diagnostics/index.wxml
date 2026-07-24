@@ -6,7 +6,7 @@
   </view>
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="health-card">
-      <text class="kicker">BARSCOPE DATA HEALTH</text>
+      <text class="kicker">SOUNDIVE DATA HEALTH</text>
       <text class="health-score">{{summary.healthScore}}%</text>
       <view class="health-meta"><text>{{summary.albumCount}} Albums</text><text>{{summary.artistCount}} Artists</text></view>
     </view>

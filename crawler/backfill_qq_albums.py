@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Backfill QQ-sourced BarScope albums/candidates into the canonical album schema.
+"""Backfill QQ-sourced Soundive albums/candidates into the canonical album schema.
 
 Repairs:
-- canonical BarScope rapper ownership
+- canonical Soundive rapper ownership
 - QQ releaseDate / releaseYear (including QQ's aDate field)
 - record company / label
 - full track list
@@ -12,7 +12,7 @@ Repairs:
 Important ownership rule:
 An existing valid neteaseArtistId is treated as the strongest album-owner anchor. This
 prevents album-level QQ credits or track participants from expanding a single-owner album
-into multiple BarScope owners. Other credited artists remain track-level featuring guests.
+into multiple Soundive owners. Other credited artists remain track-level featuring guests.
 
 Usage:
   python3 backfill_qq_albums.py --dry-run
@@ -123,7 +123,7 @@ def fetch_all_artists(token: str, env: str) -> list[dict[str, Any]]:
 
 
 def load_local_qq_mappings() -> dict[str, dict[str, str]]:
-    """QQ singer MID -> canonical BarScope/NetEase artist identity."""
+    """QQ singer MID -> canonical Soundive/NetEase artist identity."""
     result: dict[str, dict[str, str]] = {}
     paths = sorted(
         set(
@@ -323,7 +323,7 @@ def release_date(detail: dict[str, Any], record: dict[str, Any]) -> tuple[str, s
     if normalized:
         return normalized, "detail.recursive"
 
-    # Preserve any usable date that was already stored in BarScope rather than replacing it with blank.
+    # Preserve any usable date that was already stored in Soundive rather than replacing it with blank.
     for key in ("releaseDate", "publishDate", "aDate"):
         normalized = normalize_release_date(record.get(key))
         if normalized:
@@ -377,7 +377,7 @@ def resolve_owners(
     """Resolve canonical album owners without promoting featured artists to owners.
 
     Priority:
-    1. Existing valid neteaseArtistId: this is the original BarScope ownership anchor.
+    1. Existing valid neteaseArtistId: this is the original Soundive ownership anchor.
     2. Existing qqArtistMid mapped by the cross-platform resolver.
     3. Existing ownerArtistIds (only when no stronger single-owner anchor exists).
     4. Album-level QQ singers via MID mapping / canonical alias matching.
@@ -431,7 +431,7 @@ def owner_qq_mids(
     local_map: dict[str, dict[str, str]],
     by_name: dict[str, dict],
 ) -> set[str]:
-    """Only return QQ MIDs that actually resolve to a selected BarScope owner."""
+    """Only return QQ MIDs that actually resolve to a selected Soundive owner."""
     owner_id_set = set(owner_ids)
     mids: set[str] = set()
 
@@ -493,7 +493,7 @@ def enrich(
     owner_names = [x["name"] for x in owners]
     owner_ids = [x["id"] for x in owners]
 
-    # If no canonical BarScope owner can be resolved, preserve display text but do not invent IDs.
+    # If no canonical Soundive owner can be resolved, preserve display text but do not invent IDs.
     if not owner_names:
         existing_name = str(record.get("primaryArtist") or record.get("artist") or "").split("/")[0].strip()
         if existing_name:
@@ -628,7 +628,7 @@ def main() -> None:
     artists = fetch_all_artists(token, env)
     by_id, by_name = build_artist_indexes(artists)
     local_map = load_local_qq_mappings()
-    print(f"已加载 {len(artists)} 位 BarScope rapper；本地 QQ MID 映射 {len(local_map)} 条")
+    print(f"已加载 {len(artists)} 位 Soundive rapper；本地 QQ MID 映射 {len(local_map)} 条")
 
     collections = ["albums"] if args.albums_only else ["albums", "album_candidates"]
     for collection in collections:

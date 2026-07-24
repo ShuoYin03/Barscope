@@ -1,5 +1,5 @@
 {
-  "name": "barscope-crawler-tools",
+  "name": "soundive-crawler-tools",
   "version": "1.0.0",
   "private": true,
   "description": "Node-side maintenance scripts for the crawler (e.g. syncing rappers.json from CloudBase).",

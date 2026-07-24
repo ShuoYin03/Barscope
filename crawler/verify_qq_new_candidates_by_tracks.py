@@ -117,7 +117,7 @@ def main() -> int:
         return 2
 
     print(f"待复核候选数量: {len(candidates)}")
-    print("正在拉取 BarScope albums 数据库（用于建立同艺人曲目池）……")
+    print("正在拉取 Soundive albums 数据库（用于建立同艺人曲目池）……")
     token = get_access_token(appid, appsecret)
     albums = fetch_all_albums(token, env)
     print(f"数据库专辑数量: {len(albums)}")

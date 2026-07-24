@@ -58,7 +58,7 @@ def fetch_tracks(task_id: int, album) -> tuple[int, list[str], str | None]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="高速并发同步 QQ 独有专辑到 BarScope 专辑待审核")
+    parser = argparse.ArgumentParser(description="高速并发同步 QQ 独有专辑到 Soundive 专辑待审核")
     parser.add_argument("--matches", action="append", help="QQ artist match JSON，可重复传入多批文件")
     parser.add_argument("--from-candidates", help="跳过重新爬QQ音乐，直接从之前 --output 生成的候选文件读取（比如重跑上传/预览步骤时）")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))

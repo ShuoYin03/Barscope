@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Import the manually reviewed QQ album CSV into BarScope with cross-platform artist ownership.
+"""Import the manually reviewed QQ album CSV into Soundive with cross-platform artist ownership.
 
 What this script does:
 1. Reads qq_album_need_submit.csv (the user's final reviewed list).
 2. Rehydrates each row from local QQ candidate JSON files so cover/tracks/QQ album MID are preserved.
 3. Reads every album-level QQ singer credit, not just the first singer.
-4. Resolves each QQ singer MID to an existing BarScope/NetEase artist ID using:
+4. Resolves each QQ singer MID to an existing Soundive/NetEase artist ID using:
    - resolved qq_artist_matches*.json files;
    - exact normalized artist names / aliases in rappers.json;
-   - exact normalized names / aliases in the live BarScope artists collection.
-5. Persists the QQ Artist MID onto the matched BarScope artist record.
+   - exact normalized names / aliases in the live Soundive artists collection.
+5. Persists the QQ Artist MID onto the matched Soundive artist record.
 6. Imports only albums whose ALL album-level owners were resolved, using the same albums schema as the current catalogue.
 
 The special Zhang Fangzhao album is forcibly corrected to QQ album MID 003hLetz4gRmoa.
@@ -385,7 +385,7 @@ def main() -> None:
                     "QQ艺人名": qq_name,
                     "QQ Artist MID": qq_mid,
                     "网易云 Artist ID": nid,
-                    "BarScope Artist ID": str(resolved.get("barscopeArtistId") or artist_doc_by_netease.get(nid, "")),
+                    "Soundive Artist ID": str(resolved.get("barscopeArtistId") or artist_doc_by_netease.get(nid, "")),
                     "关联状态": "已关联",
                 })
 
@@ -454,7 +454,7 @@ def main() -> None:
         print(f"  [{idx}/{len(rows)}] ✓ {title} → {' / '.join(owner_names)}")
 
     READY_JSON.write_text(json.dumps({"source": "reviewed_qq_album_import", "count": len(ready), "results": ready}, ensure_ascii=False, indent=2), encoding="utf-8")
-    write_csv(MAPPING_CSV, mapping_rows, ["QQ专辑名", "QQ艺人名", "QQ Artist MID", "网易云 Artist ID", "BarScope Artist ID", "关联状态"])
+    write_csv(MAPPING_CSV, mapping_rows, ["QQ专辑名", "QQ艺人名", "QQ Artist MID", "网易云 Artist ID", "Soundive Artist ID", "关联状态"])
     write_csv(UNRESOLVED_CSV, unresolved_rows, ["QQ专辑名", "CSV艺人", "QQ Album ID", "QQ Album MID", "未解决原因"])
 
     print(f"\n准备完成：可导入 {len(ready)} 张；未完全关联 {len(unresolved_rows)} 张")

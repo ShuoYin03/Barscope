@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fast one-pass comparison of qq_album_candidates.json against the live BarScope album library.
+"""Fast one-pass comparison of qq_album_candidates.json against the live Soundive album library.
 
 Outputs:
 - qq_album_need_submit.json       genuinely missing from albums/candidates after strict track filtering
-- qq_album_overlap.json           already exists in BarScope albums
+- qq_album_overlap.json           already exists in Soundive albums
 - qq_album_already_pending.json   already exists in album_candidates
 - qq_album_need_submit_review.csv human-friendly review sheet for the clean missing set
 - qq_album_filtered_out.json      missing albums excluded by the strict track rules
@@ -190,7 +190,7 @@ def write_review_csv(path: Path, items: list[dict[str, Any]]) -> Counter:
             "QQ Album MID": item.get("qqAlbumMid") or item.get("sourceId") or "",
             "QQ Artist MID": item.get("qqArtistMid") or "",
             "网易云 Artist ID": item.get("neteaseArtistId") or "",
-            "BarScope Artist ID": item.get("barscopeArtistId") or "",
+            "Soundive Artist ID": item.get("barscopeArtistId") or "",
             "疑似重复/异常原因": reason,
             "曲目预览": " | ".join(names[:8]),
             "封面": item.get("coverUrl") or "",
@@ -201,7 +201,7 @@ def write_review_csv(path: Path, items: list[dict[str, Any]]) -> Counter:
 
     fieldnames = [
         "审核建议", "风险等级", "艺人", "专辑名", "曲目数", "发行日期",
-        "QQ Album MID", "QQ Artist MID", "网易云 Artist ID", "BarScope Artist ID",
+        "QQ Album MID", "QQ Artist MID", "网易云 Artist ID", "Soundive Artist ID",
         "疑似重复/异常原因", "曲目预览", "封面",
     ]
     with path.open("w", encoding="utf-8-sig", newline="") as f:
@@ -212,7 +212,7 @@ def write_review_csv(path: Path, items: list[dict[str, Any]]) -> Counter:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="快速比对 QQ 专辑候选和 BarScope 线上专辑库")
+    parser = argparse.ArgumentParser(description="快速比对 QQ 专辑候选和 Soundive 线上专辑库")
     parser.add_argument("--input", default=str(DEFAULT_INPUT))
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--need-submit-output", default=str(BASE_DIR / "qq_album_need_submit.json"))

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Final global QQ album dedupe against the full BarScope catalogue.
+"""Final global QQ album dedupe against the full Soundive catalogue.
 
 This pass intentionally ignores artist ownership for title/track matching. It removes a QQ candidate when any of these is true:
-1) its title clearly looks like programme / event / campaign content that BarScope does not want as an album;
-2) for the mapped NetEase rapper, an existing BarScope album has a release date within ±3 days;
-3) its normalized album title strongly matches any existing BarScope album title; or
+1) its title clearly looks like programme / event / campaign content that Soundive does not want as an album;
+2) for the mapped NetEase rapper, an existing Soundive album has a release date within ±3 days;
+3) its normalized album title strongly matches any existing Soundive album title; or
 4) its track count matches and the tracklist strongly describes the same release.
 
 The date rule deliberately uses the candidate's mapped neteaseArtistId, but does not care whether that rapper is
 first, second, or any other displayed creator on QQ. The purpose is to catch the same collaborative release when
 platforms order the artists differently.
 
-It reuses final_tracklist_prune.py to hydrate the full BarScope catalogue with NetEase tracklists.
+It reuses final_tracklist_prune.py to hydrate the full Soundive catalogue with NetEase tracklists.
 """
 
 from __future__ import annotations
@@ -206,10 +206,10 @@ def main() -> None:
     token = get_access_token(str(cfg.get("appid") or ""), str(cfg.get("appsecret") or ""))
     env = str(cfg.get("env") or "")
 
-    print(f"读取剩余 QQ 候选 {len(candidates)} 张；读取完整 BarScope 专辑库……")
+    print(f"读取剩余 QQ 候选 {len(candidates)} 张；读取完整 Soundive 专辑库……")
     catalog = fetch_catalog(token, env)
     if not catalog:
-        raise SystemExit("错误：BarScope 专辑库读取为 0，本次不会覆盖候选文件。")
+        raise SystemExit("错误：Soundive 专辑库读取为 0，本次不会覆盖候选文件。")
 
     hydrated, stats = hydrate_catalog_tracks(catalog, Path(args.cache), args.workers)
     by_count: dict[int, list[tuple[dict[str, Any], list[str]]]] = {}
@@ -262,7 +262,7 @@ def main() -> None:
                 "matchedExistingReleaseDate": date_album.get("releaseDate") or "",
                 "dateDiffDays": date_diff,
                 "filterReason": (
-                    f"同一映射 rapper 的网易云/BarScope 专辑发行日期在 ±{args.date_window_days} 天内，"
+                    f"同一映射 rapper 的网易云/Soundive 专辑发行日期在 ±{args.date_window_days} 天内，"
                     f"实际相差 {date_diff} 天"
                 ),
                 "filteredBy": "same_rapper_release_date_window",

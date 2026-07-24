@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search QQ Music candidates for every BarScope artist.
+"""Search QQ Music candidates for every Soundive artist.
 
 Default behaviour is deliberately safe: write a separate review file and do not
 modify rappers.json. Confirmed mappings can be merged later by the resolver step.

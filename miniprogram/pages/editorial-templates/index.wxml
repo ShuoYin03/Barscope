@@ -18,11 +18,11 @@
         <text class="eyebrow">ALBUM REVIEW · 2026</text>
         <text class="review-title">一张专辑，如何把夜晚写成一座城市</text>
         <text class="review-deck">在更轻、更冷的声音里，一位创作者重新定义了属于自己的叙事尺度。</text>
-        <view class="review-meta"><text>BY BARSCOPE EDITORIAL</text><text>2026.07.16</text></view>
+        <view class="review-meta"><text>BY SOUNDIVE EDITORIAL</text><text>2026.07.16</text></view>
       </view>
       <view class="hero-art"><view class="hero-art-noise"></view><text>ALBUM ARTWORK</text></view>
       <view class="score-band">
-        <view><text class="score-kicker">BARSCOPE SCORE</text><text class="score">8.4</text></view>
+        <view><text class="score-kicker">SOUNDIVE SCORE</text><text class="score">8.4</text></view>
         <view class="score-copy"><text class="score-badge">BEST NEW MUSIC</text><text>COMMUNITY 7.9 · 1,284 RATINGS</text></view>
       </view>
       <view class="article-body">
@@ -59,10 +59,10 @@
       </view>
       <view class="portrait"><text>PORTRAIT / HERO IMAGE</text></view>
       <view class="interview-body">
-        <view class="qa"><text class="speaker brand-speaker">BARSCOPE</text><text class="question">你什么时候意识到，自己真正想做的是一套属于自己的声音？</text></view>
+        <view class="qa"><text class="speaker brand-speaker">SOUNDIVE</text><text class="question">你什么时候意识到，自己真正想做的是一套属于自己的声音？</text></view>
         <view class="qa answer"><text class="speaker">ARTIST</text><text class="answer-copy">不是某一个瞬间。更多时候是你做了很多东西之后，突然发现有些选择一直重复出现，那些重复的选择才慢慢变成你的风格。</text></view>
         <view class="interview-pull"><text>“风格不是你选出来的，是你长期拒绝什么之后剩下来的。”</text></view>
-        <view class="qa"><text class="speaker brand-speaker">BARSCOPE</text><text class="question">那现在你最想推翻的又是什么？</text></view>
+        <view class="qa"><text class="speaker brand-speaker">SOUNDIVE</text><text class="question">那现在你最想推翻的又是什么？</text></view>
         <view class="qa answer"><text class="speaker">ARTIST</text><text class="answer-copy">就是刚刚建立起来的那套东西。只要它开始变得太容易，我就会觉得应该换一种方式。</text></view>
       </view>
     </block>

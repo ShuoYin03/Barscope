@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small QQ Music client used by the BarScope cross-platform resolver."""
+"""Small QQ Music client used by the Soundive cross-platform resolver."""
 
 from __future__ import annotations
 

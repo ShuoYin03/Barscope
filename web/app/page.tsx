@@ -14,7 +14,7 @@ export default function HomePage() {
           <span className="hero-art-index">001</span>
           <div className="hero-art-copy">
             <span>NOW PLAYING</span>
-            <strong>BARSCOPE<br />EDITORIAL</strong>
+            <strong>SOUNDIVE<br />EDITORIAL</strong>
           </div>
         </div>
 
@@ -28,7 +28,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="marquee-strip" aria-label="Barscope sections">
+      <section className="marquee-strip" aria-label="Soundive sections">
         <div className="marquee-track">
           <span>NEW RELEASES</span><i>✦</i><span>REVIEWS</span><i>✦</i><span>INTERVIEWS</span><i>✦</i><span>FEATURES</span><i>✦</i><span>COMMUNITY</span><i>✦</i><span>NEW RELEASES</span><i>✦</i><span>REVIEWS</span>
         </div>
@@ -48,7 +48,7 @@ export default function HomePage() {
           <div className="lead-story-copy">
             <span className="section-index">SIDE C · INTERVIEW</span>
             <h2>“我不想解释我是谁，<br />我只想把声音留下来。”</h2>
-            <p>人物、场景与正在发生的中文说唱文化。长篇访谈会成为 Barscope 网页版最重要的内容入口之一。</p>
+            <p>人物、场景与正在发生的中文说唱文化。长篇访谈会成为 Soundive 网页版最重要的内容入口之一。</p>
             <Link className="text-link" href="/features">ENTER CONVERSATION <span>↗</span></Link>
           </div>
         </article>
@@ -78,7 +78,7 @@ export default function HomePage() {
       </section>
 
       <footer className="site-footer shell">
-        <div><strong>BARSCOPE</strong><span>韵镜 · CHINESE RAP EDITORIAL & COMMUNITY</span></div>
+        <div><strong>SOUNDIVE</strong><span>韵镜 · CHINESE RAP EDITORIAL & COMMUNITY</span></div>
         <p>LISTEN DEEPER. LOOK CLOSER.</p>
       </footer>
     </main>

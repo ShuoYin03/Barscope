@@ -3,7 +3,7 @@
 
 This pass is intentionally stricter than the fast comparer:
 1. Re-fetch QQ album detail so missing QQ release dates are filled.
-2. Re-run BarScope comparison with the enriched release date; same mapped artist + NetEase
+2. Re-run Soundive comparison with the enriched release date; same mapped artist + NetEase
    release date within +/- 3 days is treated as an existing album even when titles differ.
 3. Reject obvious programme / competition / campaign / compilation projects.
 4. Reject albums whose tracks have no stable owning artist across the record (multi-artist project).
@@ -284,7 +284,7 @@ def main() -> None:
         if args.sleep:
             time.sleep(args.sleep)
 
-    # Re-run the live BarScope comparer after release dates have been enriched. The cloud function
+    # Re-run the live Soundive comparer after release dates have been enriched. The cloud function
     # uses the NetEase album date as benchmark and accepts +/- 3 days for the same mapped artist.
     by_key = {str(x.get("sourceKey") or f"qq:{x.get('sourceId','')}"): x for x in enriched}
     still_new: list[dict[str, Any]] = []

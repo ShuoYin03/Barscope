@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Ultra-aggressive final QQ album dedupe against the entire BarScope catalogue.
+"""Ultra-aggressive final QQ album dedupe against the entire Soundive catalogue.
 
 Rules requested for the final manual-review pool:
-1. Ignore artist ownership completely. If a candidate album title is >= 50% similar to ANY BarScope album title, remove it.
+1. Ignore artist ownership completely. If a candidate album title is >= 50% similar to ANY Soundive album title, remove it.
 2. Ignore artist ownership and album track-count equality. If a candidate shares at least 3 one-to-one matching track names
-   with ANY BarScope album, remove it.
+   with ANY Soundive album, remove it.
 
 Besides JSON outputs for downstream scripts, this script writes three human-review CSV files:
 - qq_album_need_submit.csv: final kept albums
@@ -171,10 +171,10 @@ def main() -> None:
     token = get_access_token(str(cfg.get("appid") or ""), str(cfg.get("appsecret") or ""))
     env = str(cfg.get("env") or "")
 
-    print(f"读取剩余 QQ 候选 {len(candidates)} 张；读取完整 BarScope 专辑库……")
+    print(f"读取剩余 QQ 候选 {len(candidates)} 张；读取完整 Soundive 专辑库……")
     catalog = fetch_catalog(token, env)
     if not catalog:
-        raise SystemExit("错误：BarScope 专辑库读取为 0，本次不会覆盖候选文件。")
+        raise SystemExit("错误：Soundive 专辑库读取为 0，本次不会覆盖候选文件。")
 
     hydrated, stats = hydrate_catalog_tracks(catalog, Path(args.cache), args.workers)
     title_catalog = [

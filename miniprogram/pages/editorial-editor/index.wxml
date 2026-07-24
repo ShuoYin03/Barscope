@@ -56,7 +56,7 @@
 
     <block wx:else>
       <view class="article-preview {{template}}">
-        <view class="preview-hero"><text class="preview-kicker">{{template==='review'?'ALBUM REVIEW':template==='feature'?'LONGFORM FEATURE':'IN CONVERSATION WITH'}}</text><text class="preview-title">{{title || '未命名文章'}}</text><text class="preview-deck">{{deck}}</text><view class="preview-meta"><text>BY {{author || 'BARSCOPE'}}</text><text wx:if="{{template==='review' && score}}" class="preview-score">{{score}}</text></view></view>
+        <view class="preview-hero"><text class="preview-kicker">{{template==='review'?'ALBUM REVIEW':template==='feature'?'LONGFORM FEATURE':'IN CONVERSATION WITH'}}</text><text class="preview-title">{{title || '未命名文章'}}</text><text class="preview-deck">{{deck}}</text><view class="preview-meta"><text>BY {{author || 'SOUNDIVE'}}</text><text wx:if="{{template==='review' && score}}" class="preview-score">{{score}}</text></view></view>
         <view class="preview-body">
           <block wx:for="{{blocks}}" wx:key="id">
             <text wx:if="{{item.type==='paragraph'}}" class="p-body">{{item.content}}</text>
@@ -65,7 +65,7 @@
             <view wx:elif="{{item.type==='pullquote'}}" class="p-pullquote"><text>{{item.content}}</text></view>
             <view wx:elif="{{item.type==='divider'}}" class="p-divider"><text class="divider-label">{{item.label}}</text><text class="divider-title">{{item.content}}</text></view>
             <view wx:elif="{{item.type==='image'}}" class="p-image {{item.layout}}"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" /><view wx:else class="image-placeholder"><text>IMAGE</text></view><text wx:if="{{item.label}}" class="caption">{{item.label}}</text></view>
-            <view wx:elif="{{item.type==='qa'}}" class="p-qa"><text class="speaker barscope">BARSCOPE</text><text class="question">{{item.question}}</text><text class="speaker">ARTIST</text><text class="answer">{{item.answer}}</text></view>
+            <view wx:elif="{{item.type==='qa'}}" class="p-qa"><text class="speaker barscope">SOUNDIVE</text><text class="question">{{item.question}}</text><text class="speaker">ARTIST</text><text class="answer">{{item.answer}}</text></view>
           </block>
         </view>
         <view class="safe-bottom-space"></view>

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Full-catalogue final QQ album dedupe by tracklist.
 
-This pass exists because many BarScope albums render tracks dynamically from NetEase but do not yet
+This pass exists because many Soundive albums render tracks dynamically from NetEase but do not yet
 persist `tracks` inside the `albums` collection. It therefore:
 
 1. Reads the remaining QQ candidates from qq_album_need_submit.json.
-2. Reads the complete live BarScope albums catalogue.
+2. Reads the complete live Soundive albums catalogue.
 3. Uses persisted tracks when present.
 4. For every NetEase album missing persisted tracks, fetches its album detail from NetEase by sourceId.
 5. Caches fetched tracklists locally so repeated runs are fast.
-6. Removes QQ candidates when a same-size BarScope album has a strongly overlapping tracklist,
+6. Removes QQ candidates when a same-size Soundive album has a strongly overlapping tracklist,
    regardless of album title.
 
 This is intentionally aggressive: it is a final narrowing pass before manual review.
@@ -303,7 +303,7 @@ def evaluate_same_release(candidate: list[str], existing: list[str]) -> dict[str
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="用完整 BarScope 曲目库再次压缩 QQ 专辑候选")
+    parser = argparse.ArgumentParser(description="用完整 Soundive 曲目库再次压缩 QQ 专辑候选")
     parser.add_argument("--input", default=str(DEFAULT_INPUT))
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--removed-output", default=str(DEFAULT_REMOVED))
@@ -317,10 +317,10 @@ def main() -> None:
     token = get_access_token(str(cfg.get("appid") or ""), str(cfg.get("appsecret") or ""))
     env = str(cfg.get("env") or "")
 
-    print(f"读取剩余 QQ 候选 {len(candidates)} 张；读取完整 BarScope 专辑库……")
+    print(f"读取剩余 QQ 候选 {len(candidates)} 张；读取完整 Soundive 专辑库……")
     catalog = fetch_catalog(token, env)
     if not catalog:
-        raise SystemExit("错误：BarScope 专辑库读取为 0，本次不会覆盖候选文件。")
+        raise SystemExit("错误：Soundive 专辑库读取为 0，本次不会覆盖候选文件。")
 
     hydrated, stats = hydrate_catalog_tracks(catalog, Path(args.cache), args.workers)
     by_count: dict[int, list[tuple[dict[str, Any], list[str]]]] = {}
@@ -329,7 +329,7 @@ def main() -> None:
 
     candidate_track_count = sum(1 for x in candidates if extract_candidate_tracks(x))
     print(
-        f"曲目覆盖完成：{len(hydrated)}/{len(catalog)} 张 BarScope 专辑可参与曲目查重；"
+        f"曲目覆盖完成：{len(hydrated)}/{len(catalog)} 张 Soundive 专辑可参与曲目查重；"
         f"QQ 候选有 tracks：{candidate_track_count}/{len(candidates)}"
     )
 
@@ -399,7 +399,7 @@ def main() -> None:
     )
 
     print("\n完成")
-    print(f"BarScope 专辑总数:              {len(catalog)}")
+    print(f"Soundive 专辑总数:              {len(catalog)}")
     print(f"最终可参与曲目查重:             {len(hydrated)}")
     print(f"本轮按完整 tracklist 剔除:      {len(removed)} -> {args.removed_output}")
     print(f"QQ 候选无 tracks:               {no_tracks}")

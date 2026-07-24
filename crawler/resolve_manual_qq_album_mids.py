@@ -6,7 +6,7 @@ from QQ Music search. The resolved MID is written back into the column that the 
 import_reviewed_qq_albums.py already understands, so the normal ownership resolver can then:
 
 1. read QQ album-level singer credits;
-2. map each singer to the existing BarScope / NetEase artist record;
+2. map each singer to the existing Soundive / NetEase artist record;
 3. import the album under every resolved owner.
 
 Usage:

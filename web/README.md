@@ -1,6 +1,6 @@
-# Barscope Web
+# Soundive Web
 
-Next.js App Router + TypeScript web foundation for Barscope / 韵镜.
+Next.js App Router + TypeScript web foundation for Soundive / 韵镜.
 
 ## Local development
 

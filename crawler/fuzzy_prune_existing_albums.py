@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Final aggressive dedupe for QQ album candidates against the live BarScope catalogue.
+"""Final aggressive dedupe for QQ album candidates against the live Soundive catalogue.
 
 Rules:
 1. Remove when normalized album-title similarity >= 70%.

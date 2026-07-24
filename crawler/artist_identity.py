@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for BarScope's cross-platform artist identity layer."""
+"""Shared helpers for Soundive's cross-platform artist identity layer."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ ARTIST_ID_PREFIX = "bs_artist_"
 
 
 def generate_barscope_artist_id(netease_artist_id: Any) -> str:
-    """Generate a deterministic BarScope artist ID from the existing NetEase ID.
+    """Generate a deterministic Soundive artist ID from the existing NetEase ID.
 
     The result is stable across repeated migrations and does not depend on display names,
-    so later AKA/name changes will not create a new BarScope artist identity.
+    so later AKA/name changes will not create a new Soundive artist identity.
     """
     raw = str(netease_artist_id or "").strip()
     if not raw:
