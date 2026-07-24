@@ -69,7 +69,7 @@
 
     <view class="section-block" wx:if="{{!loading && topCritics.length}}">
       <section-header side="D" title="本月乐评人榜" />
-      <view class="critic-rows"><view wx:for="{{topCritics}}" wx:key="openId" class="critic-row" bindtap="onCriticTap" data-open-id="{{item.openId}}"><text class="critic-rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text><view class="critic-avatar-wrap"><text wx:if="{{index === 0}}" class="critic-crown">👑</text><view class="critic-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.avatarUrl}}" class="critic-avatar-img" src="{{item.userAvatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view></view><view class="critic-info"><text class="critic-name">{{item.nickName}}</text><text class="critic-count">本月 {{item.count}} 条乐评</text></view></view></view>
+      <view class="critic-rows"><view wx:for="{{topCritics}}" wx:key="openId" class="critic-row" bindtap="onCriticTap" data-open-id="{{item.openId}}"><text class="critic-rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text><view class="critic-avatar-wrap"><text wx:if="{{index === 0}}" class="critic-crown">👑</text><view class="critic-avatar {{item.userType === 'critic' ? 'is-critic' : ''}}"><image wx:if="{{item.avatarUrl}}" class="critic-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view></view><view class="critic-info"><text class="critic-name">{{item.nickName}}</text><text class="critic-count">本月 {{item.count}} 条乐评</text></view></view></view>
     </view>
 
     <view class="section-block">
