@@ -140,6 +140,7 @@ Page({
             userName: r.userName,
             initial: r.initial,
             userType: r.userType,
+            userAvatarUrl: r.userAvatarUrl || r.avatarUrl || r.userAvatar || '',
             timeAgo: r.timeAgo,
             albumId: r.albumId,
             albumTitle: r.albumTitle,
