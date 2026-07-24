@@ -454,7 +454,7 @@
             <view class="album-info">
               <text class="album-title">{{item.title}}</text>
               <text class="album-artist">{{item.artist}}</text>
-              <text class="album-meta" style="color:#d45124;">疑似多出：{{item.extraNamesText}}</text>
+              <text class="album-meta" style="color:#2d6fe0;">疑似多出：{{item.extraNamesText}}</text>
               <text class="album-meta">网易云实际歌手：{{item.liveArtistNamesText}}</text>
             </view>
           </view>
@@ -495,7 +495,7 @@
             <view class="album-info">
               <text class="album-title">{{item.title}}</text>
               <text class="album-artist">{{item.artist}}</text>
-              <text class="album-meta" style="color:#d45124;">共 {{item.reviewCount}} 人打分 {{item.avgScore}}，但当前隐藏</text>
+              <text class="album-meta" style="color:#2d6fe0;">共 {{item.reviewCount}} 人打分 {{item.avgScore}}，但当前隐藏</text>
             </view>
           </view>
 

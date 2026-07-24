@@ -49,7 +49,7 @@ Page({
       title: decision === 'approve' ? '通过该申请？' : '拒绝该申请？',
       content: decision === 'approve' ? '通过后该艺人主页会显示「艺人已入驻」标识。' : '拒绝后申请人可以补充材料重新申请。',
       confirmText: decision === 'approve' ? '通过' : '拒绝',
-      confirmColor: '#D45124',
+      confirmColor: '#2D6FE0',
       success: modal => {
         if (!modal.confirm) return
         this.setData({ reviewingId: applicationId })

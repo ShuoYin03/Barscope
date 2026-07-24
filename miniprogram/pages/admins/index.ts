@@ -81,7 +81,7 @@ Page({
       title: '设为管理员？',
       content: `${nickname || '该用户'} 将获得与你相同的管理员权限，可以审核内容、认证乐评人、修改专辑数据等。`,
       confirmText: '确认设置',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: modal => {
         if (!modal.confirm) return
         this._toggleAdmin(openid, 'grantAdmin', 'admin')
@@ -99,7 +99,7 @@ Page({
       title: '撤销管理员？',
       content: '撤销后该用户将变为普通用户，失去所有管理员权限。',
       confirmText: '确认撤销',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: modal => {
         if (!modal.confirm) return
         this._toggleAdmin(openid, 'revokeAdmin', 'normal')

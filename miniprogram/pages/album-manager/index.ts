@@ -503,7 +503,7 @@ Page({
       title: approved ? `显示 ${ids.length} 张专辑？` : `隐藏 ${ids.length} 张专辑？`,
       content: approved ? '所选专辑将重新对用户显示。' : '所选专辑将从专辑库隐藏，用户端不再可见（不会删除数据，可随时恢复）。',
       confirmText: approved ? '全部显示' : '全部隐藏',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (modal) => {
         if (!modal.confirm) return
         this.setData({ allBatchWorking: true })
@@ -539,7 +539,7 @@ Page({
       title: `重新同步 ${ids.length} 张专辑的 Tracks？`,
       content: '会重新从网易云拉取曲目并按当前归属逻辑重新分类 Featuring Guests，不会改变已设置的归属歌手。数量较多时会比较慢。',
       confirmText: '开始同步',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (modal) => {
         if (!modal.confirm) return
         this.setData({ resyncWorking: true, resyncDone: 0, resyncTotal: ids.length, resyncFailed: 0 })
@@ -640,7 +640,7 @@ Page({
       title: `设置 ${ids.length} 张专辑的归属？`,
       content: `将把这些专辑的归属统一设为：${names}\n原有 tracks 中的其他歌手会自动归为 Featuring Guests。`,
       confirmText: '确认设置',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (modal) => {
         if (!modal.confirm) return
         this.setData({ ownerApplyWorking: true })
@@ -854,7 +854,7 @@ Page({
       title: '一键跟随网易云修正',
       content: `会把这 ${total} 张专辑的歌手信息覆盖成网易云当前的专辑级歌手数据，已经手动"修改过专辑归属"的专辑不会被覆盖。这个操作会直接写入数据库，确认继续？`,
       confirmText: '确认修正',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (res) => {
         if (!res.confirm) return
         const ids = this.data.ownershipAuditList.map((item) => item._id)
@@ -940,7 +940,7 @@ Page({
       title: '一键恢复显示',
       content: `会把这 ${total} 张专辑重新设为显示状态，确认继续？`,
       confirmText: '确认恢复',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (res) => {
         if (!res.confirm) return
         const ids = this.data.hiddenAuditList.map((item) => item.id)

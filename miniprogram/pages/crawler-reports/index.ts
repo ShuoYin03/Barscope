@@ -94,7 +94,7 @@ Page({
     wx.showModal({
       title: '全部重置',
       content: '将把指针清零、失败清空，今天从头重新爬取所有已批准 rapper。下一分钟内自动开始。确定？',
-      confirmText: '重新爬取', confirmColor: '#C94E25',
+      confirmText: '重新爬取', confirmColor: '#2D6FE0',
       success: (m) => {
         if (!m.confirm) return
         this.setData({ resetting: true })

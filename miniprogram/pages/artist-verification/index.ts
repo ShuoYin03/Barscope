@@ -116,7 +116,7 @@ Page({
       title: `申请认领「${selectedArtist.artistName}」？`,
       content: '提交后管理员会根据你提供的联系方式与证明材料进行审核。',
       confirmText: '确认提交',
-      confirmColor: '#D45124',
+      confirmColor: '#2D6FE0',
       success: modal => {
         if (!modal.confirm) return
         this.setData({ submitting: true })

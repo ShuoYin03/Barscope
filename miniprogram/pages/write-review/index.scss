@@ -176,7 +176,7 @@
 }
 
 .vinyl-score-disc.is-lit {
-  box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light), 0 0 60rpx 4rpx rgba(211, 78, 36, 0.55);
+  box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light), 0 0 60rpx 4rpx rgba(45, 111, 224, 0.55);
 }
 
 @keyframes vinyl-spin {
@@ -240,7 +240,7 @@
 }
 
 .tonearm.is-dropped .tonearm-pivot {
-  box-shadow: 0 0 0 5rpx #F0E8D4, 0 0 16rpx 2rpx rgba(211, 78, 36, 0.6);
+  box-shadow: 0 0 0 5rpx #F0E8D4, 0 0 16rpx 2rpx rgba(45, 111, 224, 0.6);
 }
 
 .tonearm-arm {

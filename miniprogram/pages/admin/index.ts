@@ -67,7 +67,7 @@ Page({
       title: '自动清理重名候选',
       content: '会扫描所有待审核候选，同名的一组里如果既有带头像的又有没头像的，没头像的会被自动拒绝（判定为网易云同名误匹配），带头像的保留待人工审核。手动提交（网易云未找到）的记录不受影响。误拒了可以去"已拒绝"里恢复，确认继续？',
       confirmText: '开始清理',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (res) => {
         if (!res.confirm) return
         this.setData({ autoCleaning: true })
@@ -106,7 +106,7 @@ Page({
       title: '清空已拒绝名单？',
       content: `将永久删除全部 ${declinedTab ? declinedTab.count : 0} 条已拒绝记录，不可恢复。这些艺人的名字会被记入屏蔽名单，之后扫描到同名合作也不会再重新出现在待审核里。`,
       confirmText: '确认清空',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (m) => {
         if (!m.confirm) return
         this.setData({ purging: true, purgedCount: 0 })

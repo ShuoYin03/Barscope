@@ -237,7 +237,7 @@ Page({
       title:'提交曲目修改？',
       content:'修改不会立即生效，需由管理员审核通过后更新专辑。',
       confirmText:'提交审核',
-      confirmColor:'#D45124',
+      confirmColor:'#2D6FE0',
       success:modal=>{
         if(!modal.confirm)return
         this.setData({saving:true})

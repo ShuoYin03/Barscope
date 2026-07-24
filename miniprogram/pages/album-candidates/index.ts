@@ -93,7 +93,7 @@ Page({
       title: `${label} ${ids.length} 张专辑？`,
       content,
       confirmText: decision === 'delete' ? '全部删除' : decision === 'mark' ? '确认纳入' : hidden ? '全部显示' : '全部保留',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: async (modal) => {
         if (!modal.confirm) return
         this.setData({ processing: true })
@@ -142,7 +142,7 @@ Page({
       title,
       content,
       confirmText: decision === 'delete' ? '删除' : decision === 'mark' ? '纳入' : hidden ? '显示' : '保留',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: (modal) => {
         if (!modal.confirm) return
         wx.showLoading({ title: decision === 'delete' ? '删除中…' : decision === 'mark' ? '处理中…' : hidden ? '显示中…' : '保留中…', mask: true })

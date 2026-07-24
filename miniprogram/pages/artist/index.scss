@@ -73,7 +73,7 @@
 .career-year text { font-family: var(--font-bebas); font-size: 19rpx; letter-spacing: .5rpx; white-space: nowrap; }
 .career-dot { width: 10rpx; height: 10rpx; border-radius: 50%; margin-left: 16rpx; background: var(--gray-mid); border: 2rpx solid var(--black); box-sizing: border-box; flex-shrink: 0; }
 .career-year.active { color: var(--accent); }
-.career-year.active .career-dot { width: 16rpx; height: 16rpx; margin-left: 13rpx; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5rpx rgba(201,78,37,.18); }
+.career-year.active .career-dot { width: 16rpx; height: 16rpx; margin-left: 13rpx; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5rpx rgba(45, 111, 224,.18); }
 .career-year.active text { font-size: 22rpx; }
 
 .collaborator-list { background: var(--black); padding: 0 32rpx 36rpx; }
@@ -86,7 +86,7 @@
 .collaborator-arrow { flex-shrink: 0; font-size: 32rpx; color: var(--accent); line-height: 1; }
 .collaborator-empty { padding: 36rpx 32rpx 72rpx; text-align: center; color: var(--gray-mid); font-size: 21rpx; }
 
-.role-edit-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 0 32rpx 48rpx; padding: 24rpx; border: 2rpx solid rgba(201,78,37,.52); background: var(--off-white); }
+.role-edit-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 0 32rpx 48rpx; padding: 24rpx; border: 2rpx solid rgba(45, 111, 224,.52); background: var(--off-white); }
 .role-edit-copy { display: flex; flex-direction: column; gap: 8rpx; min-width: 0; }
 .role-edit-title { font-size: 25rpx; font-weight: 700; color: var(--white); }
 .role-edit-desc { font-size: 20rpx; color: var(--gray-mid); }
@@ -104,6 +104,6 @@
 .role-sheet-sub{display:block;margin-top:8rpx;font-size:21rpx;line-height:1.5;color:var(--gray-mid)}
 .role-sheet-grid{display:flex;gap:14rpx;flex-wrap:wrap;margin-top:24rpx}
 .role-sheet-option{display:flex;align-items:center;gap:10rpx;padding:16rpx 22rpx;border:2rpx solid var(--gray-light);font-family:var(--font-bebas);font-size:24rpx;letter-spacing:2rpx;color:var(--white)}
-.role-sheet-option.selected{border-color:var(--accent);background:rgba(201,78,37,.14);color:var(--accent)}
+.role-sheet-option.selected{border-color:var(--accent);background:rgba(45, 111, 224,.14);color:var(--accent)}
 .role-sheet-submit{height:88rpx;margin-top:28rpx;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--black);font-size:26rpx;font-weight:700}
 .role-sheet-submit.disabled{opacity:.55}

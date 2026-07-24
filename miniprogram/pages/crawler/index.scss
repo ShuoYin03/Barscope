@@ -52,7 +52,7 @@
 .status-text { font-size: 28rpx; font-weight: 700; color: var(--white); }
 .time-text   { font-size: 20rpx; color: var(--gray-mid); }
 
-.mode-tag { padding: 4rpx 16rpx; border: 2rpx solid var(--accent); background: rgba(201,78,37,0.12); }
+.mode-tag { padding: 4rpx 16rpx; border: 2rpx solid var(--accent); background: rgba(45, 111, 224,0.12); }
 .mode-tag text { font-size: 20rpx; font-weight: 700; color: var(--accent); letter-spacing: 1rpx; }
 
 /* PROGRESS */
@@ -85,7 +85,7 @@
 .last-log-row {
   margin-top: 16rpx;
   padding: 14rpx 20rpx;
-  background: rgba(201,78,37,0.08);
+  background: rgba(45, 111, 224,0.08);
   border-left: 4rpx solid var(--accent);
 }
 .last-log-text {

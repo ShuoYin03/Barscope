@@ -196,7 +196,7 @@ Page({
       title: '提交企划？',
       content: '提交后，编辑部将通过你留下的微信号联系。内容不会公开展示。',
       confirmText: '确认提交',
-      confirmColor: '#D45124',
+      confirmColor: '#2D6FE0',
       success: (modal) => {
         if (!modal.confirm) return
         this.setData({ submitting: true })

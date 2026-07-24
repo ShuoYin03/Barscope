@@ -22,7 +22,7 @@ Component({
         else this.openReportSheet(review._id)
       }})
     },
-    deleteMine(reviewId:string){wx.showModal({title:'删除这条评论？',content:'删除后无法恢复。',confirmText:'删除',confirmColor:'#C94E25',success:(m:any)=>{if(!m.confirm)return;wx.cloud.callFunction({name:'reviewModeration',data:{action:'deleteMine',reviewId},success:(r:any)=>{const x=r.result||{};if(x.success){this.setData({hidden:true});wx.showToast({title:'已删除',icon:'success'});this.triggerEvent('changed',{reviewId,action:'deleted'})}else wx.showToast({title:x.error||'删除失败',icon:'none'})},fail:()=>wx.showToast({title:'删除失败',icon:'none'})} as any)}})},
+    deleteMine(reviewId:string){wx.showModal({title:'删除这条评论？',content:'删除后无法恢复。',confirmText:'删除',confirmColor:'#2D6FE0',success:(m:any)=>{if(!m.confirm)return;wx.cloud.callFunction({name:'reviewModeration',data:{action:'deleteMine',reviewId},success:(r:any)=>{const x=r.result||{};if(x.success){this.setData({hidden:true});wx.showToast({title:'已删除',icon:'success'});this.triggerEvent('changed',{reviewId,action:'deleted'})}else wx.showToast({title:x.error||'删除失败',icon:'none'})},fail:()=>wx.showToast({title:'删除失败',icon:'none'})} as any)}})},
     openReportSheet(reviewId:string){this.setData({reportSheetVisible:true,reportReviewId:reviewId,reportReason:''})},
     onReportReasonInput(e:WechatMiniprogram.Input){this.setData({reportReason:e.detail.value||''})},
     onReportCancel(){if(!this.data.reportSubmitting)this.setData({reportSheetVisible:false})},

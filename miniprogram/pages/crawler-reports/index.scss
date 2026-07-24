@@ -22,7 +22,7 @@
 .dot.running { background: #22c55e; }
 .dot.done { background: #3b82f6; }
 .status-text { font-size: 30rpx; font-weight: 800; }
-.pill { margin-left: auto; padding: 5rpx 18rpx; border: 2rpx solid var(--accent); background: rgba(201, 78, 37, 0.14); font-size: 20rpx; font-weight: 800; color: var(--accent); letter-spacing: 1rpx; }
+.pill { margin-left: auto; padding: 5rpx 18rpx; border: 2rpx solid var(--accent); background: rgba(45, 111, 224, 0.14); font-size: 20rpx; font-weight: 800; color: var(--accent); letter-spacing: 1rpx; }
 
 .prog-num { display: flex; align-items: baseline; gap: 14rpx; margin-top: 28rpx; }
 .prog-num .big { font-family: var(--font-bebas); font-size: 84rpx; line-height: 0.9; color: var(--white); }
@@ -47,7 +47,7 @@
 .diag { margin-top: 22rpx; padding: 16rpx 22rpx; background: rgba(192, 57, 43, 0.12); border-left: 4rpx solid #C0392B; }
 .diag-text { font-size: 22rpx; color: #e0857a; line-height: 1.45; }
 
-.lastlog { margin-top: 22rpx; padding: 16rpx 22rpx; background: rgba(201, 78, 37, 0.08); border-left: 4rpx solid var(--accent); }
+.lastlog { margin-top: 22rpx; padding: 16rpx 22rpx; background: rgba(45, 111, 224, 0.08); border-left: 4rpx solid var(--accent); }
 .lastlog-text { font-size: 22rpx; color: var(--accent); font-family: monospace; line-height: 1.45; }
 
 .meta { display: flex; align-items: center; gap: 16rpx; margin-top: 22rpx; font-size: 22rpx; color: var(--gray-mid); }

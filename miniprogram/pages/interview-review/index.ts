@@ -47,7 +47,7 @@ Page({
       title: '通过并发布？',
       content: '通过后会立即在人物访谈栏目公开展示。',
       confirmText: '通过',
-      confirmColor: '#D45124',
+      confirmColor: '#2D6FE0',
       success: (m) => { if (m.confirm) this._run('approve', id) },
     })
   },

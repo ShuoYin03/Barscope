@@ -15,7 +15,7 @@
 .album-note{display:block;margin-top:14rpx;font-size:19rpx;line-height:1.55;color:var(--gray-mid)}
 .track-list{margin-top:4rpx}
 .track-row{display:flex;align-items:center;gap:18rpx;padding:22rpx 0;border-bottom:1px solid var(--off-white);transition:opacity .12s ease,background .12s ease}
-.track-row.dragging{opacity:.72;background:rgba(212,81,36,.08)}
+.track-row.dragging{opacity:.72;background:rgba(45, 111, 224,.08)}
 .track-no{width:44rpx;flex-shrink:0;font-family:var(--font-bebas);font-size:30rpx;color:var(--gray-mid);text-align:center}
 .track-copy{flex:1;min-width:0}
 .track-name{display:block;font-size:26rpx;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

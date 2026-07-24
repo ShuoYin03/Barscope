@@ -104,7 +104,7 @@ Page({
       title: '提交乐评人申请？',
       content: '提交后管理员会根据你的样稿、作品与申请理由进行审核。',
       confirmText: '确认提交',
-      confirmColor: '#D45124',
+      confirmColor: '#2D6FE0',
       success: modal => {
         if (!modal.confirm) return
         this.setData({ submitting: true })

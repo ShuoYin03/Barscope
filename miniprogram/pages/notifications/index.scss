@@ -21,7 +21,7 @@
 .feed-content{display:block;margin-top:8rpx;font-size:22rpx;line-height:1.6;color:var(--gray-mid)}
 
 .card{display:flex;align-items:flex-start;gap:20rpx;padding:24rpx 32rpx;border-top:2rpx solid var(--gray-light);position:relative}
-.card.unread{background:rgba(211,78,36,0.06)}
+.card.unread{background:rgba(45, 111, 224,0.06)}
 .icon{font-size:32rpx;color:var(--accent);flex-shrink:0;line-height:1.5}
 .info{flex:1;min-width:0}
 .message{display:block;font-size:25rpx;line-height:1.6;color:var(--white)}

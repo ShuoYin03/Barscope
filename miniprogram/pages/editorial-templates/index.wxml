@@ -67,8 +67,8 @@
       </view>
     </block>
 
-    <view style="margin:28rpx 32rpx 0;padding:24rpx;border:2rpx solid #C94E25;background:#120b09;" bindtap="onOpenEditor">
-      <text style="display:block;color:#C94E25;font-family:var(--font-bebas);font-size:24rpx;letter-spacing:4rpx;">OPEN EDITOR</text>
+    <view style="margin:28rpx 32rpx 0;padding:24rpx;border:2rpx solid #2D6FE0;background:#120b09;" bindtap="onOpenEditor">
+      <text style="display:block;color:#2D6FE0;font-family:var(--font-bebas);font-size:24rpx;letter-spacing:4rpx;">OPEN EDITOR</text>
       <text style="display:block;margin-top:8rpx;color:#F5EFE8;font-size:28rpx;font-weight:700;">用当前 {{active}} 模板开始编辑 →</text>
       <text style="display:block;margin-top:8rpx;color:#756C64;font-size:20rpx;line-height:1.6;">添加 Paragraph / Heading / Image / Quote / Divider / Q&A，并实时预览统一排版。</text>
     </view>

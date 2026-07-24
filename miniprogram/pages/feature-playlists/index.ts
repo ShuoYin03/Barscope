@@ -113,7 +113,7 @@ Page({
       title: '移除歌单',
       content: `确认移除「${item.creatorName}」的投稿快照？`,
       confirmText: '移除',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: res => {
         if (!res.confirm) return
         wx.cloud.callFunction({
@@ -140,7 +140,7 @@ Page({
       title: '切换归属',
       content: `把「${item.creatorName}」的这份投稿设为${label}？`,
       confirmText: '确认切换',
-      confirmColor: '#C94E25',
+      confirmColor: '#2D6FE0',
       success: res => {
         if (!res.confirm) return
         this.setData({ list: this.data.list.map((x: Submission) => x._id === id ? { ...x, switchingSourceType: true } : x) })
