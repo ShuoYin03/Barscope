@@ -1,7 +1,9 @@
 <view class="section-hd">
   <view class="section-rule" />
   <view class="section-row">
-    <text class="section-label">{{prefix}}{{side ? ' ' + side : ''}}{{title ? ' — ' + title : ''}}</text>
+    <text wx:if="{{prefix}}" class="section-prefix">{{prefix}}</text>
+    <text wx:if="{{side}}" class="section-side">SIDE {{side}}</text>
+    <text wx:if="{{title}}" class="section-title">{{side ? '— ' : ''}}{{title}}</text>
     <view class="section-spacer" />
     <view wx:if="{{more}}" class="section-more-wrap" bindtap="onMore">
       <text class="section-more">更多 →</text>
