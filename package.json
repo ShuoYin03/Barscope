@@ -1,16 +1,16 @@
 {
-  "name": "miniprogram-ts-sass-quickstart",
+  "name": "soundive",
   "version": "1.0.0",
-  "description": "",
+  "description": "Soundive Chinese rap review and community platform",
+  "private": true,
   "scripts": {
     "test": "node --test \"cloudfunctions/**/*.test.js\"",
     "sync:cf-shared": "node scripts/sync-cloudfunctions-shared.js"
   },
-  "keywords": [],
+  "keywords": ["soundive", "chinese-rap", "music-reviews"],
   "author": "",
   "license": "",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "miniprogram-api-typings": "^2.8.3-1"
   }
