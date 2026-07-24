@@ -25,7 +25,7 @@
         <image wx:if="{{creatorAvatarUrl}}" class="playlist-creator-avatar" src="{{creatorAvatarUrl}}" mode="aspectFill" />
         <view wx:else class="playlist-creator-avatar playlist-creator-avatar-fallback"><text>{{playlist.creatorName[0]}}</text></view>
         <text class="playlist-creator">BY {{playlist.creatorName}}</text>
-        <text wx:if="{{playlist.barscopeCreator}}" class="playlist-creator-arrow">›</text>
+        <text wx:if="{{playlist.soundiveCreator}}" class="playlist-creator-arrow">›</text>
       </view>
       <view class="stats-row">
         <text class="stat-num">{{playlist.trackCount}}</text><text class="stat-unit">TRACKS</text>
@@ -40,7 +40,7 @@
       <view class="side-row"><text class="side-text">SIDE A — TRACKLIST · {{playlist.trackCount}} 首</text><view class="side-rule" /></view>
       <view wx:if="{{sync}}" class="sync-note">{{sync.linkedAlbums}} 首已关联专辑 · {{sync.pendingAlbums}} 张专辑待审核 · {{sync.pendingArtists}} 位艺人待审核</view>
       <view class="track-list">
-        <view wx:for="{{tracks}}" wx:key="neteaseSongId" class="track-row" bindtap="onTrackTap" data-album-id="{{item.barscopeAlbumId}}" data-status="{{item.albumCatalogStatus}}">
+        <view wx:for="{{tracks}}" wx:key="neteaseSongId" class="track-row" bindtap="onTrackTap" data-album-id="{{item.soundiveAlbumId}}" data-status="{{item.albumCatalogStatus}}">
           <text class="track-rank">{{item.position}}</text>
           <image class="track-cover" src="{{item.coverUrl}}" mode="aspectFill" />
           <view class="track-info">
@@ -48,7 +48,7 @@
             <text class="track-artist">{{item.artistText}}</text>
             <text class="track-album">{{item.albumName}}</text>
           </view>
-          <text class="track-action">{{item.barscopeAlbumId ? '打开专辑 →' : '审核中'}}</text>
+          <text class="track-action">{{item.soundiveAlbumId ? '打开专辑 →' : '审核中'}}</text>
         </view>
       </view>
       <view class="end-mark"><text>— END OF PLAYLIST —</text></view>
