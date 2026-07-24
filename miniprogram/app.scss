@@ -40,7 +40,10 @@ page {
 }
 
 /* Catch remaining legacy hard-coded dark surfaces in light mode. */
+.theme-light .otd-section,
 .theme-light .hero-banner,
+.theme-light .hero-swiper,
+.theme-light .hero-swiper swiper-item,
 .theme-light .reviews-list,
 .theme-light .album-list,
 .theme-light .artist-submit-row,
