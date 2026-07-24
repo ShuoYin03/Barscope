@@ -44,8 +44,6 @@
         </view>
       </view>
 
-      <text class="dial-hint">{{needleOnRecord ? '唱片播放中 · 拖动唱针可停止' : '拖动唱针可播放唱片（彩蛋）'}}</text>
-
       <!-- Rating remains available regardless of tonearm state -->
       <view class="score-axis-wrap">
         <text class="dial-hint">{{rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数'}}</text>
