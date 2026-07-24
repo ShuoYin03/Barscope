@@ -14,7 +14,7 @@ export function SiteHeader() {
       <nav className="desktop-nav" aria-label="Main navigation">
         {NAV.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
       </nav>
-      <Link className="profile-link" href="/profile">MY SCOPE</Link>
+      <Link className="profile-link" href="/profile">PROFILE</Link>
     </header>
   )
 }
