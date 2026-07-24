@@ -64,6 +64,27 @@ exports.main = async (event, context) => {
       return { success: true }
     }
 
+    if (action === 'grantAdmin') {
+      const { openId } = event
+      if (!openId) return { success: false, error: '缺少 openId' }
+
+      await db.collection('users').where({ openId }).update({
+        data: { type: 'admin' },
+      })
+      return { success: true }
+    }
+
+    if (action === 'revokeAdmin') {
+      const { openId } = event
+      if (!openId) return { success: false, error: '缺少 openId' }
+      if (openId === OPENID) return { success: false, error: '不能撤销自己的管理员身份' }
+
+      await db.collection('users').where({ openId }).update({
+        data: { type: 'normal' },
+      })
+      return { success: true }
+    }
+
     return { success: false, error: '未知 action' }
   } catch (err) {
     return { success: false, error: err.message }
