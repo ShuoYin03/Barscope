@@ -13,7 +13,7 @@
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="content-inner">
 
-    <!-- RATING — vinyl dial -->
+    <!-- TURNTABLE — decorative easter egg, independent from rating -->
     <view class="dial-section">
       <view class="vinyl-player">
         <view class="turntable-base">
@@ -44,18 +44,20 @@
         </view>
       </view>
 
-      <text class="dial-hint">{{needleOnRecord ? (rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数') : '拖动唱针至黑胶上开始评分'}}</text>
+      <text class="dial-hint">{{needleOnRecord ? '唱片播放中 · 拖动唱针可停止' : '拖动唱针可播放唱片（彩蛋）'}}</text>
 
-      <view class="score-axis-wrap" wx:if="{{needleOnRecord}}">
+      <!-- Rating remains available regardless of tonearm state -->
+      <view class="score-axis-wrap">
+        <text class="dial-hint">{{rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数'}}</text>
         <slider
           class="score-axis"
           min="1"
           max="10"
           step="0.5"
           value="{{sliderValue}}"
-          activeColor="#2D6FE0"
-          backgroundColor="#332B28"
-          block-color="#F4EBDD"
+          activeColor="#5E9BFA"
+          backgroundColor="#DCE5F2"
+          block-color="#F2EBDD"
           block-size="32"
           bindchanging="onRateChange"
           bindchange="onRateChange"
