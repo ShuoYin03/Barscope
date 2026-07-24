@@ -1,5 +1,5 @@
 <view class="page {{themeClass}}">
-  <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px">
+  <view class="topbar" style="height: calc({{topbarHeight}}px + 12px); padding-top: {{statusBarHeight}}px">
     <text class="back" bindtap="onBack">←</text>
     <text class="brand">FEATURES</text>
   </view>
