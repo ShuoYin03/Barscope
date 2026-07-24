@@ -1,5 +1,5 @@
 <view class="ticker">
-  <view class="ticker-label">NOW</view>
+  <view class="ticker-label">LATEST</view>
   <view class="ticker-track">
     <view class="ticker-inner">
       <block wx:for="{{songs}}" wx:key="index">
