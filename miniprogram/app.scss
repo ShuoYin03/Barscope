@@ -6,26 +6,27 @@
 }
 
 page {
-  /* Soundive Visual Refresh v2 */
-  --bg-app: #070B11;
-  --bg-section: #0D1623;
-  --bg-card: #131E2D;
-  --bg-elevated: #182536;
-  --text-primary: #F6F8FB;
-  --text-body: #D4DFEE;
-  --text-secondary: #94A2B6;
-  --text-muted: #687588;
-  --divider: #1B2738;
-  --accent: #8EBFFF;
-  --accent-strong: #A5CCFF;
-  --accent-muted: #6D95C7;
-  --accent-soft: rgba(142, 191, 255, 0.14);
-  --rating: #DFC57D;
-  --rating-soft: rgba(223, 197, 125, 0.14);
-  --vinyl-label: #C7D0DC;
-  --groove-a: #080A0E;
-  --groove-b: #151A22;
-  --groove-sheen: rgba(255,255,255,.12);
+  /* Soundive Visual Refresh v2 — light is the default experience */
+  --bg-app: #F7FAFE;
+  --bg-section: #EEF4FA;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #E5EDF6;
+  --text-primary: #111820;
+  --text-body: #2E3947;
+  --text-secondary: #667589;
+  --text-muted: #98A5B5;
+  --divider: #D8E2ED;
+  --accent: #69AEF7;
+  --accent-strong: #3489E4;
+  --accent-muted: #6F94BA;
+  --accent-soft: rgba(105, 174, 247, 0.13);
+  --rating: #A67B1F;
+  --rating-soft: rgba(166, 123, 31, 0.12);
+  --vinyl-label: #D7DEE8;
+  --groove-a: #11151B;
+  --groove-b: #252C35;
+  --groove-sheen: rgba(255,255,255,.18);
+  --skeleton-highlight: #FDFEFF;
 
   /* Backward-compatible aliases */
   --black: var(--bg-app);
@@ -43,28 +44,55 @@ page {
   transition: background .2s ease, color .2s ease;
 }
 
+/* Explicit light class is retained for existing page-level compatibility. */
 .theme-light {
-  --bg-app: #F3F7FC;
-  --bg-section: #EAF1F9;
+  --bg-app: #F7FAFE;
+  --bg-section: #EEF4FA;
   --bg-card: #FFFFFF;
-  --bg-elevated: #E1EAF5;
-  --text-primary: #172033;
-  --text-body: #334158;
-  --text-secondary: #738198;
-  --text-muted: #9AA7B8;
-  --divider: #D6E0EC;
-  --accent: #5795E8;
-  --accent-strong: #3378DD;
-  --accent-muted: #6D8FB8;
-  --accent-soft: rgba(87,149,232,.12);
-  --rating: #A7832E;
-  --rating-soft: rgba(167,131,46,.12);
-  --vinyl-label: #D5DCE5;
-  --groove-a: #DCE5F0;
-  --groove-b: #C7D2E0;
-  --groove-sheen: rgba(255,255,255,.42);
+  --bg-elevated: #E5EDF6;
+  --text-primary: #111820;
+  --text-body: #2E3947;
+  --text-secondary: #667589;
+  --text-muted: #98A5B5;
+  --divider: #D8E2ED;
+  --accent: #69AEF7;
+  --accent-strong: #3489E4;
+  --accent-muted: #6F94BA;
+  --accent-soft: rgba(105,174,247,.13);
+  --rating: #A67B1F;
+  --rating-soft: rgba(166,123,31,.12);
+  --vinyl-label: #D7DEE8;
+  --groove-a: #11151B;
+  --groove-b: #252C35;
+  --groove-sheen: rgba(255,255,255,.18);
+  --skeleton-highlight: #FDFEFF;
 }
 
+/* Dark mode is the high-contrast alternative. */
+.theme-dark {
+  --bg-app: #070B11;
+  --bg-section: #0D1623;
+  --bg-card: #131E2D;
+  --bg-elevated: #182536;
+  --text-primary: #F6F8FB;
+  --text-body: #D4DFEE;
+  --text-secondary: #94A2B6;
+  --text-muted: #687588;
+  --divider: #1B2738;
+  --accent: #8EBFFF;
+  --accent-strong: #A5CCFF;
+  --accent-muted: #6D95C7;
+  --accent-soft: rgba(142,191,255,.14);
+  --rating: #DFC57D;
+  --rating-soft: rgba(223,197,125,.14);
+  --vinyl-label: #C7D0DC;
+  --groove-a: #080A0E;
+  --groove-b: #151A22;
+  --groove-sheen: rgba(255,255,255,.12);
+  --skeleton-highlight: #26364A;
+}
+
+/* Normalize legacy surfaces in both themes through shared semantic tokens. */
 .theme-light .otd-section,
 .theme-light .hero-banner,
 .theme-light .hero-swiper,
@@ -77,7 +105,20 @@ page {
 .theme-light .review-item,
 .theme-light .card,
 .theme-light .panel,
-.theme-light .modal-content {
+.theme-light .modal-content,
+.theme-dark .otd-section,
+.theme-dark .hero-banner,
+.theme-dark .hero-swiper,
+.theme-dark .hero-swiper swiper-item,
+.theme-dark .reviews-list,
+.theme-dark .album-list,
+.theme-dark .artist-submit-row,
+.theme-dark .suggestion-panel,
+.theme-dark .search-inner,
+.theme-dark .review-item,
+.theme-dark .card,
+.theme-dark .panel,
+.theme-dark .modal-content {
   background: var(--bg-app) !important;
   color: var(--text-primary) !important;
 }
@@ -86,7 +127,13 @@ page {
 .theme-light .artist-submit-title,
 .theme-light .suggestion-name,
 .theme-light .review-title,
-.theme-light .card-title { color: var(--text-primary) !important; }
+.theme-light .card-title,
+.theme-dark .hero-title,
+.theme-dark .album-title,
+.theme-dark .artist-submit-title,
+.theme-dark .suggestion-name,
+.theme-dark .review-title,
+.theme-dark .card-title { color: var(--text-primary) !important; }
 .theme-light .hero-meta,
 .theme-light .album-artist,
 .theme-light .album-date,
@@ -94,14 +141,29 @@ page {
 .theme-light .suggestion-meta,
 .theme-light .suggestion-date,
 .theme-light .review-meta,
-.theme-light .card-subtitle { color: var(--text-secondary) !important; }
+.theme-light .card-subtitle,
+.theme-dark .hero-meta,
+.theme-dark .album-artist,
+.theme-dark .album-date,
+.theme-dark .artist-submit-desc,
+.theme-dark .suggestion-meta,
+.theme-dark .suggestion-date,
+.theme-dark .review-meta,
+.theme-dark .card-subtitle { color: var(--text-secondary) !important; }
 .theme-light .suggestion-row,
 .theme-light .album-row,
 .theme-light .artist-all-row,
 .theme-light .menu-row,
-.theme-light .review-item { border-color: var(--divider) !important; }
+.theme-light .review-item,
+.theme-dark .suggestion-row,
+.theme-dark .album-row,
+.theme-dark .artist-all-row,
+.theme-dark .menu-row,
+.theme-dark .review-item { border-color: var(--divider) !important; }
 .theme-light input,
-.theme-light textarea { color: var(--text-primary) !important; }
+.theme-light textarea,
+.theme-dark input,
+.theme-dark textarea { color: var(--text-primary) !important; }
 
 @keyframes sk-shimmer {
   0% { background-position: -600rpx 0; }
@@ -109,7 +171,7 @@ page {
 }
 
 .sk {
-  background: linear-gradient(90deg, var(--bg-elevated) 25%, #26364A 50%, var(--bg-elevated) 75%);
+  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--skeleton-highlight) 50%, var(--bg-elevated) 75%);
   background-size: 600rpx 100%;
   animation: sk-shimmer 1.4s ease-in-out infinite;
   border-radius: 4rpx;
