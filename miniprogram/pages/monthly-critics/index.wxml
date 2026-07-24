@@ -1,0 +1,22 @@
+<view class="page {{themeClass}}">
+  <view class="topbar" style="height:{{topbarHeight}}px;padding-top:{{statusBarHeight}}px;">
+    <text class="back" bindtap="onBack">‹</text>
+    <text class="title">本月乐评人榜</text>
+    <view class="spacer" />
+  </view>
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{loading}}" class="loading">加载中…</view>
+    <view wx:elif="{{!list.length}}" class="empty">本月暂无乐评数据</view>
+    <view wx:else class="rows">
+      <view wx:for="{{list}}" wx:key="openId" class="row" bindtap="onUserTap" data-open-id="{{item.openId}}">
+        <text class="rank {{index === 0 ? 'top' : ''}}">{{index + 1}}</text>
+        <view class="avatar-wrap">
+          <text wx:if="{{index === 0}}" class="crown">👑</text>
+          <view class="avatar"><image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" /><text wx:else>{{item.initial}}</text></view>
+        </view>
+        <view class="info"><text class="name">{{item.nickName}}</text><text class="count">本月 {{item.count}} 条乐评</text></view>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

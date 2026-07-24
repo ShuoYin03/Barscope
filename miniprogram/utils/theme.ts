@@ -2,13 +2,13 @@ export type ThemeMode = 'dark' | 'light'
 
 const STORAGE_KEY = 'themeMode'
 
-const BG = { dark: '#08060A', light: '#F5EFE2' } as const
+const BG = { dark: '#070B11', light: '#F7FAFE' } as const
 
 export const getThemeMode = (): ThemeMode =>
-  wx.getStorageSync(STORAGE_KEY) === 'light' ? 'light' : 'dark'
+  wx.getStorageSync(STORAGE_KEY) === 'dark' ? 'dark' : 'light'
 
 export const getThemeClass = (): string =>
-  getThemeMode() === 'light' ? 'theme-light' : ''
+  getThemeMode() === 'dark' ? 'theme-dark' : 'theme-light'
 
 // Syncs the native pull-down/overscroll chrome (outside our own WXML tree,
 // so CSS variables can't reach it) to the current theme.

@@ -18,7 +18,7 @@
 .critic-badge { font-size: 18rpx; color: var(--black); background: var(--accent); padding: 2rpx 10rpx; }
 .time { display: block; margin-top: 4rpx; font-size: 20rpx; color: var(--gray-mid); }
 .album { max-width: 220rpx; padding: 5rpx 12rpx; background: var(--accent); color: var(--black); font-size: 18rpx; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.score { font-family: var(--font-bebas); font-size: 38rpx; color: var(--accent-warm); line-height: 1; }
+.score { font-family: var(--font-bebas); font-size: 38rpx; color: var(--rating); line-height: 1; }
 .body { display: block; font-size: 25rpx; line-height: 1.65; color: var(--gray-mid); }
 .footer { display: flex; align-items: center; gap: 20rpx; margin-top: 16rpx; font-size: 20rpx; color: var(--gray-mid); }
 .arrow { margin-left: auto; color: var(--accent); font-size: 28rpx; }

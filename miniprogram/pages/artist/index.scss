@@ -64,7 +64,7 @@
 .album-info { flex: 1; min-width: 0; }
 .album-title { font-size: 28rpx; font-weight: 700; color: var(--white); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .album-meta { font-size: 22rpx; color: var(--gray-mid); margin-top: 8rpx; display: block; }
-.album-score { font-family: var(--font-bebas); font-size: 44rpx; color: var(--accent-warm); flex-shrink: 0; }
+.album-score { font-family: var(--font-bebas); font-size: 44rpx; color: var(--rating); flex-shrink: 0; }
 
 .career-timeline { position: absolute; top: 8rpx; right: 6rpx; bottom: 8rpx; width: 78rpx; z-index: 12; overflow: hidden; background: linear-gradient(90deg, rgba(5,3,5,.08), rgba(5,3,5,.97) 28%); }
 .career-timeline-inner { position: relative; min-height: 100%; padding: 14rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 8rpx; }
