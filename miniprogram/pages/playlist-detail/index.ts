@@ -8,7 +8,7 @@ interface PlaylistTrack {
   albumId: string
   albumName: string
   coverUrl: string
-  barscopeAlbumId?: string
+  soundiveAlbumId?: string
   albumCatalogStatus?: 'linked' | 'pending'
   artistText?: string
 }
@@ -44,7 +44,7 @@ Page({
   },
 
   onCreatorTap() {
-    const creator = this.data.playlist && this.data.playlist.barscopeCreator
+    const creator = this.data.playlist && this.data.playlist.soundiveCreator
     if (creator && creator.openId) wx.navigateTo({ url: `/pages/user/index?openId=${creator.openId}` })
   },
 
@@ -64,7 +64,7 @@ Page({
           ...track,
           artistText: (track.artistNames || []).join(' / '),
         }))
-        const creatorAvatarUrl = (playlist.barscopeCreator && playlist.barscopeCreator.avatarUrl)
+        const creatorAvatarUrl = (playlist.soundiveCreator && playlist.soundiveCreator.avatarUrl)
           || (playlist.neteaseCreator && playlist.neteaseCreator.avatarUrl)
           || ''
         this.setData({ playlist, tracks, sync: playlist.catalogSync || null, creatorAvatarUrl })
