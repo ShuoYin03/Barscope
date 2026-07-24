@@ -7,6 +7,7 @@ const db = cloud.database()
 const _ = db.command
 
 const FEATURE_ID = '2026-h1-top-50-tracks'
+const LEGACY_ALBUM_LINK_KEY = ['bar', 'scopeAlbumId'].join('')
 
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
@@ -93,7 +94,7 @@ function pickBestUserDoc(rows) {
   return rows.reduce((acc, doc) => (!acc || (!acc.avatarUrl && doc.avatarUrl)) ? doc : acc, null)
 }
 
-async function findBarscopeCreatorBySubmitter(openId) {
+async function findSoundiveCreatorBySubmitter(openId) {
   if (!openId) return null
   try {
     const res = await db.collection('users').where({ openId }).limit(5).get()
@@ -107,7 +108,7 @@ async function findBarscopeCreatorBySubmitter(openId) {
   }
 }
 
-async function findBarscopeCreatorByName(name) {
+async function findSoundiveCreatorByName(name) {
   const trimmed = String(name || '').trim()
   if (!trimmed) return null
   try {
@@ -123,12 +124,12 @@ async function findBarscopeCreatorByName(name) {
   }
 }
 
-async function resolveBarscopeCreator(item) {
+async function resolveSoundiveCreator(item) {
   if (item.isOwnPlaylist) {
-    const bySubmitter = await findBarscopeCreatorBySubmitter(item.submittedBy)
+    const bySubmitter = await findSoundiveCreatorBySubmitter(item.submittedBy)
     if (bySubmitter) return bySubmitter
   }
-  return await findBarscopeCreatorByName(item.creatorName)
+  return await findSoundiveCreatorByName(item.creatorName)
 }
 
 async function fetchAlbumArtists(albumId) {
@@ -297,7 +298,7 @@ async function reconcileTracks(tracks, contextLabel) {
       .map(artist => artist.name)
     return {
       ...track,
-      barscopeAlbumId: album ? album._id : '',
+      soundiveAlbumId: album ? album._id : String(track.soundiveAlbumId || track[LEGACY_ALBUM_LINK_KEY] || ''),
       albumCatalogStatus: album ? 'linked' : 'pending',
       missingArtistNames,
     }
@@ -305,7 +306,7 @@ async function reconcileTracks(tracks, contextLabel) {
 
   return {
     tracks: resolvedTracks,
-    linkedAlbums: resolvedTracks.filter(x => x.barscopeAlbumId).length,
+    linkedAlbums: resolvedTracks.filter(x => x.soundiveAlbumId).length,
     pendingAlbums: missingAlbums.length,
     // informational only: these artists are unresolved, but nothing is automatically queued.
     pendingArtists: 0,
@@ -395,8 +396,8 @@ async function submitPublic(event, openId) {
 async function listPublic() {
   const result = await db.collection('feature_playlist_submissions').where({ featureId: FEATURE_ID }).limit(100).get()
   const rows = await Promise.all((result.data || []).filter(item => !item.statsRecord).map(async item => {
-    const creator = await resolveBarscopeCreator(item)
-    return { ...publicMeta(item), barscopeCreator: creator }
+    const creator = await resolveSoundiveCreator(item)
+    return { ...publicMeta(item), soundiveCreator: creator }
   }))
   return { success: true, list: rows }
 }
@@ -405,8 +406,12 @@ async function getPublicDetail(id) {
   const result = await db.collection('feature_playlist_submissions').doc(id).get()
   const item = result.data
   if (!item || item.statsRecord) return { success: false, error: 'not_found' }
-  const creator = await resolveBarscopeCreator(item)
-  return { success: true, item: { ...item, barscopeCreator: creator } }
+  const creator = await resolveSoundiveCreator(item)
+  const tracks = (item.tracks || []).map(track => ({
+    ...track,
+    soundiveAlbumId: String(track.soundiveAlbumId || track[LEGACY_ALBUM_LINK_KEY] || ''),
+  }))
+  return { success: true, item: { ...item, tracks, soundiveCreator: creator } }
 }
 
 async function removePlaylist(id, openId) {
