@@ -27,6 +27,8 @@ page {
   --groove-b: #252C35;
   --groove-sheen: rgba(255,255,255,.18);
   --skeleton-highlight: #FDFEFF;
+  --shadow-color: rgba(32, 68, 128, 0.16);
+  --hero-gradient: linear-gradient(135deg, #EAF2FE 0%, #D9E9FF 55%, #C6DDFF 100%);
 
   /* Backward-compatible aliases */
   --black: var(--bg-app);
@@ -66,6 +68,8 @@ page {
   --groove-b: #252C35;
   --groove-sheen: rgba(255,255,255,.18);
   --skeleton-highlight: #FDFEFF;
+  --shadow-color: rgba(32, 68, 128, 0.16);
+  --hero-gradient: linear-gradient(135deg, #EAF2FE 0%, #D9E9FF 55%, #C6DDFF 100%);
 }
 
 /* Dark mode is the high-contrast alternative. */
@@ -90,11 +94,11 @@ page {
   --groove-b: #151A22;
   --groove-sheen: rgba(255,255,255,.12);
   --skeleton-highlight: #26364A;
+  --shadow-color: rgba(0, 0, 0, 0.45);
+  --hero-gradient: linear-gradient(135deg, #0B121C 0%, #101B2B 55%, #142236 100%);
 }
 
 /* Normalize legacy surfaces in both themes through shared semantic tokens. */
-.theme-light .otd-section,
-.theme-light .hero-banner,
 .theme-light .hero-swiper,
 .theme-light .hero-swiper swiper-item,
 .theme-light .reviews-list,
@@ -106,8 +110,6 @@ page {
 .theme-light .card,
 .theme-light .panel,
 .theme-light .modal-content,
-.theme-dark .otd-section,
-.theme-dark .hero-banner,
 .theme-dark .hero-swiper,
 .theme-dark .hero-swiper swiper-item,
 .theme-dark .reviews-list,

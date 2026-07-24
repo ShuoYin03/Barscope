@@ -1,5 +1,5 @@
 .ticker {
-  background: var(--accent);
+  background: linear-gradient(100deg, var(--accent-strong) 0%, var(--accent) 100%);
   height: 56rpx;
   display: flex;
   align-items: center;

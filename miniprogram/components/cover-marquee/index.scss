@@ -21,6 +21,8 @@
   flex-shrink: 0;
   overflow: hidden;
   background: var(--off-white);
+  border-radius: 12rpx;
+  box-shadow: 0 8rpx 20rpx var(--shadow-color);
 }
 
 .cover-marquee-img {
