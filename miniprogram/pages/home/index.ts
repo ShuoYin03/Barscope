@@ -17,6 +17,16 @@ function fmtReleaseDate(value: any, fallbackYear?: any): string {
   }
   return String(fallbackYear || '').trim()
 }
+function compactArtistList(value: any, limit = 3): string {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const artists = raw
+    .split(/\s*(?:\/|、|，|,|\||；|;)\s*/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+  if (artists.length <= limit) return artists.join(' / ')
+  return `${artists.slice(0, limit).join(' / ')} 等${artists.length}位音乐人`
+}
 function safeCallFunction(name: string, data: Record<string, any>) {
   return wx.cloud.callFunction({ name, data }).then((res: any) => res.result || { success: false }).catch((err: any) => { console.warn(`${name} failed`, err); return { success: false } })
 }
@@ -102,7 +112,7 @@ Page({
       const todayHotSwiperItems = dailyAlbums.slice(0, 6).map((a: any) => ({
         albumId: a.albumId,
         title: a.title,
-        artist: a.artist || '',
+        artist: compactArtistList(a.artist),
         year: a.year || '',
         score: fmtScore(Number(a.score || 0)),
         coverUrl: a.coverUrl || '',
@@ -117,7 +127,7 @@ Page({
         ? (onThisDayRes.list || []).map((a: any) => ({
             albumId: a.albumId,
             title: a.title,
-            artist: a.artist,
+            artist: compactArtistList(a.artist),
             year: a.releaseYear,
             score: fmtScore(a.avgScore),
             coverUrl: a.coverUrl || '',
