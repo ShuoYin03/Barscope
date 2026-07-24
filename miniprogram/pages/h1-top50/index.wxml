@@ -7,7 +7,7 @@
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="article-head">
       <text class="category">榜单 · PLAYLIST POLL</text>
-      <text class="title">2026 上半年中文说唱 Top50 单曲</text>
+      <text class="title">2026年上半年中文说唱单曲榜单</text>
       <text class="intro">提交你的网易云歌单即可参与。乐评人歌单与社区投稿分别展示，并汇总所有有效歌单生成最终 Top50。</text>
     </view>
 

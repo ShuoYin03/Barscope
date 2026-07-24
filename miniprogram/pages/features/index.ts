@@ -25,7 +25,7 @@ type FeatureItem = {
 // feature-detail's ARTICLES map already get this automatically (feature-detail tracks whatever id
 // it's opened with); a bespoke new page does not, and needs the one-line call added explicitly.
 const BASE_FEATURES: FeatureItem[] = [
-  { id:'2026-h1-top-50-tracks', category:'榜单', title:'2026 上半年中文说唱 Top50 单曲', subtitle:'歌单征集中', status:'汇集中文说唱博主的上半年歌单，共同选出 2026 H1 最值得听的 50 首作品', accent:'01', hero:true, cta:'查看', manualPriority:100, viewCount:0, participantCount:0, participantLabel:'份歌单', shareCount:0, heatScore:0, recentHeatScore:0 },
+  { id:'2026-h1-top-50-tracks', category:'榜单', title:'2026年上半年中文说唱单曲榜单', subtitle:'歌单征集中', status:'汇集中文说唱博主的上半年歌单，共同选出 2026 H1 最值得听的 50 首作品', accent:'01', hero:true, cta:'查看', manualPriority:100, viewCount:0, participantCount:0, participantLabel:'份歌单', shareCount:0, heatScore:0, recentHeatScore:0 },
   { id:'2026-top-10', category:'年度企划', title:'2026 中文说唱十大专辑', subtitle:'开放投票中', status:'选出你的十张，写下理由，公开你的榜单', accent:'02', cta:'投票', manualPriority:90, viewCount:0, participantCount:0, participantLabel:'人参与', shareCount:0, heatScore:0, recentHeatScore:0 },
   { id:'2026-best-newcomer', category:'年度企划', title:'2026 年度最佳新人', subtitle:'开放投票中', status:'从 2026 年发行首张 LP/Mixtape 的新人中选出你心中的三位', accent:'03', cta:'投票', manualPriority:80, viewCount:0, participantCount:0, participantLabel:'人参与', shareCount:0, heatScore:0, recentHeatScore:0 },
   { id:'2026-top-5-mixtapes', category:'年度企划', title:'2026 五大 Mixtape', subtitle:'开放投票中', status:'从 2026 年发行、类型已标记为 Mixtape 的项目中选出你心中的五张', accent:'04', cta:'投票', manualPriority:70, viewCount:0, participantCount:0, participantLabel:'人参与', shareCount:0, heatScore:0, recentHeatScore:0 },

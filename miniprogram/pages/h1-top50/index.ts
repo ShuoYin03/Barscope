@@ -45,7 +45,7 @@ Page({
 
   onShareAppMessage() {
     trackFeatureShare(FEATURE_ID)
-    return { title: '2026 上半年中文说唱 Top50 单曲', path: '/pages/h1-top50/index' }
+    return { title: '2026年上半年中文说唱单曲榜单', path: '/pages/h1-top50/index' }
   },
 
   onPlaylistTabTap(e: WechatMiniprogram.TouchEvent) {
