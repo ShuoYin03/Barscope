@@ -55,11 +55,11 @@ Page({
       data: { action: 'get_public_detail', id },
       success: (res: any) => {
         const r = res.result || {}
-        if (!r.success || !r.playlist) {
+        if (!r.success || !r.item) {
           wx.showToast({ title: '歌单加载失败', icon: 'none' })
           return
         }
-        const playlist = r.playlist
+        const playlist = r.item
         const tracks = (playlist.tracks || []).map((track: PlaylistTrack) => ({
           ...track,
           artistText: (track.artistNames || []).join(' / '),
