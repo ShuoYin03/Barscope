@@ -6,15 +6,17 @@
 }
 
 page {
-  --black: #08060A;
-  --white: #F0E8D4;
-  --off-white: #1A1714;
-  --gray-light: #2A2420;
-  --gray-mid: #5A5044;
-  --gray-dark: #3A3028;
-  --accent: #2D6FE0;
-  --groove-a: #100A0E;
-  --groove-b: #1A1218;
+  --black: #070B13;
+  --white: #F2EBDD;
+  --off-white: #101826;
+  --gray-light: #202C3D;
+  --gray-mid: #7E8CA1;
+  --gray-dark: #34445B;
+  --accent: #8DBBFF;
+  --accent-strong: #5E9BFA;
+  --accent-soft: rgba(141, 187, 255, 0.16);
+  --groove-a: #0B111C;
+  --groove-b: #131D2C;
   --tab-bar-height: 100rpx;
   --font-bebas: 'Bebas Neue', impact, 'Arial Narrow', sans-serif;
   font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
@@ -24,14 +26,17 @@ page {
 }
 
 .theme-light {
-  --black: #F5EFE2;
-  --white: #16110D;
-  --off-white: #FFFDF8;
-  --gray-light: #DED3BF;
-  --gray-mid: #8A7D67;
-  --gray-dark: #C8BBA2;
-  --groove-a: #EDE4D2;
-  --groove-b: #E3D7BE;
+  --black: #F4F7FC;
+  --white: #172033;
+  --off-white: #FFFFFF;
+  --gray-light: #DCE5F2;
+  --gray-mid: #738198;
+  --gray-dark: #B7C5D8;
+  --accent: #4E8DEB;
+  --accent-strong: #3378DD;
+  --accent-soft: rgba(78, 141, 235, 0.12);
+  --groove-a: #E9F0F9;
+  --groove-b: #DDE8F5;
 }
 
 /* Catch remaining legacy hard-coded dark surfaces in light mode. */
@@ -87,7 +92,7 @@ page {
   background: linear-gradient(
     90deg,
     var(--gray-light) 25%,
-    #2e2b28           50%,
+    #2A374A 50%,
     var(--gray-light) 75%
   );
   background-size: 600rpx 100%;
@@ -98,9 +103,9 @@ page {
 .sk-dark {
   background: linear-gradient(
     90deg,
-    #1e1e1e 25%,
-    #2c2c2c 50%,
-    #1e1e1e 75%
+    #151E2B 25%,
+    #243247 50%,
+    #151E2B 75%
   );
   background-size: 600rpx 100%;
   animation: sk-shimmer 1.4s ease-in-out infinite;
@@ -158,17 +163,17 @@ page {
   background:
     radial-gradient(ellipse 42% 58% at 36% 35%, rgba(255,255,255,0.11) 0%, transparent 58%),
     radial-gradient(circle at 50% 50%,
-      #0e0b0d 0%, #0e0b0d 2%,
+      #0A0F18 0%, #0A0F18 2%,
       var(--accent) 2.1%, var(--accent) 38%,
-      #1c1618 39%,
-      #312b2e 40.5%, #1c1618 42%, #312b2e 43.5%, #1c1618 45%,
-      #312b2e 46.5%, #1c1618 48%, #312b2e 49.5%, #1c1618 51%,
-      #312b2e 52.5%, #1c1618 54%, #312b2e 55.5%, #1c1618 57%,
-      #312b2e 58.5%, #1c1618 60%, #312b2e 61.5%, #1c1618 63%,
-      #312b2e 64.5%, #1c1618 66%, #312b2e 67.5%, #1c1618 69%,
-      #312b2e 70.5%, #1c1618 72%, #312b2e 73.5%, #1c1618 75%,
-      #312b2e 76.5%, #1c1618 78%, #312b2e 79.5%, #1c1618 81%,
-      #312b2e 82.5%, #1c1618 84%,
-      #282224 85%, #1a1416 89%, #0e0b0d 100%
+      #111A28 39%,
+      #28364B 40.5%, #111A28 42%, #28364B 43.5%, #111A28 45%,
+      #28364B 46.5%, #111A28 48%, #28364B 49.5%, #111A28 51%,
+      #28364B 52.5%, #111A28 54%, #28364B 55.5%, #111A28 57%,
+      #28364B 58.5%, #111A28 60%, #28364B 61.5%, #111A28 63%,
+      #28364B 64.5%, #111A28 66%, #28364B 67.5%, #111A28 69%,
+      #28364B 70.5%, #111A28 72%, #28364B 73.5%, #111A28 75%,
+      #28364B 76.5%, #111A28 78%, #28364B 79.5%, #111A28 81%,
+      #28364B 82.5%, #111A28 84%,
+      #1C2838 85%, #101722 89%, #0A0F18 100%
     );
 }
