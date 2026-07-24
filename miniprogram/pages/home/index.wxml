@@ -32,14 +32,14 @@
             <view class="hero-info">
               <text class="hero-title">{{item.title}}</text>
               <text class="hero-meta">{{item.artist}} · {{item.year}}</text>
-              <view wx:if="{{item.isTodayHot}}" style="display:flex;flex-direction:row;align-items:center;justify-content:center;width:420rpx;height:86rpx;margin:22rpx auto 34rpx;border-top:2rpx solid #2b2421;border-bottom:2rpx solid #2b2421;box-sizing:border-box;white-space:nowrap;">
-                <view style="width:210rpx;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:2rpx solid #2b2421;box-sizing:border-box;">
-                  <text style="font-size:16rpx;letter-spacing:2rpx;color:#766f68;white-space:nowrap;">当前评分</text>
-                  <text style="margin-top:3rpx;font-family:var(--font-bebas);font-size:32rpx;line-height:1;color:#2d6fe0;white-space:nowrap;">{{item.currentScore}}</text>
+              <view wx:if="{{item.isTodayHot}}" style="display:flex;flex-direction:row;align-items:center;justify-content:center;width:420rpx;height:86rpx;margin:22rpx auto 34rpx;border-top:2rpx solid var(--gray-mid);border-bottom:2rpx solid var(--gray-mid);box-sizing:border-box;white-space:nowrap;">
+                <view style="width:210rpx;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:2rpx solid var(--gray-mid);box-sizing:border-box;">
+                  <text style="font-size:16rpx;letter-spacing:2rpx;color:var(--gray-mid);white-space:nowrap;">当前评分</text>
+                  <text style="margin-top:3rpx;font-family:var(--font-bebas);font-size:32rpx;line-height:1;color:var(--accent-strong);white-space:nowrap;">{{item.currentScore}}</text>
                 </view>
                 <view style="width:210rpx;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">
-                  <text style="font-size:16rpx;letter-spacing:2rpx;color:#766f68;white-space:nowrap;">今日新评论</text>
-                  <text style="margin-top:3rpx;font-family:var(--font-bebas);font-size:32rpx;line-height:1;color:#f4eee8;white-space:nowrap;">+{{item.todayReviewCount}}</text>
+                  <text style="font-size:16rpx;letter-spacing:2rpx;color:var(--gray-mid);white-space:nowrap;">今日新评论</text>
+                  <text style="margin-top:3rpx;font-family:var(--font-bebas);font-size:32rpx;line-height:1;color:var(--accent-strong);white-space:nowrap;">+{{item.todayReviewCount}}</text>
                 </view>
               </view>
             </view>
