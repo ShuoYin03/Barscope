@@ -278,6 +278,11 @@
   letter-spacing: 2rpx;
 }
 
+.dial-hint.has-score {
+  color: var(--accent-warm);
+  font-weight: 700;
+}
+
 /* SCORE AXIS */
 .score-axis-wrap {
   width: 640rpx;

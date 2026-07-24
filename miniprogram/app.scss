@@ -15,6 +15,9 @@ page {
   --accent: #8DBBFF;
   --accent-strong: #5E9BFA;
   --accent-soft: rgba(141, 187, 255, 0.16);
+  --accent-warm: #F2A63A;
+  --accent-warm-strong: #E08A1C;
+  --accent-warm-soft: rgba(242, 166, 58, 0.16);
   --groove-a: #0A0708;
   --groove-b: #171113;
   --groove-sheen: rgba(255, 255, 255, 0.14);
@@ -37,6 +40,9 @@ page {
   --accent: #4E8DEB;
   --accent-strong: #3378DD;
   --accent-soft: rgba(78, 141, 235, 0.12);
+  --accent-warm: #D9861F;
+  --accent-warm-strong: #B86C10;
+  --accent-warm-soft: rgba(217, 134, 31, 0.12);
 }
 
 /* Catch remaining legacy hard-coded dark surfaces in light mode. */

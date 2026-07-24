@@ -46,14 +46,14 @@
 
       <!-- Rating remains available regardless of tonearm state -->
       <view class="score-axis-wrap">
-        <text class="dial-hint">{{rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数'}}</text>
+        <text class="dial-hint {{rating > 0 ? 'has-score' : ''}}">{{rating > 0 ? ratingDisplay + ' / 10' : '拖动评分轴选择分数'}}</text>
         <slider
           class="score-axis"
           min="1"
           max="10"
           step="0.5"
           value="{{sliderValue}}"
-          activeColor="#5E9BFA"
+          activeColor="#F2A63A"
           backgroundColor="#DCE5F2"
           block-color="#F2EBDD"
           block-size="32"

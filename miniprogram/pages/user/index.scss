@@ -43,7 +43,7 @@
 .review-card{padding:20rpx 32rpx;border-top:2rpx solid var(--gray-light)}
 .review-card-head{display:flex;justify-content:space-between;align-items:center;gap:16rpx}
 .review-card-album{flex:1;min-width:0;font-size:25rpx;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.review-card-score{font-family:var(--font-bebas);font-size:32rpx;color:var(--accent);flex-shrink:0}
+.review-card-score{font-family:var(--font-bebas);font-size:32rpx;color:var(--accent-warm);flex-shrink:0}
 .review-card-content{display:block;margin-top:10rpx;font-size:23rpx;line-height:1.6;color:var(--gray-mid)}
 .review-card-foot{display:flex;justify-content:space-between;margin-top:12rpx;font-size:20rpx;color:var(--gray-mid)}
 
