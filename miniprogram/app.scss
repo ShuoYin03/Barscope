@@ -13,8 +13,10 @@ page {
   --gray-mid: #5A5044;
   --gray-dark: #3A3028;
   --accent: #2D6FE0;
-  --groove-a: #100A0E;
-  --groove-b: #1A1218;
+  --groove-a: #0A0708;
+  --groove-b: #171113;
+  --groove-sheen: rgba(255, 255, 255, 0.14);
+  --vinyl-label: #C4131A;
   --tab-bar-height: 100rpx;
   --font-bebas: 'Bebas Neue', impact, 'Arial Narrow', sans-serif;
   font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
@@ -30,8 +32,6 @@ page {
   --gray-light: #DED3BF;
   --gray-mid: #8A7D67;
   --gray-dark: #C8BBA2;
-  --groove-a: #EDE4D2;
-  --groove-b: #E3D7BE;
 }
 
 /* Catch remaining legacy hard-coded dark surfaces in light mode. */
@@ -156,10 +156,10 @@ page {
   z-index: 1;
   box-shadow: 0 0 0 2rpx var(--gray-dark);
   background:
-    radial-gradient(ellipse 42% 58% at 36% 35%, rgba(255,255,255,0.11) 0%, transparent 58%),
+    radial-gradient(ellipse 42% 58% at 36% 35%, var(--groove-sheen) 0%, transparent 58%),
     radial-gradient(circle at 50% 50%,
       #0e0b0d 0%, #0e0b0d 2%,
-      var(--accent) 2.1%, var(--accent) 38%,
+      var(--vinyl-label) 2.1%, var(--vinyl-label) 38%,
       #1c1618 39%,
       #312b2e 40.5%, #1c1618 42%, #312b2e 43.5%, #1c1618 45%,
       #312b2e 46.5%, #1c1618 48%, #312b2e 49.5%, #1c1618 51%,

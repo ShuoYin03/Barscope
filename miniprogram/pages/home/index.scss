@@ -90,12 +90,12 @@
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
-  background: radial-gradient(circle at 50% 50%,
-    var(--accent) 0, var(--accent) 17%,
+  background: radial-gradient(ellipse 40% 46% at 32% 26%, var(--groove-sheen) 0%, transparent 60%), radial-gradient(circle at 50% 50%,
+    var(--vinyl-label) 0, var(--vinyl-label) 17%,
     var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
     var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
     var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
+    var(--groove-a) 42%, var(--groove-b) 43.5%, var(--groove-a) 45%, var(--groove-b) 46.5%, var(--groove-a) 48%, var(--groove-b) 49.5%, var(--groove-a) 51%, var(--groove-b) 52.5%, var(--groove-a) 54%, var(--groove-b) 55.5%, var(--groove-a) 57%, var(--groove-b) 58.5%, var(--groove-a) 60%, var(--groove-b) 61.5%, var(--groove-a) 63%, var(--groove-b) 64.5%, var(--groove-a) 66%, var(--groove-b) 67.5%, var(--groove-a) 69%, var(--groove-b) 70.5%, var(--groove-a) 72%, var(--groove-b) 73.5%, var(--groove-a) 75%, var(--groove-b) 76.5%, var(--groove-a) 78%, var(--groove-b) 79.5%, var(--groove-a) 81%, var(--groove-b) 82.5%, var(--groove-a) 84%, var(--groove-b) 85.5%, var(--groove-a) 87%, var(--groove-b) 88.5%, var(--groove-a) 90%, var(--groove-b) 91.5%, var(--groove-a) 93%, var(--groove-b) 94.5%, var(--groove-a) 96%, var(--groove-b) 97.5%, var(--groove-a) 100%
   );
   box-shadow: 0 0 0 6rpx var(--black), 0 0 0 10rpx var(--gray-light);
 }
@@ -107,7 +107,7 @@
   width: 152rpx;
   height: 152rpx;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--vinyl-label);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -329,11 +329,11 @@
   height: 80rpx;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 50%,
-    var(--accent) 0, var(--accent) 17%,
+    var(--vinyl-label) 0, var(--vinyl-label) 17%,
     var(--groove-a) 18%, var(--groove-b) 20%, var(--groove-a) 22%, var(--groove-b) 24%,
     var(--groove-a) 26%, var(--groove-b) 28%, var(--groove-a) 30%, var(--groove-b) 32%,
     var(--groove-a) 34%, var(--groove-b) 36%, var(--groove-a) 38%, var(--groove-b) 40%,
-    var(--groove-a) 42%, var(--groove-b) 44%, var(--groove-a) 100%
+    var(--groove-a) 42%, var(--groove-b) 43.5%, var(--groove-a) 45%, var(--groove-b) 46.5%, var(--groove-a) 48%, var(--groove-b) 49.5%, var(--groove-a) 51%, var(--groove-b) 52.5%, var(--groove-a) 54%, var(--groove-b) 55.5%, var(--groove-a) 57%, var(--groove-b) 58.5%, var(--groove-a) 60%, var(--groove-b) 61.5%, var(--groove-a) 63%, var(--groove-b) 64.5%, var(--groove-a) 66%, var(--groove-b) 67.5%, var(--groove-a) 69%, var(--groove-b) 70.5%, var(--groove-a) 72%, var(--groove-b) 73.5%, var(--groove-a) 75%, var(--groove-b) 76.5%, var(--groove-a) 78%, var(--groove-b) 79.5%, var(--groove-a) 81%, var(--groove-b) 82.5%, var(--groove-a) 84%, var(--groove-b) 85.5%, var(--groove-a) 87%, var(--groove-b) 88.5%, var(--groove-a) 90%, var(--groove-b) 91.5%, var(--groove-a) 93%, var(--groove-b) 94.5%, var(--groove-a) 96%, var(--groove-b) 97.5%, var(--groove-a) 100%
   );
   display: flex;
   align-items: center;
