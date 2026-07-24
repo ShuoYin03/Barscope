@@ -122,6 +122,19 @@
   background: #ffffff;
 }
 
+.deck-foot {
+  position: absolute;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #171310;
+  box-shadow: inset 0 -2rpx 3rpx rgba(0, 0, 0, 0.4);
+}
+
+.deck-foot-tl { top: 10rpx; left: 10rpx; }
+.deck-foot-bl { bottom: 10rpx; left: 10rpx; }
+.deck-foot-br { bottom: 10rpx; right: 10rpx; }
+
 .vinyl-score-disc {
   position: absolute;
   top: 0;
