@@ -2,7 +2,7 @@
   <view class="topbar" style="height: {{topbarHeight}}px; padding-top: {{statusBarHeight}}px"><text class="topbar-title">DISCOVER</text><text class="topbar-filter">⊞</text></view>
   <view class="search-wrap" style="position:relative;z-index:40">
     <view class="search-inner"><text class="search-icon">⌕</text><input class="search-input" placeholder="搜索专辑、歌手" placeholder-class="search-ph" bindfocus="onSearchFocus" bindblur="onSearchBlur" bindinput="onSearch" value="{{keyword}}" /></view>
-    <view wx:if="{{suggestionVisible}}" class="suggestion-panel" style="position:absolute;left:32rpx;right:32rpx;top:calc(100% - 20rpx);z-index:60;max-height:620rpx;overflow-y:auto;background:#120d10;border:2rpx solid #30272c;box-shadow:0 18rpx 42rpx rgba(0,0,0,.58)">
+    <scroll-view wx:if="{{suggestionVisible}}" scroll-y enhanced show-scrollbar="{{false}}" class="suggestion-panel" style="position:absolute;left:32rpx;right:32rpx;top:calc(100% - 20rpx);z-index:60;max-height:620rpx;background:#120d10;border:2rpx solid #30272c;box-shadow:0 18rpx 42rpx rgba(0,0,0,.58)">
       <view wx:if="{{suggestionLoading}}" class="suggestion-state" style="padding:30rpx 20rpx;text-align:center;font-size:23rpx;color:#766f68">正在搜索…</view>
       <block wx:elif="{{viewMode === 'albums'}}">
         <view wx:if="{{albumSuggestions.length === 0}}" class="suggestion-state" style="padding:30rpx 20rpx;text-align:center;font-size:23rpx;color:#766f68">没有匹配的专辑</view>
@@ -12,7 +12,7 @@
         <view wx:if="{{artistSuggestions.length === 0}}" class="suggestion-state" style="padding:30rpx 20rpx;text-align:center;font-size:23rpx;color:#766f68">没有匹配的 rapper</view>
         <view wx:for="{{artistSuggestions}}" wx:key="artistId" class="suggestion-row" style="display:flex;align-items:center;gap:18rpx;min-height:96rpx;padding:14rpx 18rpx;border-bottom:2rpx solid #1b1519" catchtap="onSuggestionArtistTap" data-artist-id="{{item.artistId}}" data-artist="{{item.artistName}}"><view class="suggestion-avatar"><image wx:if="{{item.picUrl}}" class="suggestion-avatar-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.letter || item.artistName[0]}}</text></view><view style="flex:1;min-width:0"><text class="suggestion-name">{{item.artistName}}</text><text class="suggestion-meta">{{item.albumSize || 0}} 张专辑</text></view><text class="suggestion-type">RAPPER</text></view>
       </block>
-    </view>
+    </scroll-view>
   </view>
   <view class="view-switch"><view class="switch-chip {{viewMode === 'albums' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="albums"><text>ALBUMS</text></view><view class="switch-chip {{viewMode === 'artists' ? 'active' : ''}}" bindtap="onViewModeTap" data-mode="artists"><text>ARTISTS</text></view></view>
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{artistScrollIntoView}}" scroll-with-animation="{{true}}" bindscroll="onContentScroll" bindscrolltolower="onAlbumScrollToLower" lower-threshold="160">

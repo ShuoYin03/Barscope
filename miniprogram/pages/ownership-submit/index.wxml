@@ -9,7 +9,7 @@
 
     <view wx:if="{{ownershipLoading}}" class="picked-note">正在读取当前归属…</view>
 
-    <view wx:elif="{{selectedArtists.length}}" class="artist-results current-owners">
+    <scroll-view wx:elif="{{selectedArtists.length}}" scroll-y enhanced show-scrollbar="{{false}}" class="artist-results current-owners">
       <view wx:for="{{selectedArtists}}" wx:key="artistId" class="artist-row selected" bindtap="onRemoveArtist" data-id="{{item.artistId}}">
         <view class="artist-avatar"><image wx:if="{{item.picUrl}}" class="artist-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.letter || item.artistName[0]}}</text></view>
         <view class="artist-copy">
@@ -18,7 +18,7 @@
         </view>
         <text class="artist-check remove">删除</text>
       </view>
-    </view>
+    </scroll-view>
 
     <view wx:else class="picked-note">暂未识别到当前归属，请在下方选择</view>
   </view>
@@ -28,13 +28,13 @@
     <input class="input" placeholder="搜索已收录 rapper" placeholder-style="color:#766f68" value="{{artistKeyword}}" bindinput="onTargetInput" />
     <text wx:if="{{artistSearching}}" class="picked-note">搜索中…</text>
 
-    <view class="artist-results">
+    <scroll-view scroll-y enhanced show-scrollbar="{{false}}" class="artist-results">
       <view wx:for="{{artistResults}}" wx:key="artistId" class="artist-row {{item.selected ? 'selected' : ''}}" bindtap="onPickArtist" data-id="{{item.artistId}}">
         <view class="artist-avatar"><image wx:if="{{item.picUrl}}" class="artist-img" src="{{item.picUrl}}" mode="aspectFill" /><text wx:else>{{item.letter || item.artistName[0]}}</text></view>
         <view class="artist-copy"><text class="artist-name">{{item.artistName}}</text><text class="artist-meta">{{item.albumSize || 0}} 张专辑</text></view>
         <text class="artist-check">{{item.selected ? '已归属' : '添加'}}</text>
       </view>
-    </view>
+    </scroll-view>
   </view>
 
   <view class="card"><text class="label">原因（选填）</text><textarea class="textarea" placeholder="例如：删除误归属歌手 / 补充共同创作 rapper" placeholder-style="color:#766f68" value="{{reason}}" bindinput="onReasonInput" maxlength="-1" /></view>
