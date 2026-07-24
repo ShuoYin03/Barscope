@@ -6,16 +6,16 @@
 
   <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="article-head">
-      <text class="category">榜单 · PLAYLIST POLL</text>
-      <text class="title">2026年上半年中文说唱单曲榜单</text>
-      <text class="intro">提交你的网易云歌单即可参与。乐评人歌单与社区投稿分别展示，并汇总所有有效歌单生成最终 Top50。</text>
+      <text class="category">{{copy.category}}</text>
+      <text class="title">{{copy.title}}</text>
+      <text class="intro">{{copy.intro}}</text>
     </view>
 
     <view class="rule" />
 
     <view class="submit-block">
-      <text class="section-kicker">SUBMIT YOUR PLAYLIST</text>
-      <text class="section-title">只需要一个网易云歌单链接</text>
+      <text class="section-kicker">{{copy.submitKicker}}</text>
+      <text class="section-title">{{copy.submitTitle}}</text>
       <input class="playlist-input" value="{{playlistUrl}}" bindinput="onUrlInput" placeholder="https://music.163.com/#/playlist?id=..." placeholder-style="color:#6f6762" />
       <view class="own-playlist-row" bindtap="onToggleOwnPlaylist">
         <view class="own-playlist-check {{isOwnPlaylist ? 'checked' : ''}}"><text wx:if="{{isOwnPlaylist}}">✓</text></view>
@@ -51,6 +51,34 @@
       </view>
     </view>
 
-    <view class="end-mark"><text>— 2026 H1 TOP 50 —</text></view>
+    <view class="end-mark"><text>{{copy.endMark}}</text></view>
+
+    <view wx:if="{{isAdmin}}" class="admin-copy-entry" bindtap="onOpenCopyEditor">
+      <text>✎ 编辑本页文案</text>
+    </view>
   </scroll-view>
+
+  <view wx:if="{{copyEditVisible}}" class="copy-sheet-mask" bindtap="onCloseCopyEditor">
+    <view class="copy-sheet" catchtap="noop">
+      <view class="copy-sheet-handle" />
+      <text class="copy-sheet-title">编辑本页文案</text>
+      <scroll-view class="copy-sheet-fields" scroll-y>
+        <view wx:for="{{copyEditFields}}" wx:key="key" class="copy-field">
+          <text class="copy-field-label">{{item.label}}</text>
+          <textarea
+            class="copy-field-input"
+            value="{{item.value}}"
+            data-key="{{item.key}}"
+            bindinput="onCopyFieldInput"
+            auto-height
+            maxlength="2000"
+          />
+        </view>
+      </scroll-view>
+      <view class="copy-sheet-actions">
+        <view class="copy-sheet-cancel" bindtap="onCloseCopyEditor"><text>取消</text></view>
+        <view class="copy-sheet-save {{copySaving ? 'disabled' : ''}}" bindtap="onSaveCopyEdit"><text>{{copySaving ? '保存中…' : '保存'}}</text></view>
+      </view>
+    </view>
+  </view>
 </view>

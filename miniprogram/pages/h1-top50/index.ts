@@ -15,6 +15,26 @@ interface PlaylistCard {
 
 const FEATURE_ID = '2026-h1-top-50-tracks'
 
+interface CopyField { key: string; label: string; value: string }
+
+const COPY_DEFAULTS: Record<string, string> = {
+  category: '榜单 · PLAYLIST POLL',
+  title: '2026年上半年中文说唱单曲榜单',
+  intro: '提交你的网易云歌单即可参与。乐评人歌单与社区投稿分别展示，并汇总所有有效歌单生成最终 Top50。',
+  submitKicker: 'SUBMIT YOUR PLAYLIST',
+  submitTitle: '只需要一个网易云歌单链接',
+  endMark: '— 2026 H1 TOP 50 —',
+}
+
+const COPY_FIELD_LABELS: Record<string, string> = {
+  category: '分类标签',
+  title: '标题',
+  intro: '简介',
+  submitKicker: '提交区小标题（英文）',
+  submitTitle: '提交区标题',
+  endMark: '页尾文字',
+}
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -29,6 +49,11 @@ Page({
     criticCount: 0,
     communityCount: 0,
     isOwnPlaylist: false,
+    isAdmin: false,
+    copy: { ...COPY_DEFAULTS },
+    copyEditVisible: false,
+    copyEditFields: [] as CopyField[],
+    copySaving: false,
   },
 
   onLoad() {
@@ -36,10 +61,72 @@ Page({
     this.setData({ statusBarHeight: app.globalData.statusBarHeight, topbarHeight: app.globalData.topbarHeight })
     trackFeatureView(FEATURE_ID)
     this._loadPlaylists()
+    this._loadCopy()
   },
 
-  onShow() { this.setData({ themeClass: getThemeClass() }) },
+  onShow() {
+    const app = getApp<IAppOption>()
+    this.setData({ themeClass: getThemeClass(), isAdmin: !!app.globalData.isAdmin })
+  },
+
+  _loadCopy() {
+    wx.cloud.callFunction({
+      name: 'manageFeaturePlaylists',
+      data: { action: 'get_copy', pageKey: FEATURE_ID },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) return
+        this.setData({ copy: { ...COPY_DEFAULTS, ...(r.fields || {}) } })
+      },
+    } as any)
+  },
+
+  onOpenCopyEditor() {
+    const copy = this.data.copy
+    const fields: CopyField[] = Object.keys(COPY_DEFAULTS).map(key => ({
+      key,
+      label: COPY_FIELD_LABELS[key] || key,
+      value: (copy as any)[key] ?? COPY_DEFAULTS[key],
+    }))
+    this.setData({ copyEditVisible: true, copyEditFields: fields })
+  },
+
+  onCloseCopyEditor() {
+    if (this.data.copySaving) return
+    this.setData({ copyEditVisible: false })
+  },
+
+  onCopyFieldInput(e: WechatMiniprogram.Input) {
+    const key = String((e.currentTarget.dataset as any).key || '')
+    const value = e.detail.value || ''
+    this.setData({
+      copyEditFields: this.data.copyEditFields.map(f => (f.key === key ? { ...f, value } : f)),
+    })
+  },
+
+  onSaveCopyEdit() {
+    if (this.data.copySaving) return
+    const fields: Record<string, string> = {}
+    this.data.copyEditFields.forEach(f => { fields[f.key] = f.value })
+    this.setData({ copySaving: true })
+    wx.cloud.callFunction({
+      name: 'manageFeaturePlaylists',
+      data: { action: 'update_copy', pageKey: FEATURE_ID, fields },
+      success: (res: any) => {
+        const r = res.result || {}
+        if (!r.success) {
+          wx.showToast({ title: r.error || '保存失败', icon: 'none' })
+          return
+        }
+        this.setData({ copy: { ...COPY_DEFAULTS, ...(r.fields || {}) }, copyEditVisible: false })
+        wx.showToast({ title: '已保存', icon: 'success' })
+      },
+      fail: () => wx.showToast({ title: '网络错误，请重试', icon: 'none' }),
+      complete: () => this.setData({ copySaving: false }),
+    } as any)
+  },
   onBack() { wx.navigateBack() },
+  noop() {},
   onUrlInput(e: WechatMiniprogram.Input) { this.setData({ playlistUrl: e.detail.value || '' }) },
   onToggleOwnPlaylist() { this.setData({ isOwnPlaylist: !this.data.isOwnPlaylist }) },
 

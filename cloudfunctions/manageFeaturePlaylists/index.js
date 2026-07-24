@@ -430,6 +430,39 @@ async function setSourceType(id, sourceType, openId) {
   return { success: true, sourceType: normalized }
 }
 
+async function ensureCollection(name) {
+  try {
+    await db.collection(name).limit(1).get()
+  } catch (e) {
+    const msg = String(e && (e.errMsg || e.message) || '')
+    if (!msg.includes('DATABASE_COLLECTION_NOT_EXIST') && !msg.includes('collection not exists') && !msg.includes('Db or Table not exist')) throw e
+    try { await db.createCollection(name) } catch (x) {}
+  }
+}
+
+async function getCopy(pageKey) {
+  const key = String(pageKey || '').trim()
+  if (!key) return { success: false, error: 'missing_page_key' }
+  await ensureCollection('feature_page_copy')
+  const result = await db.collection('feature_page_copy').doc(key).get().catch(() => ({ data: null }))
+  return { success: true, fields: (result.data && result.data.fields) || {} }
+}
+
+async function updateCopy(pageKey, fields, openId) {
+  if (!(await checkAdmin(openId))) return { success: false, error: 'unauthorized' }
+  const key = String(pageKey || '').trim()
+  if (!key) return { success: false, error: 'missing_page_key' }
+  const cleanFields = {}
+  Object.keys(fields || {}).forEach(k => {
+    cleanFields[String(k).slice(0, 60)] = String(fields[k] || '').slice(0, 2000)
+  })
+  await ensureCollection('feature_page_copy')
+  await db.collection('feature_page_copy').doc(key).set({
+    data: { fields: cleanFields, updatedAt: new Date(), updatedBy: openId },
+  })
+  return { success: true, fields: cleanFields }
+}
+
 exports.main = async event => {
   try {
     const { OPENID: openId } = cloud.getWXContext()
@@ -444,6 +477,8 @@ exports.main = async event => {
     if (action === 'get_public_detail') return await getPublicDetail(event.id)
     if (action === 'remove') return await removePlaylist(event.id, openId)
     if (action === 'set_source_type') return await setSourceType(event.id, event.sourceType, openId)
+    if (action === 'get_copy') return await getCopy(event.pageKey)
+    if (action === 'update_copy') return await updateCopy(event.pageKey, event.fields, openId)
     return { success: false, error: 'unknown_action' }
   } catch (e) {
     console.error('[manageFeaturePlaylists]', e)
